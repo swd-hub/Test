@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>CSV表示サンプル</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    table { border-collapse: collapse; }
+    th, td { border: 1px solid #888; padding: 4px 8px; }
+  </style>
+</head>
+<body>
+  <h1>CSV内容を表示</h1>
+  <div id="status">CSV読み込み中...</div>
+  <table id="csv-table"></table>
+  <script>
+    fetch('StudyRecJJ.CSV')
+      .then(response => {
+        if (!response.ok) throw new Error('CSVファイルが見つかりません');
+        return response.text();
+      })
+      .then(csvText => {
+        const result = Papa.parse(csvText, {header: true});
+        const data = result.data;
+        const table = document.getElementById('csv-table');
+        document.getElementById('status').textContent = "CSV読み込み完了";
+
+        // ヘッダー
+        const headerRow = document.createElement('tr');
+        Object.keys(data[0]).forEach(key => {
+          const th = document.createElement('th');
+          th.textContent = key;
+          headerRow.appendChild(th);
+        });
+        table.appendChild(headerRow);
+
+        // データ
+        data.forEach(row => {
+          if (Object.values(row).every(cell => cell === "")) return;
+          const tr = document.createElement('tr');
+          Object.values(row).forEach(cell => {
+            const td = document.createElement('td');
+            td.textContent = cell;
+            tr.appendChild(td);
+          });
+          table.appendChild(tr);
+        });
+      })
+      .catch(error => {
+        document.getElementById('status').textContent = "CSVの読み込みに失敗しました: " + error.message;
+      });
+  </script>
+</body>
+</html>
