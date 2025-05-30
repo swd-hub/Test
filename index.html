@@ -452,6 +452,7 @@ function handleFileSelect() {
             return response.text(); // テキストとして応答を取得
         })
         .then(data => {
+               console.log('fetchで取得したdata:', data); // ← ここに追加
             const utf8Content = shiftJISToUTF8(data);
             console.log('UTF-8 Content:', utf8Content);
 
