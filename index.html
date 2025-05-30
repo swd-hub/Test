@@ -449,11 +449,12 @@ function handleFileSelect() {
             if (!response.ok) {
                 throw new Error('Network response was not ok ' + response.statusText);
             }
-            return response.text(); // テキストとして応答を取得
+            // ここで arrayBuffer() でバイナリとして受け取る
+            return response.arrayBuffer();
         })
-        .then(data => {
-               console.log('fetchで取得したdata:', data); // ← ここに追加
-            const utf8Content = shiftJISToUTF8(data);
+        .then(buffer => {
+            // Shift-JIS → UTF-8 に変換
+            const utf8Content = shiftJISToUTF8(buffer);
             console.log('UTF-8 Content:', utf8Content);
 
             const parsedData = parseCSV(utf8Content);
@@ -506,54 +507,6 @@ function handleFileSelect() {
 // ページ読み込み時に自動的にファイルを読み込む呼び出し
 window.onload = handleFileSelect;
 
-/*
-function handleFileSelect() {
-    const file = document.getElementById("fileInput").files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        const utf8Content = shiftJISToUTF8(e.target.result);
-        console.log('UTF-8 Content:', utf8Content);
-
-        const data = parseCSV(utf8Content);
-        console.log('Parsed Data:', data);
-
-        // 日付を1日進める 必要なし
-        data.forEach(d => d.date.setDate(d.date.getDate()));
-
-        const startDate = new Date(document.getElementById("cultivationStartDate").value);
-        const endDate = new Date(document.getElementById("cultivationEndDate").value);
-        const tempMin = parseFloat(document.getElementById("tempMin").value);
-        const tempMax = parseFloat(document.getElementById("tempMax").value);
-
-        const graphStart = new Date(startDate);
-        graphStart.setMonth(graphStart.getMonth() - 1);
-        const graphEnd = new Date(endDate);
-        graphEnd.setMonth(graphEnd.getMonth() + 1);
-
-        const filteredData = filterData(data, graphStart, graphEnd);
-        const cumulativeData = calculateCumulativeDataWithTable(filteredData, startDate, endDate, tempMin, tempMax);
-
-        updateDailyCharts(filteredData, startDate, endDate, tempMin, tempMax);
-        updateCumulativeCharts(cumulativeData, startDate, endDate, tempMin, tempMax);
-        updateTable(cumulativeData.table);
-// 「日データ」と「有効積算データ」のタイトルを表示
-const dailyTitles = document.getElementsByClassName("dailyTitle");
-for (let el of dailyTitles) {
-  el.style.display = "block";
-}
-
-const cumulativeTitles = document.getElementsByClassName("cumulativeTitle");
-for (let el of cumulativeTitles) {
-  el.style.display = "block";
-}
-
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-*/
 
 
 function readCSVFile(file) {
