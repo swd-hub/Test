@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta name="discription" content="気象データを用いて時別値の有効積算温度、累積降水量、有効日照時間の積算を計算し、グラフ化する。">  
@@ -240,8 +240,8 @@ input:checked + .slider:before {
         <!--button onclick="window.open('images/WetherOption.png', '_blank')">過去の気象データ・ダウンロードで選ぶ表示オプション</button-->
     </div>
     <br>
-    <h5>ファイルの選択ボタンにドラッグ＆ドロップすることで取り込み可能</h5>
-    <input type="file" id="fileInput" accept=".csv">
+    <h5 id="dateRangeInfo">読み込みデータの日付範囲：未読込</h5>
+    <!--input type="file" id="fileInput" accept=".csv"-->
     <div class="container">
         <form>
             <label for="cultivationStartDate">栽培開始日:</label>
@@ -317,21 +317,27 @@ input:checked + .slider:before {
         <canvas id="cumulativeSunChart" width="200" height="150"></canvas>
     </div>
     <script>
-       function updateDateFields() {
-         const currentDate = new Date();
-         const currentYear = currentDate.getFullYear();
-         const currentMonth = String(currentDate.getMonth() + 1).padStart(2, '0'); // Adds leading zero for single-digit months
-         const currentDay = String(currentDate.getDate()).padStart(2, '0'); // Adds leading zero for single-digit days
+function updateDateFields() {
+ const currentDate = new Date();
+ const currentYear = currentDate.getFullYear();
+ const currentMonth = String(currentDate.getMonth() + 1).padStart(2, '0'); // Adds leading zero for single-digit months
+ const currentDay = String(currentDate.getDate()).padStart(2, '0'); // Adds leading zero for single-digit days
 
-         const startDateInput = document.getElementById('cultivationStartDate');
-         const endDateInput = document.getElementById('cultivationEndDate');
+ const startDateInput = document.getElementById('cultivationStartDate');
+ const endDateInput = document.getElementById('cultivationEndDate');
 
-         startDateInput.value = `${currentYear}-01-01`;
-         endDateInput.value = `${currentYear}-${currentMonth}-${currentDay}`;
+ if (startDateInput && endDateInput) {
+    startDateInput.value = `${currentYear}-01-01`;
+    endDateInput.value = `${currentYear}-${currentMonth}-${currentDay}`;
+  }
 }
 
     // ページ読み込み時に日付フィールドを更新
-    window.onload = updateDateFields;
+    document.addEventListener('DOMContentLoaded', function() {
+  updateDateFields();
+  handleFileSelect();
+   
+});
 
         let dailyTempChart, dailyPrecChart, dailySunChart;
         let cumulativeTempChart, cumulativePrecChart, cumulativeSunChart;
@@ -364,46 +370,84 @@ input:checked + .slider:before {
             document.body.removeChild(link);
         }
 let data = [];  // ←追加  
+
+//自動CSV取り込みに関係
+document.addEventListener('DOMContentLoaded', function() {
+    // HTML要素が正しく存在するかを確認
+    if (document.getElementById("cultivationStartDate") && 
+        document.getElementById("cultivationEndDate") && 
+        document.getElementById("tempMin") && 
+        document.getElementById("tempMax")) {
+        
+        handleFileSelect(); // CSVファイルを自動で読み込む関数の呼び出し
+    } else {
+        console.error("必要なHTML要素が見つかりません。");
+    }
+});
+
+//自動取り込み設定        
 function handleFileSelect() {
-    const file = document.getElementById("fileInput").files[0];
-    if (!file) return;
+    const filePath = './出雲時別値.csv'; // ファイルパスを指定
+    fetch(filePath)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
+            }
+            // ここで arrayBuffer() でバイナリとして受け取る
+            return response.arrayBuffer();
+        })
+        .then(buffer => {
+            // Shift-JIS → UTF-8 に変換
+            const utf8Content = shiftJISToUTF8(buffer);
+            console.log('UTF-8 Content:', utf8Content);
 
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        const utf8Content = shiftJISToUTF8(e.target.result);
-        //console.log('UTF-8 Content:', utf8Content);
+            const parsedData = parseCSV(utf8Content);
+            console.log('Parsed Data:', parsedData);
 
-        const data = parseCSV(utf8Content);
-        //console.log('Parsed Data:', data);
+           　  updateDateRangeInfo(parsedData);   
+            // 日付を1日進める 必要なし
+            parsedData.forEach(d => d.date.setDate(d.date.getDate()));
 
-        // 日付を1日進める必要なし
-        data.forEach(d => d.date.setDate(d.date.getDate()));
+            const startDateStr = document.getElementById("cultivationStartDate").value;
+            const endDateStr = document.getElementById("cultivationEndDate").value;
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
 
-        const startDate = new Date(document.getElementById("cultivationStartDate").value);
-        const endDate = new Date(document.getElementById("cultivationEndDate").value);
-        const tempMin = parseFloat(document.getElementById("tempMin").value);
-        const tempMax = parseFloat(document.getElementById("tempMax").value);
+            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                console.error("Invalid date input");
+                return; // 日付が無効な場合は処理を中止
+            }
 
-        const graphStart = new Date(startDate);
-        graphStart.setMonth(graphStart.getMonth() - 1);
-        const graphEnd = new Date(endDate);
-        graphEnd.setMonth(graphEnd.getMonth() + 1);
+            const tempMin = parseFloat(document.getElementById("tempMin").value);
+            const tempMax = parseFloat(document.getElementById("tempMax").value);
 
-        const filteredData = filterData(data, graphStart, graphEnd);
-        const cumulativeData = calculateCumulativeDataWithTable(filteredData, startDate, endDate, tempMin, tempMax);
+            const graphStart = new Date(startDate);
+            graphStart.setMonth(graphStart.getMonth() - 1);
+            const graphEnd = new Date(endDate);
+            graphEnd.setMonth(graphEnd.getMonth() + 1);
 
-        const averagedData　= createDailyAveragedData(cumulativeData) ;
+            const filteredData = filterData(parsedData, graphStart, graphEnd);
+            const cumulativeData = calculateCumulativeDataWithTable(filteredData, startDate, endDate, tempMin, tempMax);
 
-console.log("averagedData",averagedData);
+            updateDailyCharts(filteredData, startDate, endDate, tempMin, tempMax);
+            updateCumulativeCharts(cumulativeData, startDate, endDate, tempMin, tempMax);
+            updateTable(cumulativeData.table);
 
-        updateDailyCharts(filteredData, startDate, endDate, tempMin, tempMax);
-        updateCumulativeCharts(averagedData, startDate, endDate, tempMin, tempMax);
+            // 「日データ」と「有効積算データ」のタイトルを表示
+            const dailyTitles = document.getElementsByClassName("dailyTitle");
+            for (let el of dailyTitles) {
+                el.style.display = "block";
+            }
 
-        updateTable(cumulativeData.table);
-    };
-    reader.readAsArrayBuffer(file);
+            const cumulativeTitles = document.getElementsByClassName("cumulativeTitle");
+            for (let el of cumulativeTitles) {
+                el.style.display = "block";
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching the file:', error);
+        });
 }
-
         function readCSVFile(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -413,11 +457,14 @@ console.log("averagedData",averagedData);
             });
         }
 
+
         function shiftJISToUTF8(arrayBuffer) {
             const decoder = new TextDecoder('shift-jis');
             const uint8Array = new Uint8Array(arrayBuffer);
             return decoder.decode(uint8Array);
         }
+
+
 
 function parseCSV(content) {
     const lines = content.trim().split('\n').filter(line => line.trim() !== "");
@@ -479,6 +526,28 @@ function parseCSV(content) {
 function filterData(data, graphStart, graphEnd) {
     return data.filter(d => d.date >= graphStart && d.date <= graphEnd);
 }
+
+function updateDateRangeInfo(parsedData) {
+    if (!parsedData || parsedData.length === 0) {
+        document.getElementById("dateRangeInfo").textContent = "読み込みデータの日付範囲：未読込";
+        return;
+    }
+    // 日付の配列を作成
+    const dates = parsedData.map(d => d.date).filter(date => date instanceof Date && !isNaN(date));
+    if (dates.length === 0) {
+        document.getElementById("dateRangeInfo").textContent = "CSVに有効な日付データがありません";
+        return;
+    }
+    // 最小・最大日付を計算
+    const minDate = new Date(Math.min(...dates));
+    const maxDate = new Date(Math.max(...dates));
+    // フォーマット
+    const f = d => d.toISOString().split('T')[0];
+    document.getElementById("dateRangeInfo").textContent =
+        `CSVの日付範囲：${f(minDate)} ～ ${f(maxDate)}`;
+} 
+
+
 
 function calculateEffectiveAccumulatedTemperature(data, startDate, endDate, tempMin, tempMax) {
     let dailyTempSum = 0;
