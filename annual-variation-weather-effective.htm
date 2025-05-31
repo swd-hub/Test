@@ -384,17 +384,6 @@ function updateDateFields() {
         }
        
 
-/// ファイル入力イベント
-//document.getElementById("fileInput").addEventListener("change", async function () {
-    const file = this.files[0];
-    if (file) {
-        const arrayBuffer = await readCSVFile(file);
-        const utf8Data = shiftJISToUTF8(arrayBuffer);
-        const parsedData = parseCSV(utf8Data);
-        //console.log("解析されたデータ:", parsedData);
-        initializeTable(parsedData);
-    }
-});
 
 // ファイルを読み込む関数（Promiseベース）
 async function readCSVFile(file) {
