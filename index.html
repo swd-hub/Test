@@ -241,9 +241,8 @@ input:checked + .slider:before {
         <!--button onclick="window.open('images/WetherOption.png', '_blank')">過去の気象データ・ダウンロードで選ぶ表示オプション</button-->
     </div>
     <br>
-    <!--h5>ファイルの選択ボタンにドラッグ＆ドロップすることで取り込み可能</h5-->
+    <h5 id="dateRangeInfo">CSVの日付範囲：未読込</h5>
     <!--input type="file" id="fileInput" accept=".csv"-->
-    <h5 id="dateRangeInfo">気象データの日付範囲：未読込</h5>
     <div class="container">
         <form>
             <label for="cultivationStartDate">栽培開始日:</label>
@@ -337,6 +336,7 @@ function updateDateFields() {
     document.addEventListener('DOMContentLoaded', function() {
   updateDateFields();
   handleFileSelect();
+   
 });
  //window.onload = handleFileSelect;  
    
@@ -448,8 +448,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+//自動取り込み設定        
 function handleFileSelect() {
-    const filePath = './出雲日別値.csv'; // ファイルパスを指定
+    const filePath = './出雲日別値2025-05-23.csv'; // ファイルパスを指定
     fetch(filePath)
         .then(response => {
             if (!response.ok) {
@@ -465,8 +466,8 @@ function handleFileSelect() {
 
             const parsedData = parseCSV(utf8Content);
             console.log('Parsed Data:', parsedData);
-            updateDateRangeInfo(parsedData);
-            
+
+           　  updateDateRangeInfo(parsedData);   
             // 日付を1日進める 必要なし
             parsedData.forEach(d => d.date.setDate(d.date.getDate()));
 
@@ -521,7 +522,7 @@ function readCSVFile(file) {
     });
 }
 
- function updateDateRangeInfo(parsedData) {
+function updateDateRangeInfo(parsedData) {
     if (!parsedData || parsedData.length === 0) {
         document.getElementById("dateRangeInfo").textContent = "CSVの日付範囲：未読込";
         return;
@@ -539,7 +540,7 @@ function readCSVFile(file) {
     const f = d => d.toISOString().split('T')[0];
     document.getElementById("dateRangeInfo").textContent =
         `CSVの日付範囲：${f(minDate)} ～ ${f(maxDate)}`;
-}       
+}        
 
 function calculateEffectiveAccumulatedTemperature(data, startDate, endDate, tempMin, tempMax) {
     let effectiveTempSum = 0;
