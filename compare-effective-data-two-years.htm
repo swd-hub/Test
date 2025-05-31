@@ -346,6 +346,61 @@ input:checked + .slider:before {
 
 </body>
     <script>
+        // グローバルにCSVデータを保持
+let loadedCSVData = null;
+
+window.addEventListener('DOMContentLoaded', function() {
+  updateDateFields();
+  fetch('出雲日別値.csv')
+    .then(response => response.arrayBuffer())
+    .then(arrayBuffer => {
+      const csvText = shiftJISToUTF8(arrayBuffer);
+      loadedCSVData = parseCSV(csvText);
+      // ここで初回グラフ描画
+      updateAllViews();
+    });
+
+  // 「更新」ボタンで再描画
+  document.getElementById('updateButton').addEventListener('click', updateAllViews, false);
+});
+
+function updateAllViews() {
+  if (!loadedCSVData) return; // CSV未読込なら何もしない
+
+  // 各種フォーム値を取得
+  const startDate = new Date(document.getElementById("cultivationStartDate").value);
+  const endDate = new Date(document.getElementById("cultivationEndDate").value);
+  const compareYear = parseInt(document.getElementById("compareYear").value, 10);
+  const tempMin = parseFloat(document.getElementById("tempMin").value);
+  const tempMax = parseFloat(document.getElementById("tempMax").value);
+
+  const compareStartDate = new Date(startDate);
+  compareStartDate.setFullYear(compareYear);
+
+  const yearDifference = endDate.getFullYear() - startDate.getFullYear();
+  const compareEndDate = new Date(endDate);
+  compareEndDate.setFullYear(compareYear + yearDifference);
+
+  const filteredBaseData = filterData(loadedCSVData, startDate, endDate);
+  const filteredCompareData = filterData(loadedCSVData, compareStartDate, compareEndDate);
+
+  calculateCumulativeSS(loadedCSVData, startDate, endDate, yearDifference, tempMin, tempMax);
+
+  const baseStartDate = new Date(startDate);
+  const normalizedCompareData = filteredCompareData.map(entry => {
+    const compareDate = new Date(entry.date);
+    const dayOffset = Math.floor((compareDate - new Date(filteredCompareData[0].date)) / (1000 * 60 * 60 * 24));
+    const normalizedDate = new Date(baseStartDate);
+    normalizedDate.setDate(baseStartDate.getDate() + dayOffset);
+    return { ...entry, date: normalizedDate };
+  });
+
+  const cumulativeBaseData = calculateCumulativeDataWithTable(filteredBaseData, startDate, endDate, tempMin, tempMax);
+  const cumulativeCompareData = calculateCumulativeDataWithTable(normalizedCompareData, startDate, endDate, tempMin, tempMax);
+
+  updateCumulativeCharts(cumulativeBaseData, cumulativeCompareData, startDate, endDate, compareStartDate, compareEndDate, tempMin, tempMax);
+  updateTable(cumulativeBaseData.table);
+}
 window.addEventListener('DOMContentLoaded', function() {
   // まず日付フィールドを初期化
   updateDateFields();
@@ -498,7 +553,7 @@ function updateDateFields() {
 
         document.addEventListener('DOMContentLoaded', function() {
      //       document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
-            document.getElementById('updateButton').addEventListener('click', handleFileSelect, false);
+     //       document.getElementById('updateButton').addEventListener('click', handleFileSelect, false);
         });
 
 function readCSVFile(file) {
@@ -622,7 +677,7 @@ return data.filter(d => {
 });
 }
 
-
+/*
 function handleFileSelect() {
     const file = document.getElementById("fileInput").files[0];
     if (!file) return;
@@ -690,6 +745,8 @@ const normalizedCompareData = filteredCompareData.map(entry => {
         date: normalizedDate
     };
 });
+*/
+
 
 // 累積データ計算（比較年は揃えた日付で）
 const cumulativeBaseData = calculateCumulativeDataWithTable(filteredBaseData, startDate, endDate, tempMin, tempMax);
