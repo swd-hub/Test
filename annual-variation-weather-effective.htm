@@ -427,30 +427,33 @@ function autoLoadCSV() {
             return response.arrayBuffer();
         })
         .then(buffer => {
-            const utf8Content = shiftJISToUTF8(buffer);
-            const parsedData = parseCSV(utf8Content);
-            updateDateRangeInfo(parsedData);
-            const startDateStr = document.getElementById("cultivationStartDate").value;
-            const endDateStr = document.getElementById("cultivationEndDate").value;
-            const startDate = new Date(startDateStr);
-            const endDate = new Date(endDateStr);
-            if (isNaN(startDate) || isNaN(endDate)) {
-                console.error("日付入力が不正です");
-                return;
-            }
-            const tempMin = parseFloat(document.getElementById("tempMin").value);
-            const tempMax = parseFloat(document.getElementById("tempMax").value);
-            const graphStart = new Date(startDate);
-            graphStart.setMonth(graphStart.getMonth() - 1);
-            const graphEnd = new Date(endDate);
-            graphEnd.setMonth(graphEnd.getMonth() + 1);
-            const filteredData = filterData(parsedData, graphStart, graphEnd);
-            const cumulativeData = calculateCumulativeDataWithTable(filteredData, startDate, endDate, tempMin, tempMax);
-            //updateDailyCharts && updateDailyCharts(filteredData, startDate, endDate, tempMin, tempMax);
-            //updateCumulativeCharts && updateCumulativeCharts(cumulativeData, startDate, endDate, tempMin, tempMax);
-           // updateTable(cumulativeData.table);
-        })
-        .catch(error => { console.error('CSVの自動読み込みエラー:', error); });
+    const utf8Content = shiftJISToUTF8(buffer);
+    const parsedData = parseCSV(utf8Content);
+    updateDateRangeInfo(parsedData);
+    const startDateStr = document.getElementById("cultivationStartDate").value;
+    const endDateStr = document.getElementById("cultivationEndDate").value;
+    const startDate = new Date(startDateStr);
+    const endDate = new Date(endDateStr);
+    if (isNaN(startDate) || isNaN(endDate)) {
+        console.error("日付入力が不正です");
+        return;
+    }
+    const tempMin = parseFloat(document.getElementById("tempMin").value);
+    const tempMax = parseFloat(document.getElementById("tempMax").value);
+    const graphStart = new Date(startDate);
+    graphStart.setMonth(graphStart.getMonth() - 1);
+    const graphEnd = new Date(endDate);
+    graphEnd.setMonth(graphEnd.getMonth() + 1);
+    const filteredData = filterData(parsedData, graphStart, graphEnd);
+    const cumulativeData = calculateCumulativeDataWithTable(filteredData, startDate, endDate, tempMin, tempMax);
+
+    // 1. 集計テーブル（集計結果）を表示
+    updateTable(cumulativeData.table);
+
+    // 2. 年ごとの表とグラフを表示
+    initializeTable(filteredData);
+})
+.catch(error => { console.error('CSVの自動読み込みエラー:', error); });
 }
 
 // ここから下は重複や未定義のものをまとめて整理
