@@ -326,8 +326,10 @@ function updateDateFields() {
  const startDateInput = document.getElementById('cultivationStartDate');
  const endDateInput = document.getElementById('cultivationEndDate');
 
- startDateInput.value = `${currentYear}-01-01`;
- endDateInput.value = `${currentYear}-${currentMonth}-${currentDay}`;
+ if (startDateInput && endDateInput) {
+    startDateInput.value = `${currentYear}-01-01`;
+    endDateInput.value = `${currentYear}-${currentMonth}-${currentDay}`;
+  }
 }
 
     // ページ読み込み時に日付フィールドを更新
