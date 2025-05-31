@@ -325,15 +325,20 @@ input:checked + .slider:before {
     </div>
 </div>
 <script>
-  const today = new Date();
-const year = today.getFullYear();
-// 栽培開始日を昨年の1月1日に設定
-document.getElementById('cultivationStartDate').value = `${year - 1}-01-01`;
-// 栽培終了日を昨年の本日の日付に設定
-const lastYearToday = new Date(today.setFullYear(year - 1));
-document.getElementById('cultivationEndDate').value = lastYearToday.toISOString().split('T')[0];
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const year = today.getFullYear();
 
+    // 栽培開始日を昨年の1月1日に設定
+    const start = document.getElementById('cultivationStartDate');
+    if (start) start.value = `${year - 1}-01-01`;
 
+    // 栽培終了日を昨年の本日の日付に設定
+    const lastYearToday = new Date();
+    lastYearToday.setFullYear(year - 1);
+    const end = document.getElementById('cultivationEndDate');
+    if (end) end.value = lastYearToday.toISOString().split('T')[0];
+});
 
 function updateDateFields() {
  const currentDate = new Date();
