@@ -333,8 +333,11 @@ function updateDateFields() {
 }
 
     // ページ読み込み時に日付フィールドを更新
-    window.onload = updateDateFields;
-   
+    document.addEventListener('DOMContentLoaded', function() {
+  updateDateFields();
+  handleFileSelect();
+});
+ //window.onload = handleFileSelect;  
    
         let dailyTempChart, dailyPrecChart, dailySunChart;
         let cumulativeTempChart, cumulativePrecChart, cumulativeSunChart;
@@ -505,10 +508,6 @@ function handleFileSelect() {
             console.error('Error fetching the file:', error);
         });
 }
-
-// ページ読み込み時に自動的にファイルを読み込む呼び出し
-window.onload = handleFileSelect;
-
 
 
 function readCSVFile(file) {
