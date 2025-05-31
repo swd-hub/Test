@@ -626,68 +626,36 @@ function calculateEffectiveAccumulatedTemperature(data, startDate, endDate, temp
 function calculateCumulativeDataWithTable(data, startDate, endDate, tempMin, tempMax) {
     let tempSum = 0, precSum = 0, sunSum = 0;
     let cumulative = { dates: [], temperature: [], precipitation: [], sunshine: [], table: [] };
-    // トグルボタンのチェック状態を取得
     const tempSumToggle = document.getElementById('tempSumToggle').checked;
+
     data.forEach(entry => {
         const date = new Date(entry.date);
-        // 栽培期間内の条件を適用
         if (date >= startDate && date <= endDate) {
             let temperature = entry.temperature;
-            // トグルボタンがチェックされている場合、温度の上限を適用
             if (tempSumToggle && temperature > tempMax) {
                 temperature = tempMax;
             }
-            // 気温が下限と上限を満たした場合のみ累積計算
             if (temperature >= tempMin && temperature <= tempMax) {
                 tempSum += (temperature - tempMin);
-                sunSum += entry.sunshine;
             }
-            // 降水量は温度に関係なく累積
             precSum += entry.precipitation;
+            sunSum += entry.sunshine;
+            cumulative.dates.push(date);
+            cumulative.temperature.push(tempSum);
+            cumulative.precipitation.push(precSum);
+            cumulative.sunshine.push(sunSum);
         }
-        // 累積データの記録
-        cumulative.dates.push(entry.date.toISOString().split('T')[0]);
-        cumulative.temperature.push(tempSum);
-        cumulative.precipitation.push(precSum);
-        cumulative.sunshine.push(sunSum);
     });
-    // 栽培期間の日数を計算
-    const cultivationDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24) + 1); // 終了日を含む
-    const { effectiveTempSum, effectiveSunSum, validDataCount, precSum: calculatedPrecSum } = calculateEffectiveAccumulatedTemperature(data, startDate, endDate, tempMin, tempMax);
+
     cumulative.table = [
-        { label: "栽培期間の日数 (Cultivation Period in Days)", value: cultivationDays },
-        { label: "有効データ数 (Valid Data Count)", value: validDataCount },
-        { label: "有効積算温度(℃)（Effective Cumulative Temperature）:", value: Math.floor(effectiveTempSum) },
-        { label: "累積降水量(mm)（Cumulative Rainfall）:", value: Math.floor(calculatedPrecSum) },
-        { label: "有効日照時間の積算(時間)（Accumulated sunshine hours）:", value: Math.floor(effectiveSunSum) }
+        { label: "有効積算温度", value: tempSum.toFixed(1) },
+        { label: "積算降水量", value: precSum.toFixed(1) },
+        { label: "積算日照時間", value: sunSum.toFixed(1) }
     ];
+
     return cumulative;
 }
 
-// 更新ボタンのクリックイベント
-document.getElementById("updateButton").addEventListener("click", function () {
-
-/*    const fileInput = document.getElementById("fileInput");
-    if (fileInput.files.length === 0) {
-        alert("CSVファイルをアップロードしてください。");
-        return;
-    }
-
-   
-    // アップロードされたファイルを再読み込み
-    readCSVFile(fileInput.files[0])
-        .then(arrayBuffer => {
-            const utf8Data = shiftJISToUTF8(arrayBuffer);
-            const parsedData = parseCSV(utf8Data);
-            // テーブルを初期化・更新
-            initializeTable(parsedData);
-        })
-        .catch(error => {
-            console.error("ファイルを読み込む際にエラーが発生しました:", error);
-            alert("ファイルの読み込みに失敗しました。");
-        });
-});
-   */
 
 // 年ごとの積算データを計算する関数
 function calculateCumulativeValues(data, startDate, endDate, tempMin, tempMax) {
