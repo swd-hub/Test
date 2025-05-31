@@ -447,7 +447,7 @@ function autoLoadCSV() {
             const filteredData = filterData(parsedData, graphStart, graphEnd);
             const cumulativeData = calculateCumulativeDataWithTable(filteredData, startDate, endDate, tempMin, tempMax);
             //updateDailyCharts && updateDailyCharts(filteredData, startDate, endDate, tempMin, tempMax);
-            updateCumulativeCharts && updateCumulativeCharts(cumulativeData, startDate, endDate, tempMin, tempMax);
+            //updateCumulativeCharts && updateCumulativeCharts(cumulativeData, startDate, endDate, tempMin, tempMax);
            // updateTable(cumulativeData.table);
         })
         .catch(error => { console.error('CSVの自動読み込みエラー:', error); });
