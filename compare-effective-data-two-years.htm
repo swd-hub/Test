@@ -256,8 +256,7 @@ input:checked + .slider:before {
         <!--button onclick="window.open('images/WetherOption.png', '_blank')">過去の気象データ・ダウンロードで選ぶ表示オプション</button-->
     </div>
     <br>
-    <h5>ファイルの選択ボタンにドラッグ＆ドロップすることで取り込み可能</h5>
-    <input type="file" id="fileInput" accept=".csv">
+   <h5 id="csv-date-range">CSVの日付範囲を取得中...</h5>
 
     <div class="top-row-container">
         <form class="input-form">
@@ -347,6 +346,62 @@ input:checked + .slider:before {
 
 </body>
     <script>
+window.addEventListener('DOMContentLoaded', function() {
+  fetch('出雲日別値.csv')
+    .then(response => {
+      if (!response.ok) throw new Error('CSVが見つかりません');
+      return response.arrayBuffer();
+    })
+    .then(arrayBuffer => {
+      const csvText = shiftJISToUTF8(arrayBuffer);
+      const data = parseCSV(csvText);
+
+      // 日付の配列を作成
+      const dates = data.map(d => new Date(d.date));
+      // 日付の昇順ソート
+      dates.sort((a, b) => a - b);
+
+      // 最小・最大日付取得
+      const minDate = dates[0];
+      const maxDate = dates[dates.length - 1];
+
+      // yyyy-mm-dd形式に整形
+      function formatDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      }
+
+      // h5要素に表示
+      const rangeText = `CSVの日付範囲：${formatDate(minDate)} ～ ${formatDate(maxDate)}`;
+      document.getElementById('csv-date-range').textContent = rangeText;
+
+      // --- 以下、元の自動処理を続ける ---
+      // 必要ならここでグラフや集計も実行
+    })
+    .catch(error => {
+      document.getElementById('csv-date-range').textContent = error.message;
+    });
+});
+        
+window.addEventListener('DOMContentLoaded', function() {
+  // fetchで同階層のCSVファイルを読み込む
+  fetch('出雲日別値.csv')
+    .then(response => {
+      if (!response.ok) throw new Error('CSVが見つかりません');
+      return response.text();
+    })
+    .then(csvText => {
+      // ここで既存の処理にcsvTextを渡す
+      // 例: parseCSVAndAnalyze(csvText);
+      parseCSVAndAnalyze(csvText);
+    })
+    .catch(error => {
+      alert(error.message);
+    });
+});
+        
 function updateDateFields() {
  const currentDate = new Date();
  const currentYear = currentDate.getFullYear();
@@ -375,7 +430,7 @@ function updateDateFields() {
         let cumulativeTempChart, cumulativePrecChart, cumulativeSunChart;
 
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
+     //       document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
             document.getElementById('updateButton').addEventListener('click', handleFileSelect, false);
         });
 
