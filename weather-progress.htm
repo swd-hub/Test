@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta name="discription" content="‹CÛƒf[ƒ^‚Ì“ú•Ê’l‚Æ•½”N’l‚ğƒOƒ‰ƒt‰»‚·‚éB">  
-<meta name="auther" content="àV“c‘×l">
-<meta name="date" content="2025”N5Œ4“ú">
+<meta name="discription" content="æ°—è±¡ãƒ‡ãƒ¼ã‚¿ã®æ—¥åˆ¥å€¤ã¨å¹³å¹´å€¤ã‚’ã‚°ãƒ©ãƒ•åŒ–ã™ã‚‹ã€‚">  
+<meta name="auther" content="æ¾¤ç”°æ³°äºº">
+<meta name="date" content="2025å¹´5æœˆ4æ—¥">
 <meta charset="UTF-8">
 <meta name="robots" content="noindex">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">    
-<title>‹CÛŒo‰ß</title>
+<title>æ°—è±¡çµŒé</title>
     <script src=" https://cdn.jsdelivr.net/npm/chart.js "></script>
     <script src=" https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@latest "></script>
     <style>
-/* ˆóü—p‚Ìİ’è */
+/* å°åˆ·ç”¨ã®è¨­å®š */
 @media print {
   * {
     margin: 0;
@@ -28,7 +28,7 @@
   }
 }
 
-/* ƒ{ƒ^ƒ“‚ÌƒXƒ^ƒCƒ‹ */
+/* ãƒœã‚¿ãƒ³ã®ã‚¹ã‚¿ã‚¤ãƒ« */
 button {
   background-color: #4CAF50;
   color: white;
@@ -39,7 +39,7 @@ button {
   text-align: right;
 }
 
-/* ƒtƒH[ƒ€‚ÌƒXƒ^ƒCƒ‹ */
+/* ãƒ•ã‚©ãƒ¼ãƒ ã®ã‚¹ã‚¿ã‚¤ãƒ« */
 form {
   flex: 1;
   margin: 20px;
@@ -50,7 +50,7 @@ form {
   width: 200px;
 }
 
-/* ƒwƒbƒ_[‚ÌƒXƒ^ƒCƒ‹ */
+/* ãƒ˜ãƒƒãƒ€ãƒ¼ã®ã‚¹ã‚¿ã‚¤ãƒ« */
 h1 {
   background-color: #4CAF50;
   color: white;
@@ -58,45 +58,45 @@ h1 {
   text-align: center;
 }
 
-/* ƒ‰ƒxƒ‹“à‚Ì input ‚Æ button ‚ğ‰¡•À‚Ñ‚É‚·‚é */
+/* ãƒ©ãƒ™ãƒ«å†…ã® input ã¨ button ã‚’æ¨ªä¸¦ã³ã«ã™ã‚‹ */
 label {
   display: flex;
   align-items: center;
-  gap: 8px; /* ŠÔ‚É­‚µ—]”’ */
+  gap: 8px; /* é–“ã«å°‘ã—ä½™ç™½ */
 }
 
-/* ƒ`ƒƒ[ƒg‚Ìe—v‘f */
+/* ãƒãƒ£ãƒ¼ãƒˆã®è¦ªè¦ç´  */
 .chart-container {
   width: 100%;
-  max-width: 400px;  /* Å‘å•‚ğ400px‚Ék¬ */
-  margin: 0 auto;    /* ’†‰›Šñ‚¹i”CˆÓj */
+  max-width: 400px;  /* æœ€å¤§å¹…ã‚’400pxã«ç¸®å° */
+  margin: 0 auto;    /* ä¸­å¤®å¯„ã›ï¼ˆä»»æ„ï¼‰ */
 }
-/* ƒLƒƒƒ“ƒoƒXiƒOƒ‰ƒtj */
+/* ã‚­ãƒ£ãƒ³ãƒã‚¹ï¼ˆã‚°ãƒ©ãƒ•ï¼‰ */
 canvas {
   width: 100% !important;
   height: auto !important;
 }
 
-/* ƒtƒŒƒbƒNƒXƒŒƒCƒAƒEƒg‚Å—v‘f‚ğ•À‚×‚é */
+/* ãƒ•ãƒ¬ãƒƒã‚¯ã‚¹ãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆã§è¦ç´ ã‚’ä¸¦ã¹ã‚‹ */
 .container {
   display: flex;
-  flex-wrap: wrap;       /* ƒ‚ƒoƒCƒ‹‚ÅÜ‚è•Ô‚· */
+  flex-wrap: wrap;       /* ãƒ¢ãƒã‚¤ãƒ«ã§æŠ˜ã‚Šè¿”ã™ */
   gap: 20px;
-  justify-content: flex-start;  /* ¶‘µ‚¦‚É‚·‚é */
+  justify-content: flex-start;  /* å·¦æƒãˆã«ã™ã‚‹ */
 }
 
-/* ‰EŠñ‚¹ */
+/* å³å¯„ã› */
 .right-align {
   text-align: right;
 }
 
-/* ƒe[ƒuƒ‹‚Æƒ`ƒƒ[ƒg‚Ìe—v‘f */
+/* ãƒ†ãƒ¼ãƒ–ãƒ«ã¨ãƒãƒ£ãƒ¼ãƒˆã®è¦ªè¦ç´  */
 .table-container, .chart-container {
   flex: 1;
-  min-width: 300px;      /* Ü‚è•Ô‚µğŒ‚ğ’²® */
+  min-width: 300px;      /* æŠ˜ã‚Šè¿”ã—æ¡ä»¶ã‚’èª¿æ•´ */
 }
 
-/* “ü—ÍƒtƒH[ƒ€‚ÌƒXƒ^ƒCƒ‹ */
+/* å…¥åŠ›ãƒ•ã‚©ãƒ¼ãƒ ã®ã‚¹ã‚¿ã‚¤ãƒ« */
 input[type="date"], input[type="file"], input[type="number"] {
   width: 150px;
   padding: 8px 10px;
@@ -105,7 +105,7 @@ input[type="date"], input[type="file"], input[type="number"] {
   border: 1px solid #ccc;
   border-radius: 4px;
 }
-/* ƒ{ƒ^ƒ“‚ÌƒXƒ^ƒCƒ‹ */
+/* ãƒœã‚¿ãƒ³ã®ã‚¹ã‚¿ã‚¤ãƒ« */
 .GraphupdateButton {
   background-color: #4CAF50;
   color: white;
@@ -114,7 +114,7 @@ input[type="date"], input[type="file"], input[type="number"] {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  margin-left: 4px; /* ”CˆÓ‚Å¶‚É—]”’‚ğ’Ç‰Á */
+  margin-left: 4px; /* ä»»æ„ã§å·¦ã«ä½™ç™½ã‚’è¿½åŠ  */
 }
 #fileInput{
  width:500px;
@@ -133,49 +133,50 @@ input[type="date"], input[type="file"], input[type="number"] {
     </head>
 <body>
  
-    <h1 id="mainTitle">‹CÛŒo‰ß</h1>
+    <h1 id="mainTitle">æ°—è±¡çµŒé</h1>
 
     <div class="right-align">
-        <button onclick="window.open(' https://www.data.jma.go.jp/gmd/risk/obsdl/index.php ', '_blank')">‹CÛ’¡‚ÌƒTƒCƒg‚ğŠJ‚­</button>
-        <!--button onclick="window.open('images/WetherOption.png', '_blank')">‰ß‹‚Ì‹CÛƒf[ƒ^Eƒ_ƒEƒ“ƒ[ƒh‚Å‘I‚Ô•\¦ƒIƒvƒVƒ‡ƒ“</button-->
+        <button onclick="window.open(' https://www.data.jma.go.jp/gmd/risk/obsdl/index.php ', '_blank')">æ°—è±¡åºã®ã‚µã‚¤ãƒˆã‚’é–‹ã</button>
+        <!--button onclick="window.open('images/WetherOption.png', '_blank')">éå»ã®æ°—è±¡ãƒ‡ãƒ¼ã‚¿ãƒ»ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰ã§é¸ã¶è¡¨ç¤ºã‚ªãƒ—ã‚·ãƒ§ãƒ³</button-->
     </div>
     <br>
-    <h5>ƒtƒ@ƒCƒ‹‚Ì‘I‘ğƒ{ƒ^ƒ“‚Éƒhƒ‰ƒbƒO•ƒhƒƒbƒv‚·‚é‚±‚Æ‚Åæ‚è‚İ‰Â”\</h5>
-    <input type="file" id="fileInput" accept=".csv">
+    <!--h5>ãƒ•ã‚¡ã‚¤ãƒ«ã®é¸æŠãƒœã‚¿ãƒ³ã«ãƒ‰ãƒ©ãƒƒã‚°ï¼†ãƒ‰ãƒ­ãƒƒãƒ—ã™ã‚‹ã“ã¨ã§å–ã‚Šè¾¼ã¿å¯èƒ½</h5-->
+    <!--input type="file" id="fileInput" accept=".csv"-->
+    <h5 id="dateRangeInfo">èª­ã¿è¾¼ã¿ãƒ‡ãƒ¼ã‚¿ã®æ—¥ä»˜ç¯„å›²ï¼šæœªèª­è¾¼</h5>
     <div class="container">
         <form>
-            <label for="cultivationStartDate">ŠJn“ú:</label>
+            <label for="cultivationStartDate">é–‹å§‹æ—¥:</label>
             <input type="date" id="cultivationStartDate">
-            <label for="cultivationEndDate">I—¹“úiÅI“új:</label>
+            <label for="cultivationEndDate">çµ‚äº†æ—¥ï¼ˆæœ€çµ‚æ—¥ï¼‰:</label>
             <input type="date"  id="cultivationEndDate">
-<!-- ƒtƒ@ƒCƒ‹E“ú•t‚ğXV‚µ‚½‚ ‚Æ‚É‰Ÿ‚·ƒ{ƒ^ƒ“ -->
-<button type="button" id="updateButton" onclick="handleFileSelect()">ƒf[ƒ^XV</button>
+<!-- ãƒ•ã‚¡ã‚¤ãƒ«ãƒ»æ—¥ä»˜ã‚’æ›´æ–°ã—ãŸã‚ã¨ã«æŠ¼ã™ãƒœã‚¿ãƒ³ -->
+<button type="button" id="updateButton" onclick="handleFileSelect()">ãƒ‡ãƒ¼ã‚¿æ›´æ–°</button>
         </form>
     </div>
 <div id="chartcanvas" style="margin-top: 5em; display: none;">
-<h3>“úƒf[ƒ^</h3>
+<h3>æ—¥ãƒ‡ãƒ¼ã‚¿</h3>
 <div style="margin-bottom: 3em;">
   <label>
-    c²Å‘å’li‹C‰·j:
-    <input type="number" id="tempMax" value="40" step="5" placeholder="—á: 40">
+    ç¸¦è»¸æœ€å¤§å€¤ï¼ˆæ°—æ¸©ï¼‰:
+    <input type="number" id="tempMax" value="40" step="5" placeholder="ä¾‹: 40">
   </label>
-  <button type="button" id="updateButton" class="GraphupdateButton" onclick="handleFileSelect()">ƒOƒ‰ƒtXV</button>
+  <button type="button" id="updateButton" class="GraphupdateButton" onclick="handleFileSelect()">ã‚°ãƒ©ãƒ•æ›´æ–°</button>
 <canvas id="dailyTempChart"></canvas>
 </div>
 <div style="margin-bottom: 3em;">
   <label>
-    c²Å‘å’li~…—Êj:
-    <input type="number" id="precMax" value="100" step="10" placeholder="—á: 100">
+    ç¸¦è»¸æœ€å¤§å€¤ï¼ˆé™æ°´é‡ï¼‰:
+    <input type="number" id="precMax" value="100" step="10" placeholder="ä¾‹: 100">
   </label>
-    <button type="button" id="updateButton" class="GraphupdateButton" onclick="handleFileSelect()">ƒOƒ‰ƒtXV</button>
+    <button type="button" id="updateButton" class="GraphupdateButton" onclick="handleFileSelect()">ã‚°ãƒ©ãƒ•æ›´æ–°</button>
 <canvas id="dailyPrecChart"></canvas>
 </div>
 <div style="margin-bottom: 3em;">
   <label>
-    c²Å‘å’li“úÆŠÔjŠÏ‘ª‚ğÀ{‚·‚é’n“_‚Ì‚İ:
-    <input type="number" id="sunMax" value="16"  step="2" placeholder="—á: 15">
+    ç¸¦è»¸æœ€å¤§å€¤ï¼ˆæ—¥ç…§æ™‚é–“ï¼‰è¦³æ¸¬ã‚’å®Ÿæ–½ã™ã‚‹åœ°ç‚¹ã®ã¿:
+    <input type="number" id="sunMax" value="16"  step="2" placeholder="ä¾‹: 15">
   </label>
-    <button type="button" id="updateButton" class="GraphupdateButton" onclick="handleFileSelect()">ƒOƒ‰ƒtXV</button>
+    <button type="button" id="updateButton" class="GraphupdateButton" onclick="handleFileSelect()">ã‚°ãƒ©ãƒ•æ›´æ–°</button>
 <canvas id="dailySunChart"></canvas>
 </div>
 </div>
@@ -189,19 +190,19 @@ function updateMainTitle() {
     if (startDate && endDate && file) {
         const startYear = new Date(startDate).getFullYear();
         const endYear = new Date(endDate).getFullYear();
-        const filePrefix = file.name.substring(0, 2); // ƒtƒ@ƒCƒ‹–¼‚Ìæ“ª2•¶š
+        const filePrefix = file.name.substring(0, 2); // ãƒ•ã‚¡ã‚¤ãƒ«åã®å…ˆé ­2æ–‡å­—
 
-        const title = `${startYear}”N-${endYear}”N@‹CÛŒo‰ßi${filePrefix}j`;
+        const title = `${startYear}å¹´-${endYear}å¹´ã€€æ°—è±¡çµŒéï¼ˆ${filePrefix}ï¼‰`;
         document.getElementById("mainTitle").textContent = title;
     }
 }
 
-// ƒtƒ@ƒCƒ‹‘I‘ğ‚Ü‚½‚Í“ú•t•ÏXŒã‚Éƒ^ƒCƒgƒ‹‚ğXV‚·‚é
+// ãƒ•ã‚¡ã‚¤ãƒ«é¸æŠã¾ãŸã¯æ—¥ä»˜å¤‰æ›´å¾Œã«ã‚¿ã‚¤ãƒˆãƒ«ã‚’æ›´æ–°ã™ã‚‹
 document.getElementById("fileInput").addEventListener("change", updateMainTitle);
 document.getElementById("cultivationStartDate").addEventListener("change", updateMainTitle);
 document.getElementById("cultivationEndDate").addEventListener("change", updateMainTitle);
    
-//“ú•t©“®
+//æ—¥ä»˜è‡ªå‹•
      function updateDateFields() {
  const currentDate = new Date();
  const currentYear = currentDate.getFullYear();
@@ -216,7 +217,7 @@ document.getElementById("cultivationEndDate").addEventListener("change", updateM
 }
 
 
-    // ƒy[ƒW“Ç‚İ‚İ‚É“ú•tƒtƒB[ƒ‹ƒh‚ğXV
+    // ãƒšãƒ¼ã‚¸èª­ã¿è¾¼ã¿æ™‚ã«æ—¥ä»˜ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã‚’æ›´æ–°
     window.onload = updateDateFields;
 
  let dailyTempChart, dailyPrecChart, dailySunChart;
@@ -234,13 +235,13 @@ document.getElementById("cultivationEndDate").addEventListener("change", updateM
         }
 
 
-//CSV‚ÌƒNƒŒƒ“ƒWƒ“ƒO
+//CSVã®ã‚¯ãƒ¬ãƒ³ã‚¸ãƒ³ã‚°
 function parseCSV(content) {
    const lines = content.trim().split('\n').filter(line => line.trim() !== "");
 
 console.log("lines:",lines);
 
-    // "”s‚Ìƒwƒbƒ_[‚ğŒ‹‡‚µ‚ÄcombinedHead‚ğì¬
+    // "æ•°è¡Œã®ãƒ˜ãƒƒãƒ€ãƒ¼ã‚’çµåˆã—ã¦combinedHeadã‚’ä½œæˆ
     let lines1 = lines[2].split(',');
     let lines2 = lines[3].split(',');
     let lines3 = lines[4].split(',');
@@ -250,17 +251,17 @@ console.log("lines:",lines);
         combinedHead.push(lines1[i].replace(/\r/g, '') + lines2[i].replace(/\r/g, '') + lines3[i].replace(/\r/g, ''));
     }
    
-    // ƒfƒoƒbƒOƒƒO
+    // ãƒ‡ãƒãƒƒã‚°ãƒ­ã‚°
 console.log("combinedHead",combinedHead);
 
-    const targetHeaders = ["”N", "Œ", "“ú", "•½‹Ï‹C‰·()", "~…—Ê‚Ì‡Œv(mm)", "“úÆŠÔ(ŠÔ)", "•½‹Ï‹C‰·()•½”N’l()", "~…—Ê‚Ì‡Œv(mm)•½”N’l(mm)", "“úÆŠÔ(ŠÔ)•½”N’l(ŠÔ)", "Å‚‹C‰·()", "Å’á‹C‰·()", "Å‚‹C‰·()•½”N’l()", "Å’á‹C‰·()•½”N’l()"];
+    const targetHeaders = ["å¹´", "æœˆ", "æ—¥", "å¹³å‡æ°—æ¸©(â„ƒ)", "é™æ°´é‡ã®åˆè¨ˆ(mm)", "æ—¥ç…§æ™‚é–“(æ™‚é–“)", "å¹³å‡æ°—æ¸©(â„ƒ)å¹³å¹´å€¤(â„ƒ)", "é™æ°´é‡ã®åˆè¨ˆ(mm)å¹³å¹´å€¤(mm)", "æ—¥ç…§æ™‚é–“(æ™‚é–“)å¹³å¹´å€¤(æ™‚é–“)", "æœ€é«˜æ°—æ¸©(â„ƒ)", "æœ€ä½æ°—æ¸©(â„ƒ)", "æœ€é«˜æ°—æ¸©(â„ƒ)å¹³å¹´å€¤(â„ƒ)", "æœ€ä½æ°—æ¸©(â„ƒ)å¹³å¹´å€¤(â„ƒ)"];
     let indicesToSelect = targetHeaders.map(header =>
     combinedHead.findIndex(h => h.includes(header)));
 
 
-    const dataLines = lines.slice(6).map(line => {   //5‚¾‚Á‚½
+    const dataLines = lines.slice(6).map(line => {   //5ã ã£ãŸ
     const cols = line.split(',');
-    const selectedCols = indicesToSelect.map(index => index >= 0 ? cols[index] || '0' : '0'); // ‘¶İ‚µ‚È‚¢ê‡‚ÍƒfƒtƒHƒ‹ƒg’l'0'
+    const selectedCols = indicesToSelect.map(index => index >= 0 ? cols[index] || '0' : '0'); // å­˜åœ¨ã—ãªã„å ´åˆã¯ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆå€¤'0'
 
        // console.log('Selected Columns:', selectedCols);
         return selectedCols.join(',');
@@ -268,13 +269,13 @@ console.log("combinedHead",combinedHead);
 
     console.log('Data Lines:', dataLines);
 
-    // ƒwƒbƒ_[s‚ğ’Ç‰Á
+    // ãƒ˜ãƒƒãƒ€ãƒ¼è¡Œã‚’è¿½åŠ 
     dataLines.unshift(targetHeaders.join(','));
 
-    // ƒfƒoƒbƒOƒƒO
+    // ãƒ‡ãƒãƒƒã‚°ãƒ­ã‚°
     console.log('Data Lines with Header:', dataLines);
 
-    return dataLines.slice(1).map(line => { // ƒwƒbƒ_[s‚ğƒXƒLƒbƒv
+    return dataLines.slice(1).map(line => { // ãƒ˜ãƒƒãƒ€ãƒ¼è¡Œã‚’ã‚¹ã‚­ãƒƒãƒ—
         const cols = line.split(",");
     return {
         date: new Date(Date.UTC(cols[0], cols[1] - 1, cols[2])),
@@ -297,7 +298,7 @@ function filterData(data, graphStart, graphEnd) {
     return data.filter(d => d.date >= graphStart && d.date <= graphEnd);
 }
 
-//“úƒf[ƒ^‚Æ•½”N’l‚Ì®—
+//æ—¥ãƒ‡ãƒ¼ã‚¿ã¨å¹³å¹´å€¤ã®æ•´ç†
 function prepareComparisonData(data, startDate) {
     const oneYearLater = new Date(startDate);
     oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
@@ -308,7 +309,7 @@ function prepareComparisonData(data, startDate) {
     data.forEach(d => {
         const md = `${d.date.getMonth() + 1}-${d.date.getDate()}`;
 
-        // À‘ªƒf[ƒ^FÍ”|ŠúŠÔ“à‚¾‚¯
+        // å®Ÿæ¸¬ãƒ‡ãƒ¼ã‚¿ï¼šæ ½åŸ¹æœŸé–“å†…ã ã‘
         if (d.date >= startDate && d.date < oneYearLater) {
             dailyMap[md] = {
                 temperature: d.temperature,
@@ -319,7 +320,7 @@ function prepareComparisonData(data, startDate) {
             };
         }
 
-        // •½”N’lƒf[ƒ^F‚ ‚ê‚Îí‚É‹L˜^inullœ‚­j
+        // å¹³å¹´å€¤ãƒ‡ãƒ¼ã‚¿ï¼šã‚ã‚Œã°å¸¸ã«è¨˜éŒ²ï¼ˆnullé™¤ãï¼‰
         if (d.avgTemperature !== null && !isNaN(d.avgTemperature)) {
             avgMap[md] = avgMap[md] || {};
             avgMap[md].temperature = d.avgTemperature;
@@ -342,7 +343,7 @@ function prepareComparisonData(data, startDate) {
         }
     });
 
-    // ƒ‰ƒxƒ‹‚ğì¬‚µAƒf[ƒ^‚ğŠi”[
+    // ãƒ©ãƒ™ãƒ«ã‚’ä½œæˆã—ã€ãƒ‡ãƒ¼ã‚¿ã‚’æ ¼ç´
     const labels = [];
     const dailyTemps = [], avgTemps = [];
     const dailyPrecs = [], avgPrecs = [];
@@ -389,11 +390,25 @@ function prepareComparisonData(data, startDate) {
     };
 }
 
-//ƒOƒ‰ƒtƒf[ƒ^‚Ì’Šo
+//è‡ªå‹•CSVå–ã‚Šè¾¼ã¿ã«é–¢ä¿‚
+document.addEventListener('DOMContentLoaded', function() {
+    // HTMLè¦ç´ ãŒæ­£ã—ãå­˜åœ¨ã™ã‚‹ã‹ã‚’ç¢ºèª
+    if (document.getElementById("cultivationStartDate") && 
+        document.getElementById("cultivationEndDate") && 
+        document.getElementById("tempMin") && 
+        document.getElementById("tempMax")) {
+        
+        handleFileSelect(); // CSVãƒ•ã‚¡ã‚¤ãƒ«ã‚’è‡ªå‹•ã§èª­ã¿è¾¼ã‚€é–¢æ•°ã®å‘¼ã³å‡ºã—
+    } else {
+        console.error("å¿…è¦ãªHTMLè¦ç´ ãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã€‚");
+    }
+});
+
+
+//ã‚°ãƒ©ãƒ•ãƒ‡ãƒ¼ã‚¿ã®æŠ½å‡º
 function handleFileSelect() {
     const file = document.getElementById("fileInput").files[0];
     if (!file) return;
-
 
     const reader = new FileReader();
     reader.onload = function (e) {
@@ -405,26 +420,26 @@ console.log("data",data);
         const startDate = new Date(document.getElementById("cultivationStartDate").value);
         const endDate = new Date(document.getElementById("cultivationEndDate").value);
 
-        // À‘ªƒf[ƒ^‚Ì”ÍˆÍiƒOƒ‰ƒt—pF‘OŒã‚É—]”’‚ğ‚½‚¹‚éj
+        // å®Ÿæ¸¬ãƒ‡ãƒ¼ã‚¿ã®ç¯„å›²ï¼ˆã‚°ãƒ©ãƒ•ç”¨ï¼šå‰å¾Œã«ä½™ç™½ã‚’æŒãŸã›ã‚‹ï¼‰
         const graphStart = new Date(startDate);
         graphStart.setMonth(graphStart.getMonth() - 1);
         const graphEnd = new Date(endDate);
         graphEnd.setMonth(graphEnd.getMonth() + 7);
 
-        // •½”N’l‚Ì”ÍˆÍF1”N‘O‚ÌstartDate‚©‚ç365“ú•ª
+        // å¹³å¹´å€¤ã®ç¯„å›²ï¼š1å¹´å‰ã®startDateã‹ã‚‰365æ—¥åˆ†
         const avgStart = new Date(startDate);
         avgStart.setFullYear(avgStart.getFullYear() - 1);
 
         const avgEnd = new Date(avgStart);
-        avgEnd.setDate(avgEnd.getDate() + 364); // 365“ú•ª
+        avgEnd.setDate(avgEnd.getDate() + 364); // 365æ—¥åˆ†
 
-        // À‘ª’l‚Æ•½”N’l‚ğ—¼•ûŠÜ‚Ş‚æ‚¤‚È”ÍˆÍ‚ÅƒtƒBƒ‹ƒ^
+        // å®Ÿæ¸¬å€¤ã¨å¹³å¹´å€¤ã‚’ä¸¡æ–¹å«ã‚€ã‚ˆã†ãªç¯„å›²ã§ãƒ•ã‚£ãƒ«ã‚¿
         const minDate = graphStart < avgStart ? graphStart : avgStart;
         const maxDate = graphEnd > avgEnd ? graphEnd : avgEnd;
 
         const filteredData = filterData(data, minDate, maxDate);
 
-        // Í”|ŠJn“ú‚ğŠî€‚É•½”N’l365“ú‚ğì¬‚·‚é
+        // æ ½åŸ¹é–‹å§‹æ—¥ã‚’åŸºæº–ã«å¹³å¹´å€¤365æ—¥ã‚’ä½œæˆã™ã‚‹
         const chartData = prepareComparisonData(filteredData, startDate);
         updateDailyCharts(chartData);
         document.getElementById("chartcanvas").style.display = "block";
@@ -432,7 +447,7 @@ console.log("data",data);
     reader.readAsArrayBuffer(file);
 }
 
-//ƒOƒ‰ƒt•`‰æ
+//ã‚°ãƒ©ãƒ•æç”»
 function updateDailyCharts(chartData) {
     const { labels, temperature, maxTemperature, minTemperature, precipitation, sunshine } = chartData;
 
@@ -459,7 +474,7 @@ function updateDailyCharts(chartData) {
                         ticks: { font: { size: 28 } },
                         title: {
                             display: true,
-                            text: 'Œ-“ú',
+                            text: 'æœˆ-æ—¥',
                             font: { size: 30 }
                         }
                     },
@@ -477,21 +492,21 @@ function updateDailyCharts(chartData) {
         });
     };
 
-    // ‹C‰·ƒ`ƒƒ[ƒgi6Œn—ñ‚ÉŠg’£j
+    // æ°—æ¸©ãƒãƒ£ãƒ¼ãƒˆï¼ˆ6ç³»åˆ—ã«æ‹¡å¼µï¼‰
     if (dailyTempChart) dailyTempChart.destroy();
     dailyTempChart = createChart(
         document.getElementById('dailyTempChart').getContext('2d'),
         'line', labels,
         [
             {
-                label: '“úX‚Ì•½‹Ï‹C‰·()',
+                label: 'æ—¥ã€…ã®å¹³å‡æ°—æ¸©(â„ƒ)',
                 data: temperature.daily,
                 borderColor: 'rgba(255, 165, 0, 1)',
                 borderWidth: 3,
                 fill: false
             },
             {
-                label: '•½”N’l‹C‰·()',
+                label: 'å¹³å¹´å€¤æ°—æ¸©(â„ƒ)',
                 data: temperature.avg,
                 borderColor: 'rgba(255, 165, 0, 0.5)',
                 borderDash: [5, 5],
@@ -499,14 +514,14 @@ function updateDailyCharts(chartData) {
                 fill: false
             },
             {
-                label: '“úX‚ÌÅ‚‹C‰·()',
+                label: 'æ—¥ã€…ã®æœ€é«˜æ°—æ¸©(â„ƒ)',
                 data: maxTemperature.daily,
                 borderColor: 'rgba(255, 99, 132, 1)',
                 borderWidth: 3,
                 fill: false
             },
             {
-                label: '•½”N’lÅ‚‹C‰·()',
+                label: 'å¹³å¹´å€¤æœ€é«˜æ°—æ¸©(â„ƒ)',
                 data: maxTemperature.avg,
                 borderColor: 'rgba(255, 99, 132, 0.5)',
                 borderDash: [5, 5],
@@ -514,14 +529,14 @@ function updateDailyCharts(chartData) {
                 fill: false
             },
             {
-                label: '“úX‚ÌÅ’á‹C‰·()',
+                label: 'æ—¥ã€…ã®æœ€ä½æ°—æ¸©(â„ƒ)',
                 data: minTemperature.daily,
                 borderColor: 'rgba(54, 162, 235, 1)',
                 borderWidth: 3,
                 fill: false
             },
             {
-                label: '•½”N’lÅ’á‹C‰·()',
+                label: 'å¹³å¹´å€¤æœ€ä½æ°—æ¸©(â„ƒ)',
                 data: minTemperature.avg,
                 borderColor: 'rgba(54, 162, 235, 0.5)',
                 borderDash: [5, 5],
@@ -532,20 +547,20 @@ function updateDailyCharts(chartData) {
         maxTempValue
     );
 
-    // ~…—Êƒ`ƒƒ[ƒgi•ÏX‚È‚µj
+    // é™æ°´é‡ãƒãƒ£ãƒ¼ãƒˆï¼ˆå¤‰æ›´ãªã—ï¼‰
     if (dailyPrecChart) dailyPrecChart.destroy();
     dailyPrecChart = createChart(
         document.getElementById('dailyPrecChart').getContext('2d'),
         'bar', labels,
         [
             {
-                label: '“úX‚Ì~…—Ê(mm)',
+                label: 'æ—¥ã€…ã®é™æ°´é‡(mm)',
                 data: precipitation.daily,
                 backgroundColor: 'rgba(54, 162, 235, 1)',
                 maxBarThickness: 10
             },
             {
-                label: '•½”N’l~…—Ê(mm)',
+                label: 'å¹³å¹´å€¤é™æ°´é‡(mm)',
                 data: precipitation.avg,
                 type: 'line',
                 borderColor: 'rgba(100, 100, 100, 1)',
@@ -557,20 +572,20 @@ function updateDailyCharts(chartData) {
         maxPrecValue
     );
 
-    // “úÆŠÔƒ`ƒƒ[ƒgi•ÏX‚È‚µj
+    // æ—¥ç…§æ™‚é–“ãƒãƒ£ãƒ¼ãƒˆï¼ˆå¤‰æ›´ãªã—ï¼‰
     if (dailySunChart) dailySunChart.destroy();
     dailySunChart = createChart(
         document.getElementById('dailySunChart').getContext('2d'),
         'bar', labels,
         [
             {
-                label: '“úX‚Ì“úÆŠÔ(ŠÔ)',
+                label: 'æ—¥ã€…ã®æ—¥ç…§æ™‚é–“(æ™‚é–“)',
                 data: sunshine.daily,
                 backgroundColor: 'rgba(255, 206, 86, 1)',
                 maxBarThickness: 10
             },
             {
-                label: '•½”N’l“úÆŠÔ(ŠÔ)',
+                label: 'å¹³å¹´å€¤æ—¥ç…§æ™‚é–“(æ™‚é–“)',
                 data: sunshine.avg,
                 type: 'line',
                 borderColor: 'rgba(150, 150, 150, 1)',
