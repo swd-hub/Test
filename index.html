@@ -241,7 +241,7 @@ input:checked + .slider:before {
         <!--button onclick="window.open('images/WetherOption.png', '_blank')">過去の気象データ・ダウンロードで選ぶ表示オプション</button-->
     </div>
     <br>
-    <h5 id="dateRangeInfo">CSVの日付範囲：未読込</h5>
+    <h5 id="dateRangeInfo">読み込みデータの日付範囲：未読込</h5>
     <!--input type="file" id="fileInput" accept=".csv"-->
     <div class="container">
         <form>
@@ -524,7 +524,7 @@ function readCSVFile(file) {
 
 function updateDateRangeInfo(parsedData) {
     if (!parsedData || parsedData.length === 0) {
-        document.getElementById("dateRangeInfo").textContent = "CSVの日付範囲：未読込";
+        document.getElementById("dateRangeInfo").textContent = "読み込みデータの日付範囲：未読込";
         return;
     }
     // 日付の配列を作成
