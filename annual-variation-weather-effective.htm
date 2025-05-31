@@ -422,77 +422,76 @@ function shiftJISToUTF8(arrayBuffer) {
         }
        
 
-//自動CSV取り込みに関係
-// ページ読み込み時に自動でCSVを読み込む
+// 日付自動セット & CSV自動読込
 document.addEventListener('DOMContentLoaded', function() {
+    // 日付フィールド初期化
+    const today = new Date();
+    const year = today.getFullYear();
+    const start = document.getElementById('cultivationStartDate');
+    if (start) start.value = `${year - 1}-01-01`;
+    const lastYearToday = new Date();
+    lastYearToday.setFullYear(year - 1);
+    const end = document.getElementById('cultivationEndDate');
+    if (end) end.value = lastYearToday.toISOString().split('T')[0];
+
+    // CSV自動読込
     autoLoadCSV();
+
+    // 更新ボタン
+    document.getElementById('updateButton').addEventListener('click', function() {
+        autoLoadCSV(); // 最新のパラメータに合わせて再描画
+    });
 });
 
 function autoLoadCSV() {
-    const filePath = './出雲日別値.csv'; // HTMLと同じディレクトリ
-
+    const filePath = './出雲日別値.csv';
     fetch(filePath)
         .then(response => {
-            if (!response.ok) {
-                throw new Error('CSVファイルの読み込みに失敗しました: ' + response.statusText);
-            }
+            if (!response.ok) throw new Error('CSVファイルの読み込みに失敗しました: ' + response.statusText);
             return response.arrayBuffer();
         })
         .then(buffer => {
-            // Shift-JIS → UTF-8 に変換
             const utf8Content = shiftJISToUTF8(buffer);
-            // CSVをパース
             const parsedData = parseCSV(utf8Content);
-
-            // 日付範囲情報の更新
             updateDateRangeInfo(parsedData);
-
-            // UIからパラメータ取得
             const startDateStr = document.getElementById("cultivationStartDate").value;
             const endDateStr = document.getElementById("cultivationEndDate").value;
             const startDate = new Date(startDateStr);
             const endDate = new Date(endDateStr);
-
             if (isNaN(startDate) || isNaN(endDate)) {
                 console.error("日付入力が不正です");
                 return;
             }
-
             const tempMin = parseFloat(document.getElementById("tempMin").value);
             const tempMax = parseFloat(document.getElementById("tempMax").value);
-
-            // グラフ範囲設定
             const graphStart = new Date(startDate);
             graphStart.setMonth(graphStart.getMonth() - 1);
             const graphEnd = new Date(endDate);
             graphEnd.setMonth(graphEnd.getMonth() + 1);
-
-            // データ処理＆更新
             const filteredData = filterData(parsedData, graphStart, graphEnd);
             const cumulativeData = calculateCumulativeDataWithTable(filteredData, startDate, endDate, tempMin, tempMax);
-
-            updateDailyCharts(filteredData, startDate, endDate, tempMin, tempMax);
-            updateCumulativeCharts(cumulativeData, startDate, endDate, tempMin, tempMax);
+            updateDailyCharts && updateDailyCharts(filteredData, startDate, endDate, tempMin, tempMax);
+            updateCumulativeCharts && updateCumulativeCharts(cumulativeData, startDate, endDate, tempMin, tempMax);
             updateTable(cumulativeData.table);
-
-            // タイトル表示
-            Array.from(document.getElementsByClassName("dailyTitle")).forEach(el => el.style.display = "block");
-            Array.from(document.getElementsByClassName("cumulativeTitle")).forEach(el => el.style.display = "block");
         })
-        .catch(error => {
-            console.error('CSVの自動読み込みエラー:', error);
-        });
+        .catch(error => { console.error('CSVの自動読み込みエラー:', error); });
 }
 
-// データフィルタ関数（元のまま）
+// ここから下は重複や未定義のものをまとめて整理
+function shiftJISToUTF8(arrayBuffer) {
+    try {
+        const decoder = new TextDecoder("shift-jis", { fatal: true });
+        const uint8Array = new Uint8Array(arrayBuffer);
+        return decoder.decode(uint8Array);
+    } catch (error) {
+        console.error("Shift-JIS から UTF-8 の変換に失敗しました:", error);
+        return "";
+    }
+}
+
 function filterData(data, graphStart, graphEnd) {
     return data.filter(d => d.date >= graphStart && d.date <= graphEnd);
 }
-       
-    function filterData(data, graphStart, graphEnd) {
-        return data.filter(d => d.date >= graphStart && d.date <= graphEnd);
-    }
-
 
 //パース
 function parseCSV(content) {
@@ -945,11 +944,7 @@ const labels = Object.values(cumulativeResults).map(result => {
         },
     });
 }
-/*const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false, // 縦横比を固定せず調整可能にする
-};
-*/
+
 </script>
 </body>
 </html>
