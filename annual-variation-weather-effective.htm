@@ -412,16 +412,7 @@ function shiftJISToUTF8(arrayBuffer) {
         return "";
     }
 }
-
-
-//
-        function shiftJISToUTF8(arrayBuffer) {
-            const decoder = new TextDecoder('shift-jis');
-            const uint8Array = new Uint8Array(arrayBuffer);
-            return decoder.decode(uint8Array);
-        }
        
-
 // 日付自動セット & CSV自動読込
 document.addEventListener('DOMContentLoaded', function() {
     // 日付フィールド初期化
