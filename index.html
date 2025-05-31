@@ -241,8 +241,9 @@ input:checked + .slider:before {
         <!--button onclick="window.open('images/WetherOption.png', '_blank')">過去の気象データ・ダウンロードで選ぶ表示オプション</button-->
     </div>
     <br>
-    <h5>ファイルの選択ボタンにドラッグ＆ドロップすることで取り込み可能</h5>
+    <!--h5>ファイルの選択ボタンにドラッグ＆ドロップすることで取り込み可能</h5-->
     <!--input type="file" id="fileInput" accept=".csv"-->
+    <h5 id="dateRangeInfo">CSVの日付範囲：未読込</h5>
     <div class="container">
         <form>
             <label for="cultivationStartDate">栽培開始日:</label>
@@ -464,7 +465,8 @@ function handleFileSelect() {
 
             const parsedData = parseCSV(utf8Content);
             console.log('Parsed Data:', parsedData);
-
+            updateDateRangeInfo(parsedData);
+            
             // 日付を1日進める 必要なし
             parsedData.forEach(d => d.date.setDate(d.date.getDate()));
 
@@ -519,6 +521,25 @@ function readCSVFile(file) {
     });
 }
 
+ function updateDateRangeInfo(parsedData) {
+    if (!parsedData || parsedData.length === 0) {
+        document.getElementById("dateRangeInfo").textContent = "CSVの日付範囲：未読込";
+        return;
+    }
+    // 日付の配列を作成
+    const dates = parsedData.map(d => d.date).filter(date => date instanceof Date && !isNaN(date));
+    if (dates.length === 0) {
+        document.getElementById("dateRangeInfo").textContent = "CSVに有効な日付データがありません";
+        return;
+    }
+    // 最小・最大日付を計算
+    const minDate = new Date(Math.min(...dates));
+    const maxDate = new Date(Math.max(...dates));
+    // フォーマット
+    const f = d => d.toISOString().split('T')[0];
+    document.getElementById("dateRangeInfo").textContent =
+        `CSVの日付範囲：${f(minDate)} ～ ${f(maxDate)}`;
+}       
 
 function calculateEffectiveAccumulatedTemperature(data, startDate, endDate, tempMin, tempMax) {
     let effectiveTempSum = 0;
