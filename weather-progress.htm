@@ -410,27 +410,42 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 //自動取り込み設定        
-function handleFileSelect() {
-    const filePath = './出雲時別値.csv'; // ファイルパスを指定
-    fetch(filePath)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-            // ここで arrayBuffer() でバイナリとして受け取る
-            return response.arrayBuffer();
-        })
-        .then(buffer => {
-            // Shift-JIS → UTF-8 に変換
-            const utf8Content = shiftJISToUTF8(buffer);
-            console.log('UTF-8 Content:', utf8Content);
+function handleFileSelect(event) {
+    let file = null;
+    if (event && event.target && event.target.files && event.target.files[0]) {
+        file = event.target.files[0];
+    }
 
-            const parsedData = parseCSV(utf8Content);
-            console.log('Parsed Data:', parsedData);
+    // ファイル選択時
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            // バイナリをShift-JIS→UTF-8変換しCSV解析
+            const utf8Content = shiftJISToUTF8(e.target.result);
+            processCSVContent(utf8Content);
+        };
+        reader.readAsArrayBuffer(file);
+    } else {
+        // ファイル選択なし：fetchで同階層のCSVを取得
+        const filePath = './出雲時別値.csv';
+        fetch(filePath)
+            .then(response => {
+                if (!response.ok) throw new Error('CSVファイルの取得に失敗しました');
+                return response.arrayBuffer();
+            })
+            .then(buffer => {
+                const utf8Content = shiftJISToUTF8(buffer);
+                processCSVContent(utf8Content);
+            })
+            .catch(error => {
+                alert('CSVファイルの自動取得に失敗しました: ' + error.message);
+            });
+    }
 
-           updateDateRangeInfo(parsedData);  
-
-        console.log("data", data);
+    // CSV読込・解析後の処理
+    function processCSVContent(utf8Content) {
+        const parsedData = parseCSV(utf8Content);
+        updateDateRangeInfo(parsedData);
 
         const startDate = new Date(document.getElementById("cultivationStartDate").value);
         const endDate = new Date(document.getElementById("cultivationEndDate").value);
@@ -452,34 +467,12 @@ function handleFileSelect() {
         const minDate = graphStart < avgStart ? graphStart : avgStart;
         const maxDate = graphEnd > avgEnd ? graphEnd : avgEnd;
 
-        const filteredData = filterData(data, minDate, maxDate);
+        const filteredData = filterData(parsedData, minDate, maxDate);
 
         // 栽培開始日を基準に平年値365日を作成する
         const chartData = prepareComparisonData(filteredData, startDate);
         updateDailyCharts(chartData);
         document.getElementById("chartcanvas").style.display = "block";
-    }
-
-    if (file) {
-        // ファイル選択時：既存のロジック
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            processCSVContent(e.target.result);
-        };
-        reader.readAsArrayBuffer(file);
-    } else {
-        // ファイル選択なし：fetchで同階層のCSVを取得
-        fetch('出雲日別値.CSV')
-            .then(response => {
-                if (!response.ok) throw new Error('CSVファイルの取得に失敗しました');
-                return response.arrayBuffer();
-            })
-            .then(arrayBuffer => {
-                processCSVContent(arrayBuffer);
-            })
-            .catch(error => {
-                alert('CSVファイルの自動取得に失敗しました: ' + error.message);
-            });
     }
 }
 
