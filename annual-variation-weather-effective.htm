@@ -365,7 +365,7 @@ function updateDateFields() {
         let cumulativeTempChart, cumulativePrecChart, cumulativeSunChart;
         document.addEventListener('DOMContentLoaded', function() {
          //   document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
-            document.getElementById('updateButton').addEventListener('click', handleFileSelect, false);
+        //    document.getElementById('updateButton').addEventListener('click', handleFileSelect, false);
         });
         async function updateAndDownloadCSV(file) {
             const content = await readCSVFile(file);
@@ -446,7 +446,7 @@ function autoLoadCSV() {
             graphEnd.setMonth(graphEnd.getMonth() + 1);
             const filteredData = filterData(parsedData, graphStart, graphEnd);
             const cumulativeData = calculateCumulativeDataWithTable(filteredData, startDate, endDate, tempMin, tempMax);
-            updateDailyCharts && updateDailyCharts(filteredData, startDate, endDate, tempMin, tempMax);
+            //updateDailyCharts && updateDailyCharts(filteredData, startDate, endDate, tempMin, tempMax);
             updateCumulativeCharts && updateCumulativeCharts(cumulativeData, startDate, endDate, tempMin, tempMax);
            // updateTable(cumulativeData.table);
         })
