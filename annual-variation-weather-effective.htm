@@ -357,9 +357,7 @@ function updateDateFields() {
 
     // ページ読み込み時に日付フィールドを更新
     document.addEventListener('DOMContentLoaded', function() {
-  updateDateFields();
-  handleFileSelect();
-   
+  updateDateFields();  
 });
  //window.onload = handleFileSelect;  
  
@@ -398,19 +396,6 @@ async function readCSVFile(file) {
         reader.onerror = reject;
         reader.readAsArrayBuffer(file);
     });
-}
-
-
-// Shift-JISをUTF-8に変換する関数
-function shiftJISToUTF8(arrayBuffer) {
-    try {
-        const decoder = new TextDecoder("shift-jis", { fatal: true });
-        const uint8Array = new Uint8Array(arrayBuffer);
-        return decoder.decode(uint8Array);
-    } catch (error) {
-        console.error("Shift-JIS から UTF-8 の変換に失敗しました:", error);
-        return "";
-    }
 }
        
 // 日付自動セット & CSV自動読込
@@ -463,7 +448,7 @@ function autoLoadCSV() {
             const cumulativeData = calculateCumulativeDataWithTable(filteredData, startDate, endDate, tempMin, tempMax);
             updateDailyCharts && updateDailyCharts(filteredData, startDate, endDate, tempMin, tempMax);
             updateCumulativeCharts && updateCumulativeCharts(cumulativeData, startDate, endDate, tempMin, tempMax);
-            updateTable(cumulativeData.table);
+           // updateTable(cumulativeData.table);
         })
         .catch(error => { console.error('CSVの自動読み込みエラー:', error); });
 }
