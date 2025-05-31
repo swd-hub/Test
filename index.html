@@ -243,7 +243,7 @@ input:checked + .slider:before {
     <br>
     <!--h5>ファイルの選択ボタンにドラッグ＆ドロップすることで取り込み可能</h5-->
     <!--input type="file" id="fileInput" accept=".csv"-->
-    <h5 id="dateRangeInfo">CSVの日付範囲：未読込</h5>
+    <h5 id="dateRangeInfo">気象データの日付範囲：未読込</h5>
     <div class="container">
         <form>
             <label for="cultivationStartDate">栽培開始日:</label>
@@ -449,7 +449,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function handleFileSelect() {
-    const filePath = './出雲日別値2025-05-23.csv'; // ファイルパスを指定
+    const filePath = './出雲日別値'; // ファイルパスを指定
     fetch(filePath)
         .then(response => {
             if (!response.ok) {
