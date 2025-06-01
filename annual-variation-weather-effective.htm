@@ -647,7 +647,7 @@ document.getElementById("updateButton").addEventListener("click", function () {
     if (fileInput.files.length === 0) {
         alert("CSVファイルをアップロードしてください。");
         return;
-    }*/
+    }
    
     // アップロードされたファイルを再読み込み
     readCSVFile(fileInput.files[0])
@@ -661,7 +661,7 @@ document.getElementById("updateButton").addEventListener("click", function () {
             console.error("ファイルを読み込む際にエラーが発生しました:", error);
             alert("ファイルの読み込みに失敗しました。");
         });
-});
+});*/
 
 // 年ごとの積算データを計算する関数
 function calculateCumulativeValues(data, startDate, endDate, tempMin, tempMax) {
