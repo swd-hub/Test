@@ -178,6 +178,9 @@ input[type="date"], input[type="file"], input[type="number"] {
 </div>
 </div>
     <script>
+ document.addEventListener("DOMContentLoaded", function() {
+  handleFileSelect();
+});       
 // CSVファイルのパース用関数（例: 既存のものを再利用）
     function parseCSV(text) {
       // 必要に応じて既存のCSVパース関数を使う
