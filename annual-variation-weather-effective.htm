@@ -327,9 +327,31 @@ input:checked + .slider:before {
     </div>
 </div>
 <script>
+async function fetchAndUpdateTable() {
+    // CSVファイルをfetchで取得（同じ階層にある場合）
+    const response = await fetch('出雲日別値.csv');
+    // Shift-JISの場合はarrayBufferで取得→変換
+    const arrayBuffer = await response.arrayBuffer();
+    const utf8Data = shiftJISToUTF8(arrayBuffer); // 変換関数が必要
+    const parsedData = parseCSV(utf8Data);        // CSVパース関数が必要
+    const cumulativeData = calculateCumulativeData(parsedData); // 集計処理
+    renderTable(cumulativeData);                  // 表示（テーブル更新）関数
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // ページ表示時に最初に読み込む
+    fetchAndUpdateTable();
+
+    // 更新ボタンがある場合
+    const updateBtn = document.getElementById('updateButton');
+    if (updateBtn) {
+        updateBtn.addEventListener('click', fetchAndUpdateTable);
+    }
+});
+    
    // レポジトリ直下のCSVファイル名
 const CSV_FILE = '出雲日別値.csv';
-
+    
 // CSVをfetchで取得して処理
 fetch(CSV_FILE)
   .then(resp => resp.text())
@@ -369,24 +391,46 @@ const lastYearToday = new Date(today.setFullYear(year - 1));
 document.getElementById('cultivationEndDate').value = lastYearToday.toISOString().split('T')[0];
 
 
-//
-/*        function createCSVContent(data) {
-            // CSVコンテンツ作成の例
-            const headers = ["年", "月", "日", "平均気温(℃)", "降水量の合計(mm)", "日照時間(時間)"];
-            const csvContent = data.map(row => {
-                return `${row.date.getFullYear()},${row.date.getMonth() + 1},${row.date.getDate()},${row.temperature},${row.precipitation},${row.sunshine}`;
-            });
-            csvContent.unshift(headers.join(","));
-            return csvContent.join("\n");
+async function fetchAndUpdateTable() {
+    try {
+        const response = await fetch('出雲日別値.csv');
+        const arrayBuffer = await response.arrayBuffer();
+        const utf8Data = shiftJISToUTF8(arrayBuffer);
+        const parsedData = parseCSV(utf8Data);
+
+        // 必要なら日付範囲を表示
+        // showDateRange(parsedData); // 実装例は前の回答参照
+
+        // 栽培開始/終了日初期値もここで設定（必要なら）
+        if (parsedData.length) {
+            document.getElementById('cultivationStartDate').value = parsedData[0].date.toISOString().split('T')[0];
+            document.getElementById('cultivationEndDate').value = parsedData[parsedData.length - 1].date.toISOString().split('T')[0];
         }
-        */
+
+        // テーブル・グラフ更新
+        initializeTable(parsedData);
+
+    } catch (e) {
+        alert("CSVファイルの取得・処理に失敗しました");
+        console.error(e);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetchAndUpdateTable();
+    const updateBtn = document.getElementById('updateButton');
+    if (updateBtn) {
+        updateBtn.addEventListener('click', fetchAndUpdateTable);
+    }
+});
 
         let dailyTempChart, dailyPrecChart, dailySunChart;
         let cumulativeTempChart, cumulativePrecChart, cumulativeSunChart;
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
+     /*   document.addEventListener('DOMContentLoaded', function() {
+           　document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
             document.getElementById('updateButton').addEventListener('click', handleFileSelect, false);
         });
+        */
         async function updateAndDownloadCSV(file) {
             const content = await readCSVFile(file);
             //console.log('Read CSV Content:', content);
@@ -407,17 +451,6 @@ document.getElementById('cultivationEndDate').value = lastYearToday.toISOString(
         }
        
 
-/// ファイル入力イベント
-document.getElementById("fileInput").addEventListener("change", async function () {
-    const file = this.files[0];
-    if (file) {
-        const arrayBuffer = await readCSVFile(file);
-        const utf8Data = shiftJISToUTF8(arrayBuffer);
-        const parsedData = parseCSV(utf8Data);
-        //console.log("解析されたデータ:", parsedData);
-        initializeTable(parsedData);
-    }
-});
 
 // ファイルを読み込む関数（Promiseベース）
 async function readCSVFile(file) {
@@ -441,15 +474,7 @@ function shiftJISToUTF8(arrayBuffer) {
         return "";
     }
 }
-
-
-//
-        function shiftJISToUTF8(arrayBuffer) {
-            const decoder = new TextDecoder('shift-jis');
-            const uint8Array = new Uint8Array(arrayBuffer);
-            return decoder.decode(uint8Array);
-        }
-       
+      
 
 /*
 function handleFileSelect() {
@@ -646,13 +671,6 @@ function calculateCumulativeDataWithTable(data, startDate, endDate, tempMin, tem
     return cumulative;
 }
 
-// 更新ボタンのクリックイベント
-document.getElementById("updateButton").addEventListener("click", function () {
-    const fileInput = document.getElementById("fileInput");
-    if (fileInput.files.length === 0) {
-        alert("CSVファイルをアップロードしてください。");
-        return;
-    }
    
     // アップロードされたファイルを再読み込み
     readCSVFile(fileInput.files[0])
