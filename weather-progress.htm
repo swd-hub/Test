@@ -117,9 +117,6 @@ input[type="date"], input[type="file"], input[type="number"] {
   cursor: pointer;
   margin-left: 4px; /* 任意で左に余白を追加 */
 }
-#fileInput{
- width:500px;
-}
 #chartcanvas
 {
   width: 80%;
@@ -141,8 +138,8 @@ input[type="date"], input[type="file"], input[type="number"] {
         <!--button onclick="window.open('images/WetherOption.png', '_blank')">過去の気象データ・ダウンロードで選ぶ表示オプション</button-->
     </div>
     <br>
-    <h5>ファイルの選択ボタンにドラッグ＆ドロップすることで取り込み可能</h5>
-    <input type="file" id="fileInput" accept=".csv">
+<!-- <input type="file" id="csvFileInput"> -->
+  <div id="date-range"></div>
     <div class="container">
         <form>
             <label for="cultivationStartDate">開始日:</label>
@@ -181,11 +178,50 @@ input[type="date"], input[type="file"], input[type="number"] {
 </div>
 </div>
     <script>
+// CSVファイルのパース用関数（例: 既存のものを再利用）
+    function parseCSV(text) {
+      // 必要に応じて既存のCSVパース関数を使う
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',');
+      const rows = lines.slice(1).map(line => {
+        const obj = {};
+        line.split(',').forEach((val, idx) => {
+          obj[headers[idx]] = val;
+        });
+        return obj;
+      });
+      return rows;
+    }
+
+    // 日付レンジ表示用
+    function updateDateRange(data) {
+      // 例: 日付カラム名が "日付" である場合
+      const dates = data.map(row => row['日付']).sort();
+      const minDate = dates[0];
+      const maxDate = dates[dates.length - 1];
+      document.getElementById('date-range').textContent =
+        `データ範囲: ${minDate} 〜 ${maxDate}`;
+    }
+
+    // fetchでCSV読み込み
+    fetch('出雲日別値.csv')
+      .then(response => response.text())
+      .then(csvText => {
+        const data = parseCSV(csvText);
+        updateDateRange(data);
+        // ここに従来のデータ利用処理
+        // 例: drawChart(data); など
+      })
+      .catch(error => {
+        document.getElementById('date-range').textContent = 'CSVファイル読み込み失敗';
+        console.error(error);
+      });
+        
 function updateMainTitle() {
     const startDate = document.getElementById("cultivationStartDate").value;
     const endDate = document.getElementById("cultivationEndDate").value;
-    const fileInput = document.getElementById("fileInput");
-    const file = fileInput.files[0];
+   // const fileInput = document.getElementById("fileInput");
+   // const file = fileInput.files[0];
 
     if (startDate && endDate && file) {
         const startYear = new Date(startDate).getFullYear();
@@ -198,12 +234,12 @@ function updateMainTitle() {
 }
 
 // ファイル選択または日付変更後にタイトルを更新する
-document.getElementById("fileInput").addEventListener("change", updateMainTitle);
+//document.getElementById("fileInput").addEventListener("change", updateMainTitle);
 document.getElementById("cultivationStartDate").addEventListener("change", updateMainTitle);
 document.getElementById("cultivationEndDate").addEventListener("change", updateMainTitle);
    
 //日付自動
-     function updateDateFields() {
+function updateDateFields() {
  const currentDate = new Date();
  const currentYear = currentDate.getFullYear();
  const currentMonth = String(currentDate.getMonth() + 1).padStart(2, '0'); // Adds leading zero for single-digit months
@@ -223,11 +259,11 @@ document.getElementById("cultivationEndDate").addEventListener("change", updateM
  let dailyTempChart, dailyPrecChart, dailySunChart;
         let cumulativeTempChart, cumulativePrecChart, cumulativeSunChart;
 
-        document.addEventListener('DOMContentLoaded', function() {
+/*        document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
             document.getElementById('updateButton').addEventListener('click', handleFileSelect, false);
         });
-
+*/
         function shiftJISToUTF8(arrayBuffer) {
             const decoder = new TextDecoder('shift-jis');
             const uint8Array = new Uint8Array(arrayBuffer);
@@ -392,9 +428,8 @@ function prepareComparisonData(data, startDate) {
 
 //グラフデータの抽出
 function handleFileSelect() {
-    const file = document.getElementById("fileInput").files[0];
-    if (!file) return;
-
+   // const file = document.getElementById("fileInput").files[0];
+  //  if (!file) return;
 
     const reader = new FileReader();
     reader.onload = function (e) {
