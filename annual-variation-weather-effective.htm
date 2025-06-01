@@ -327,7 +327,40 @@ input:checked + .slider:before {
     </div>
 </div>
 <script>
-  const today = new Date();
+   // レポジトリ直下のCSVファイル名
+const CSV_FILE = '出雲日別値.csv';
+
+// CSVをfetchで取得して処理
+fetch(CSV_FILE)
+  .then(resp => resp.text())
+  .then(csvText => {
+    // 必要ならShift-JIS→UTF-8変換（日本語CSVの場合）
+    // 例: const utf8Text = shiftJISToUTF8(csvText);
+
+    // CSVパース（ヘッダが「日付」列と仮定）
+    const rows = csvText.trim().split('\n').map(line => line.split(','));
+    const header = rows[0];
+    const dateIdx = header.indexOf('日付');
+    if (dateIdx === -1) {
+      document.getElementById('csv-date-range').textContent = 'CSVに「日付」列がありません';
+      return;
+    }
+    const dates = rows.slice(1).map(r => new Date(r[dateIdx]));
+    dates.sort((a, b) => a - b);
+
+    // 最古～最新日付を表示
+    const oldest = dates[0], latest = dates[dates.length - 1];
+    document.getElementById('csv-date-range').textContent =
+      `CSV日付範囲: ${oldest.toLocaleDateString()} ～ ${latest.toLocaleDateString()}`;
+
+    // 以降、従来のdata処理としてrowsを渡す
+    // 例: renderChart(rows); など
+  })
+  .catch(e => {
+    document.getElementById('csv-date-range').textContent = 'CSVファイルの取得に失敗しました';
+  });
+    
+const today = new Date();
 const year = today.getFullYear();
 // 栽培開始日を昨年の1月1日に設定
 document.getElementById('cultivationStartDate').value = `${year - 1}-01-01`;
@@ -418,7 +451,7 @@ function shiftJISToUTF8(arrayBuffer) {
         }
        
 
-
+/*
 function handleFileSelect() {
     const file = document.getElementById("fileInput").files[0];
     if (!file) return;
@@ -453,7 +486,7 @@ function handleFileSelect() {
     reader.readAsArrayBuffer(file);
 }
 
-
+*/
        
     function filterData(data, graphStart, graphEnd) {
         return data.filter(d => d.date >= graphStart && d.date <= graphEnd);
