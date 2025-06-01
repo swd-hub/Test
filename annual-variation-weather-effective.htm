@@ -245,8 +245,9 @@ input:checked + .slider:before {
         <!--button onclick="window.open('images/WetherOption.png', '_blank')">過去の気象データ・ダウンロードで選ぶ表示オプション</button-->
         </div>
     </header>
-<!-- 削除：<input type="file" id="fileInput" accept=".csv"> -->
-<div id="dateRange" style="margin:10px 0; font-weight:bold;"></div>
+            <p>以下にCSVファイルをドラッグ＆ドロップするか、選択してください。</p>
+            <input type="file" id="fileInput" accept=".csv" title="CSVファイルを選択してください">
+        <!-- 設定フォーム -->
         <section>
 
             <form>
@@ -324,39 +325,6 @@ input:checked + .slider:before {
     </div>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded', async function() {
-    // fetchでCSVを取得
-    const response = await fetch('出雲日別値.csv');
-    const arrayBuffer = await response.arrayBuffer();
-
-    // Shift-JIS→UTF-8変換
-    const utf8Data = shiftJISToUTF8(arrayBuffer);
-
-    // パースしてデータ化
-    const parsedData = parseCSV(utf8Data);
-
-    // 日付範囲を抽出して表示
-    showDateRange(parsedData);
-
-    // 以後の処理（initializeTable等）はこれまで通り
-    initializeTable(parsedData);
-
-    // 更新ボタンもfetchで読んだデータを使うよう修正
-    document.getElementById('updateButton').addEventListener('click', function () {
-        initializeTable(parsedData);
-    });
-});
-
-// 日付範囲表示用の関数を追加
-function showDateRange(data) {
-    if (!data.length) return;
-    const dates = data.map(d => d.date).sort((a, b) => a - b);
-    const minDate = dates[0];
-    const maxDate = dates[dates.length - 1];
-    document.getElementById('dateRange').textContent =
-        `CSVファイルの日付範囲: ${minDate.getFullYear()}-${minDate.getMonth()+1}-${minDate.getDate()} ～ ${maxDate.getFullYear()}-${maxDate.getMonth()+1}-${maxDate.getDate()}`;
-}
-    
   const today = new Date();
 const year = today.getFullYear();
 // 栽培開始日を昨年の1月1日に設定
@@ -380,10 +348,10 @@ document.getElementById('cultivationEndDate').value = lastYearToday.toISOString(
 
         let dailyTempChart, dailyPrecChart, dailySunChart;
         let cumulativeTempChart, cumulativePrecChart, cumulativeSunChart;
-       /* document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
             document.getElementById('updateButton').addEventListener('click', handleFileSelect, false);
-        });*/
+        });
         async function updateAndDownloadCSV(file) {
             const content = await readCSVFile(file);
             //console.log('Read CSV Content:', content);
@@ -404,7 +372,7 @@ document.getElementById('cultivationEndDate').value = lastYearToday.toISOString(
         }
        
 
-/*// ファイル入力イベント
+/// ファイル入力イベント
 document.getElementById("fileInput").addEventListener("change", async function () {
     const file = this.files[0];
     if (file) {
@@ -414,9 +382,9 @@ document.getElementById("fileInput").addEventListener("change", async function (
         //console.log("解析されたデータ:", parsedData);
         initializeTable(parsedData);
     }
-});　*/
+});
 
-/*/ ファイルを読み込む関数（Promiseベース）
+// ファイルを読み込む関数（Promiseベース）
 async function readCSVFile(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -424,7 +392,7 @@ async function readCSVFile(file) {
         reader.onerror = reject;
         reader.readAsArrayBuffer(file);
     });
-}　*/
+}
 
 
 // Shift-JISをUTF-8に変換する関数
@@ -449,7 +417,7 @@ function shiftJISToUTF8(arrayBuffer) {
        
 
 
-/*function handleFileSelect() {
+function handleFileSelect() {
     const file = document.getElementById("fileInput").files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -481,7 +449,9 @@ function shiftJISToUTF8(arrayBuffer) {
     };
        
     reader.readAsArrayBuffer(file);
-}*/
+}
+
+
        
     function filterData(data, graphStart, graphEnd) {
         return data.filter(d => d.date >= graphStart && d.date <= graphEnd);
@@ -641,7 +611,7 @@ function calculateCumulativeDataWithTable(data, startDate, endDate, tempMin, tem
     return cumulative;
 }
 
-/*/ 更新ボタンのクリックイベント
+// 更新ボタンのクリックイベント
 document.getElementById("updateButton").addEventListener("click", function () {
     const fileInput = document.getElementById("fileInput");
     if (fileInput.files.length === 0) {
@@ -661,7 +631,7 @@ document.getElementById("updateButton").addEventListener("click", function () {
             console.error("ファイルを読み込む際にエラーが発生しました:", error);
             alert("ファイルの読み込みに失敗しました。");
         });
-});*/
+});
 
 // 年ごとの積算データを計算する関数
 function calculateCumulativeValues(data, startDate, endDate, tempMin, tempMax) {
