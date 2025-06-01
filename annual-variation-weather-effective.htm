@@ -245,11 +245,8 @@ input:checked + .slider:before {
         <!--button onclick="window.open('images/WetherOption.png', '_blank')">過去の気象データ・ダウンロードで選ぶ表示オプション</button-->
         </div>
     </header>
-           <!-- ファイル選択ボタンを削除し、日付表示用タグを追加 -->
-<!-- <input type="file" id="csvFileInput"> -->
-<div id="csv-date-range">
-    </div>
-        <!-- 設定フォーム -->
+<!-- 削除：<input type="file" id="fileInput" accept=".csv"> -->
+<div id="dateRange" style="margin:10px 0; font-weight:bold;"></div>
         <section>
 
             <form>
@@ -327,62 +324,40 @@ input:checked + .slider:before {
     </div>
 </div>
 <script>
-async function fetchAndUpdateTable() {
-    // CSVファイルをfetchで取得（同じ階層にある場合）
+document.addEventListener('DOMContentLoaded', async function() {
+    // fetchでCSVを取得
     const response = await fetch('出雲日別値.csv');
-    // Shift-JISの場合はarrayBufferで取得→変換
     const arrayBuffer = await response.arrayBuffer();
-    const utf8Data = shiftJISToUTF8(arrayBuffer); // 変換関数が必要
-    const parsedData = parseCSV(utf8Data);        // CSVパース関数が必要
-    const cumulativeData = calculateCumulativeData(parsedData); // 集計処理
-    renderTable(cumulativeData);                  // 表示（テーブル更新）関数
-}
 
-document.addEventListener('DOMContentLoaded', function() {
-    // ページ表示時に最初に読み込む
-    fetchAndUpdateTable();
+    // Shift-JIS→UTF-8変換
+    const utf8Data = shiftJISToUTF8(arrayBuffer);
 
-    // 更新ボタンがある場合
-    const updateBtn = document.getElementById('updateButton');
-    if (updateBtn) {
-        updateBtn.addEventListener('click', fetchAndUpdateTable);
-    }
+    // パースしてデータ化
+    const parsedData = parseCSV(utf8Data);
+
+    // 日付範囲を抽出して表示
+    showDateRange(parsedData);
+
+    // 以後の処理（initializeTable等）はこれまで通り
+    initializeTable(parsedData);
+
+    // 更新ボタンもfetchで読んだデータを使うよう修正
+    document.getElementById('updateButton').addEventListener('click', function () {
+        initializeTable(parsedData);
+    });
 });
-    
-   // レポジトリ直下のCSVファイル名
-const CSV_FILE = '出雲日別値.csv';
-    
-// CSVをfetchで取得して処理
-fetch(CSV_FILE)
-  .then(resp => resp.text())
-  .then(csvText => {
-    // 必要ならShift-JIS→UTF-8変換（日本語CSVの場合）
-    // 例: const utf8Text = shiftJISToUTF8(csvText);
 
-    // CSVパース（ヘッダが「日付」列と仮定）
-    const rows = csvText.trim().split('\n').map(line => line.split(','));
-    const header = rows[0];
-    const dateIdx = header.indexOf('日付');
-    if (dateIdx === -1) {
-      document.getElementById('csv-date-range').textContent = 'CSVに「日付」列がありません';
-      return;
-    }
-    const dates = rows.slice(1).map(r => new Date(r[dateIdx]));
-    dates.sort((a, b) => a - b);
-
-    // 最古～最新日付を表示
-    const oldest = dates[0], latest = dates[dates.length - 1];
-    document.getElementById('csv-date-range').textContent =
-      `CSV日付範囲: ${oldest.toLocaleDateString()} ～ ${latest.toLocaleDateString()}`;
-
-    // 以降、従来のdata処理としてrowsを渡す
-    // 例: renderChart(rows); など
-  })
-  .catch(e => {
-    document.getElementById('csv-date-range').textContent = 'CSVファイルの取得に失敗しました';
-  });
+// 日付範囲表示用の関数を追加
+function showDateRange(data) {
+    if (!data.length) return;
+    const dates = data.map(d => d.date).sort((a, b) => a - b);
+    const minDate = dates[0];
+    const maxDate = dates[dates.length - 1];
+    document.getElementById('dateRange').textContent =
+        `CSVファイルの日付範囲: ${minDate.getFullYear()}-${minDate.getMonth()+1}-${minDate.getDate()} ～ ${maxDate.getFullYear()}-${maxDate.getMonth()+1}-${maxDate.getDate()}`;
+}
     
-const today = new Date();
+  const today = new Date();
 const year = today.getFullYear();
 // 栽培開始日を昨年の1月1日に設定
 document.getElementById('cultivationStartDate').value = `${year - 1}-01-01`;
@@ -391,46 +366,24 @@ const lastYearToday = new Date(today.setFullYear(year - 1));
 document.getElementById('cultivationEndDate').value = lastYearToday.toISOString().split('T')[0];
 
 
-async function fetchAndUpdateTable() {
-    try {
-        const response = await fetch('出雲日別値.csv');
-        const arrayBuffer = await response.arrayBuffer();
-        const utf8Data = shiftJISToUTF8(arrayBuffer);
-        const parsedData = parseCSV(utf8Data);
-
-        // 必要なら日付範囲を表示
-        // showDateRange(parsedData); // 実装例は前の回答参照
-
-        // 栽培開始/終了日初期値もここで設定（必要なら）
-        if (parsedData.length) {
-            document.getElementById('cultivationStartDate').value = parsedData[0].date.toISOString().split('T')[0];
-            document.getElementById('cultivationEndDate').value = parsedData[parsedData.length - 1].date.toISOString().split('T')[0];
+//
+/*        function createCSVContent(data) {
+            // CSVコンテンツ作成の例
+            const headers = ["年", "月", "日", "平均気温(℃)", "降水量の合計(mm)", "日照時間(時間)"];
+            const csvContent = data.map(row => {
+                return `${row.date.getFullYear()},${row.date.getMonth() + 1},${row.date.getDate()},${row.temperature},${row.precipitation},${row.sunshine}`;
+            });
+            csvContent.unshift(headers.join(","));
+            return csvContent.join("\n");
         }
-
-        // テーブル・グラフ更新
-        initializeTable(parsedData);
-
-    } catch (e) {
-        alert("CSVファイルの取得・処理に失敗しました");
-        console.error(e);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    fetchAndUpdateTable();
-    const updateBtn = document.getElementById('updateButton');
-    if (updateBtn) {
-        updateBtn.addEventListener('click', fetchAndUpdateTable);
-    }
-});
+        */
 
         let dailyTempChart, dailyPrecChart, dailySunChart;
         let cumulativeTempChart, cumulativePrecChart, cumulativeSunChart;
-     /*   document.addEventListener('DOMContentLoaded', function() {
-           　document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
+       /* document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
             document.getElementById('updateButton').addEventListener('click', handleFileSelect, false);
-        });
-        */
+        });*/
         async function updateAndDownloadCSV(file) {
             const content = await readCSVFile(file);
             //console.log('Read CSV Content:', content);
@@ -451,8 +404,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
        
 
+/*// ファイル入力イベント
+document.getElementById("fileInput").addEventListener("change", async function () {
+    const file = this.files[0];
+    if (file) {
+        const arrayBuffer = await readCSVFile(file);
+        const utf8Data = shiftJISToUTF8(arrayBuffer);
+        const parsedData = parseCSV(utf8Data);
+        //console.log("解析されたデータ:", parsedData);
+        initializeTable(parsedData);
+    }
+});　*/
 
-// ファイルを読み込む関数（Promiseベース）
+/*/ ファイルを読み込む関数（Promiseベース）
 async function readCSVFile(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -460,7 +424,7 @@ async function readCSVFile(file) {
         reader.onerror = reject;
         reader.readAsArrayBuffer(file);
     });
-}
+}　*/
 
 
 // Shift-JISをUTF-8に変換する関数
@@ -474,44 +438,50 @@ function shiftJISToUTF8(arrayBuffer) {
         return "";
     }
 }
-      
 
-/*
-function handleFileSelect() {
+
+//
+        function shiftJISToUTF8(arrayBuffer) {
+            const decoder = new TextDecoder('shift-jis');
+            const uint8Array = new Uint8Array(arrayBuffer);
+            return decoder.decode(uint8Array);
+        }
+       
+
+
+/*function handleFileSelect() {
     const file = document.getElementById("fileInput").files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = function (e) {
-        // ここはご自身のshiftJISToUTF8の実装による
         const utf8Content = shiftJISToUTF8(e.target.result);
+        //console.log('UTF-8 Content:', utf8Content);
         const data = parseCSV(utf8Content);
-
-        // もし日付を1日進める必要が本当にないなら下記は削除
-        // data.forEach(d => d.date.setDate(d.date.getDate()));
-
+        //console.log('Parsed Data:', data);
+       
+        // 日付を1日進める必要なし
+        data.forEach(d => d.date.setDate(d.date.getDate()));
         const startDate = new Date(document.getElementById("cultivationStartDate").value);
         const endDate = new Date(document.getElementById("cultivationEndDate").value);
         const tempMin = parseFloat(document.getElementById("tempMin").value);
         const tempMax = parseFloat(document.getElementById("tempMax").value);
-
-        // グラフ範囲の調整（-1月, +1月したい場合は下記のように変更）
         const graphStart = new Date(startDate);
-        graphStart.setMonth(graphStart.getMonth() - 1);  // 1ヶ月前
-
+        graphStart.setMonth(graphStart.getMonth());  // - 1トル
         const graphEnd = new Date(endDate);
-        graphEnd.setMonth(graphEnd.getMonth() + 1);  // 1ヶ月後
-
+        graphEnd.setMonth(graphEnd.getMonth());  //  + 1トル
         const filteredData = filterData(data, graphStart, graphEnd);
-
+       
+        //console.log("filteredData",filteredData);
+       
         const cumulativeData = calculateCumulativeDataWithTable(filteredData, startDate, endDate, tempMin, tempMax);
         updateTable(cumulativeData.table);
+       
+        //console.log('cumulativeData',cumulativeData);
+       
     };
-
+       
     reader.readAsArrayBuffer(file);
-}
-
-*/
+}*/
        
     function filterData(data, graphStart, graphEnd) {
         return data.filter(d => d.date >= graphStart && d.date <= graphEnd);
@@ -671,7 +641,27 @@ function calculateCumulativeDataWithTable(data, startDate, endDate, tempMin, tem
     return cumulative;
 }
 
-  
+/*/ 更新ボタンのクリックイベント
+document.getElementById("updateButton").addEventListener("click", function () {
+    const fileInput = document.getElementById("fileInput");
+    if (fileInput.files.length === 0) {
+        alert("CSVファイルをアップロードしてください。");
+        return;
+    }
+   
+    // アップロードされたファイルを再読み込み
+    readCSVFile(fileInput.files[0])
+        .then(arrayBuffer => {
+            const utf8Data = shiftJISToUTF8(arrayBuffer);
+            const parsedData = parseCSV(utf8Data);
+            // テーブルを初期化・更新
+            initializeTable(parsedData);
+        })
+        .catch(error => {
+            console.error("ファイルを読み込む際にエラーが発生しました:", error);
+            alert("ファイルの読み込みに失敗しました。");
+        });
+});*/
 
 // 年ごとの積算データを計算する関数
 function calculateCumulativeValues(data, startDate, endDate, tempMin, tempMax) {
@@ -759,11 +749,19 @@ function initializeTable(data) {
     const tempMin = parseFloat(document.getElementById("tempMin").value);
     const tempMax = parseFloat(document.getElementById("tempMax").value);
     const cumulativeResults = calculateCumulativeValues(data, startDate, endDate, tempMin, tempMax);
-   
-//console.log('cumulativeResults',cumulativeResults);
 
+    // 年ごとのテーブルとグラフを更新
     createCumulativeTable(cumulativeResults);
     createIndividualCharts(cumulativeResults);
+
+    // ▼▼▼ 集計結果テーブルも更新 ▼▼▼
+    // 入力期間でフィルタして集計
+    const filteredData = data.filter(d => {
+        const date = new Date(d.date);
+        return date >= startDate && date <= endDate;
+    });
+    const cumulativeData = calculateCumulativeDataWithTable(filteredData, startDate, endDate, tempMin, tempMax);
+    updateTable(cumulativeData.table);
 }
 
 //グラフの描画関数
