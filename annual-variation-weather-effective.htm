@@ -671,19 +671,7 @@ function calculateCumulativeDataWithTable(data, startDate, endDate, tempMin, tem
     return cumulative;
 }
 
-   
-    // アップロードされたファイルを再読み込み
-    readCSVFile(fileInput.files[0])
-        .then(arrayBuffer => {
-            const utf8Data = shiftJISToUTF8(arrayBuffer);
-            const parsedData = parseCSV(utf8Data);
-            // テーブルを初期化・更新
-            initializeTable(parsedData);
-        })
-        .catch(error => {
-            console.error("ファイルを読み込む際にエラーが発生しました:", error);
-            alert("ファイルの読み込みに失敗しました。");
-        });
+  
 
 // 年ごとの積算データを計算する関数
 function calculateCumulativeValues(data, startDate, endDate, tempMin, tempMax) {
