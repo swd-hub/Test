@@ -428,44 +428,45 @@ function prepareComparisonData(data, startDate) {
 
 //グラフデータの抽出
 function handleFileSelect() {
-   // const file = document.getElementById("fileInput").files[0];
-  //  if (!file) return;
+    // fetchでCSV取得（Shift_JIS対応）
+    fetch('出雲日別値.csv')
+        .then(response => response.arrayBuffer())
+        .then(buffer => {
+            const decoder = new TextDecoder('shift-jis');
+            const utf8Content = decoder.decode(buffer);
+            const data = parseCSV(utf8Content);
 
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        const utf8Content = shiftJISToUTF8(e.target.result);
-        const data = parseCSV(utf8Content);
+            const startDate = new Date(document.getElementById("cultivationStartDate").value);
+            const endDate = new Date(document.getElementById("cultivationEndDate").value);
 
-console.log("data",data);
+            // 実測データの範囲（グラフ用：前後に余白を持たせる）
+            const graphStart = new Date(startDate);
+            graphStart.setMonth(graphStart.getMonth() - 1);
+            const graphEnd = new Date(endDate);
+            graphEnd.setMonth(graphEnd.getMonth() + 7);
 
-        const startDate = new Date(document.getElementById("cultivationStartDate").value);
-        const endDate = new Date(document.getElementById("cultivationEndDate").value);
+            // 平年値の範囲：1年前のstartDateから365日分
+            const avgStart = new Date(startDate);
+            avgStart.setFullYear(avgStart.getFullYear() - 1);
 
-        // 実測データの範囲（グラフ用：前後に余白を持たせる）
-        const graphStart = new Date(startDate);
-        graphStart.setMonth(graphStart.getMonth() - 1);
-        const graphEnd = new Date(endDate);
-        graphEnd.setMonth(graphEnd.getMonth() + 7);
+            const avgEnd = new Date(avgStart);
+            avgEnd.setDate(avgEnd.getDate() + 364); // 365日分
 
-        // 平年値の範囲：1年前のstartDateから365日分
-        const avgStart = new Date(startDate);
-        avgStart.setFullYear(avgStart.getFullYear() - 1);
+            // 実測値と平年値を両方含むような範囲でフィルタ
+            const minDate = graphStart < avgStart ? graphStart : avgStart;
+            const maxDate = graphEnd > avgEnd ? graphEnd : avgEnd;
 
-        const avgEnd = new Date(avgStart);
-        avgEnd.setDate(avgEnd.getDate() + 364); // 365日分
+            const filteredData = filterData(data, minDate, maxDate);
 
-        // 実測値と平年値を両方含むような範囲でフィルタ
-        const minDate = graphStart < avgStart ? graphStart : avgStart;
-        const maxDate = graphEnd > avgEnd ? graphEnd : avgEnd;
-
-        const filteredData = filterData(data, minDate, maxDate);
-
-        // 栽培開始日を基準に平年値365日を作成する
-        const chartData = prepareComparisonData(filteredData, startDate);
-        updateDailyCharts(chartData);
-        document.getElementById("chartcanvas").style.display = "block";
-    };
-    reader.readAsArrayBuffer(file);
+            // 栽培開始日を基準に平年値365日を作成する
+            const chartData = prepareComparisonData(filteredData, startDate);
+            updateDailyCharts(chartData);
+            document.getElementById("chartcanvas").style.display = "block";
+        })
+        .catch(error => {
+            document.getElementById('date-range').textContent = 'CSVファイル読み込み失敗';
+            console.error(error);
+        });
 }
 
 //グラフ描画
