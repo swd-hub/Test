@@ -203,20 +203,7 @@ input[type="date"], input[type="file"], input[type="number"] {
         `データ範囲: ${minDate} 〜 ${maxDate}`;
     }
 
-    // fetchでCSV読み込み
-    fetch('出雲日別値.csv')
-      .then(response => response.text())
-      .then(csvText => {
-        const data = parseCSV(csvText);
-        updateDateRange(data);
-        // ここに従来のデータ利用処理
-        // 例: drawChart(data); など
-      })
-      .catch(error => {
-        document.getElementById('date-range').textContent = 'CSVファイル読み込み失敗';
-        console.error(error);
-      });
-        
+       
 function updateMainTitle() {
     const startDate = document.getElementById("cultivationStartDate").value;
     const endDate = document.getElementById("cultivationEndDate").value;
