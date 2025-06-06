@@ -317,7 +317,7 @@ function prepareComparisonData(data, startDate, endDate) {
             };
         }
 
-        // 平年値データ：あれば常に記録（null除く）
+        // 平年値データ
         if (d.avgTemperature !== null && !isNaN(d.avgTemperature)) {
             avgMap[dateKey] = avgMap[dateKey] || {};
             avgMap[dateKey].temperature = d.avgTemperature;
@@ -330,7 +330,6 @@ function prepareComparisonData(data, startDate, endDate) {
             avgMap[dateKey] = avgMap[dateKey] || {};
             avgMap[dateKey].sunshine = d.avgSunshine;
         }
-        // ここを追加！！
         if (d.avgMaxTemperature !== null && !isNaN(d.avgMaxTemperature)) {
             avgMap[dateKey] = avgMap[dateKey] || {};
             avgMap[dateKey].maxTemperature = d.avgMaxTemperature;
@@ -382,6 +381,7 @@ function prepareComparisonData(data, startDate, endDate) {
         minTemperature: { daily: dailyMinTemps, avg: avgMinTemps }
     };
 }
+        
 //グラフデータの抽出
 function handleFileSelect() {
     const file = document.getElementById("fileInput").files[0];
