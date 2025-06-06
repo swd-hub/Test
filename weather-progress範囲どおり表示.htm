@@ -322,8 +322,23 @@ function prepareComparisonData(data, startDate, endDate) {
             avgMap[dateKey] = avgMap[dateKey] || {};
             avgMap[dateKey].temperature = d.avgTemperature;
         }
-        // 同様に他の値も記録
-        // ... (略)
+        if (d.avgPrecipitation !== null && !isNaN(d.avgPrecipitation)) {
+            avgMap[dateKey] = avgMap[dateKey] || {};
+            avgMap[dateKey].precipitation = d.avgPrecipitation;
+        }
+        if (d.avgSunshine !== null && !isNaN(d.avgSunshine)) {
+            avgMap[dateKey] = avgMap[dateKey] || {};
+            avgMap[dateKey].sunshine = d.avgSunshine;
+        }
+        // ここを追加！！
+        if (d.avgMaxTemperature !== null && !isNaN(d.avgMaxTemperature)) {
+            avgMap[dateKey] = avgMap[dateKey] || {};
+            avgMap[dateKey].maxTemperature = d.avgMaxTemperature;
+        }
+        if (d.avgMinTemperature !== null && !isNaN(d.avgMinTemperature)) {
+            avgMap[dateKey] = avgMap[dateKey] || {};
+            avgMap[dateKey].minTemperature = d.avgMinTemperature;
+        }
     });
 
     const labels = [];
@@ -334,9 +349,9 @@ function prepareComparisonData(data, startDate, endDate) {
     const dailyMinTemps = [], avgMinTemps = [];
 
     const current = new Date(startDate);
-    const endCurrent = new Date(endDate); // 修正: 正しい終了日を使用
+    const endCurrent = new Date(endDate);
 
-    while (current <= endCurrent) { // 修正: <= で終了日も含める
+    while (current <= endCurrent) {
         const yearTwoDigits = String(current.getFullYear()).slice(-2);
         const md = `${yearTwoDigits}-${current.getMonth() + 1}-${current.getDate()}`;
         labels.push(md);
@@ -355,7 +370,7 @@ function prepareComparisonData(data, startDate, endDate) {
         dailyMinTemps.push(d ? d.minTemperature : null);
         avgMinTemps.push(a && a.minTemperature !== undefined ? a.minTemperature : null);
 
-        current.setDate(current.getDate() + 1); // 日付を1日加える
+        current.setDate(current.getDate() + 1);
     }
 
     return {
@@ -367,7 +382,6 @@ function prepareComparisonData(data, startDate, endDate) {
         minTemperature: { daily: dailyMinTemps, avg: avgMinTemps }
     };
 }
-
 //グラフデータの抽出
 function handleFileSelect() {
     const file = document.getElementById("fileInput").files[0];
