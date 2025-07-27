@@ -184,6 +184,7 @@ function updateMainTitle() {
     if (startDate && endDate) {
         const startYear = new Date(startDate).getFullYear();
         const endYear = new Date(endDate).getFullYear();
+        // ここで locationName が正しく取得されていれば、文字化けが解消されます
         const title = `${startYear}年-${endYear}年　気象経過（${locationName || '地点不明'}）`;
         document.getElementById("mainTitle").textContent = title;
     } else {
@@ -235,10 +236,12 @@ async function loadHourlyCSVAndRender() {
         if (!response.ok) {
             throw new Error(`CSVファイルの読み込みに失敗しました: ${response.statusText}`);
         }
-        const arrayBuffer = await response.arrayBuffer();
-        const utf8Content = shiftJISToUTF8(arrayBuffer);
         
-        const parseResult = parseCSV(utf8Content);
+        // ★変更点：response.arrayBuffer() の代わりに response.text() を使用
+        // これにより、ブラウザがContent-TypeヘッダーやBOMなどからエンコーディングを自動判別してデコードします。
+        const content = await response.text(); 
+        
+        const parseResult = parseCSV(content); // parseCSVに直接contentを渡す
         hourlyCsvData = parseResult.parsedData;
         locationName = parseResult.locationName;
 
@@ -252,11 +255,7 @@ async function loadHourlyCSVAndRender() {
     }
 }
 
-function shiftJISToUTF8(arrayBuffer) {
-    const decoder = new TextDecoder('shift-jis');
-    const uint8Array = new Uint8Array(arrayBuffer);
-    return decoder.decode(uint8Array);
-}
+// shiftJISToUTF8 関数は不要になったため削除
 
 // 時別CSVのクレンジング
 function parseCSV(content) {
