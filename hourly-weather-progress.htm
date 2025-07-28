@@ -240,6 +240,8 @@ async function loadHourlyCSVAndRender() {
         // ★変更点：response.arrayBuffer() の代わりに response.text() を使用
         // これにより、ブラウザがContent-TypeヘッダーやBOMなどからエンコーディングを自動判別してデコードします。
         const content = await response.text(); 
+
+console.log("content",content);
         
         const parseResult = parseCSV(content); // parseCSVに直接contentを渡す
         hourlyCsvData = parseResult.parsedData;
