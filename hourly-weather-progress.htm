@@ -381,9 +381,19 @@ function updateHourlyCharts(data) {
     const sunshines = data.map(d => d.sunshine);
    */
 
-const temperature = isNaN(parseFloat(cols[4])) ? 0 : parseFloat(cols[4]);
-const precipitation = isNaN(parseFloat(cols[7])) ? 0 : parseFloat(cols[7]);
-const sunshine = isNaN(parseFloat(cols[10])) ? 0 : parseFloat(cols[10]);
+const temperatures = data.map(d => 
+    d.temperatureQuality !== 8 && !isNaN(d.temperature) ? d.temperature : null
+);
+
+const precipitations = data.map(d => 
+    d.precipitationQuality !== 8 && !isNaN(d.precipitation) ? d.precipitation : null
+);
+
+const sunshines = data.map(d => 
+    d.sunshineQuality !== 8 && !isNaN(d.sunshine) ? d.sunshine : null
+);
+
+
 
 
     
