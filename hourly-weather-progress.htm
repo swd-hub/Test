@@ -186,7 +186,7 @@ function updateMainTitle() {
         const startYear = new Date(startDate).getFullYear();
         const endYear = new Date(endDate).getFullYear();
         // ここで locationName が正しく取得されていれば、文字化けが解消されます
-        const title = `${startYear}年-${endYear}年　気象経過（${locationName || '地点不明'}）`;
+        const title = `${startYear}年-${endYear}年　気象経過 日別値（${locationName || '地点不明'}）`;
         document.getElementById("mainTitle").textContent = title;
     } else {
         document.getElementById("mainTitle").textContent = `気象経過（${locationName || '地点不明'}）`;
