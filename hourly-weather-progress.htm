@@ -339,20 +339,29 @@ function handleHourlyGraphUpdate() {
         return;
     }
 
-    // 栽培開始日と終了日のフィルタリング
     const cultivationStartDate = new Date(document.getElementById("cultivationStartDate").value);
     const cultivationEndDate = new Date(document.getElementById("cultivationEndDate").value);
-    // 終了日の23:59:59まで含める
-    cultivationEndDate.setHours(23, 59, 59, 999); 
+    cultivationEndDate.setHours(23, 59, 59, 999);
 
-    const filteredData = hourlyCsvData.filter(d => 
+    const filteredData = hourlyCsvData.filter(d =>
         d.dateTime >= cultivationStartDate && d.dateTime <= cultivationEndDate
     );
-    
-    // フィルタリングされたデータでグラフを更新
+
+    console.log("フィルタ前のデータ数:", hourlyCsvData.length);
+    console.log("フィルタ後のデータ数:", filteredData.length);
+    console.log("日付フィルタ:", cultivationStartDate, "～", cultivationEndDate);
+
+    if (filteredData.length === 0) {
+        console.warn("指定された期間にデータがありません。");
+    }
+
+    // 強制的にグラフエリアを表示
+    document.getElementById("chartcanvas").style.display = "block";
+
     updateHourlyCharts(filteredData);
-    updateMainTitle(); // タイトルも更新
+    updateMainTitle();
 }
+
 
 // 時別グラフ描画関数
 function updateHourlyCharts(data) {
