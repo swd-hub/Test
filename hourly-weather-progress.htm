@@ -229,13 +229,13 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 });
 
-// ShiftJIS→UTF8 変換関数（修正版）
+// UTF-8として読み込む（修正）
 function shiftJISToUTF8(arrayBuffer) {
-    // 日本語CSV（Excel保存）に対応するShift-JISとして読み込む
-    const decoder = new TextDecoder('shift-jis'); // ← ★修正ポイント
+    const decoder = new TextDecoder('utf-8'); // ←★ここ
     const uint8Array = new Uint8Array(arrayBuffer);
     return decoder.decode(uint8Array);
 }
+
 
 
 // fetchでCSVを読み込む関数
