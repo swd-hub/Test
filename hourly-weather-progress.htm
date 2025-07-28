@@ -229,6 +229,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 });
 
+// ShiftJIS→UTF8 変換関数を修正: 'shift-jis'の代わりに'windows-31j'を試す
+function shiftJISToUTF8(arrayBuffer) {
+    // ほとんどの日本語Shift-JISは'windows-31j'でカバーできます。
+    // 'shift-jis'でダメな場合、'windows-31j'を試すのが定石です。
+    const decoder = new TextDecoder('windows-31j');
+    const uint8Array = new Uint8Array(arrayBuffer);
+    return decoder.decode(uint8Array);
+}
+
 // fetchでCSVを読み込む関数
 async function loadHourlyCSVAndRender() {
     try {
@@ -237,9 +246,22 @@ async function loadHourlyCSVAndRender() {
             throw new Error(`CSVファイルの読み込みに失敗しました: ${response.statusText}`);
         }
         
-        // ★変更点：response.arrayBuffer() の代わりに response.text() を使用
-        // これにより、ブラウザがContent-TypeヘッダーやBOMなどからエンコーディングを自動判別してデコードします。
-        const content = await response.text();       
+        const arrayBuffer = await response.arrayBuffer();
+        const content = shiftJISToUTF8(arrayBuffer); // Shift-JIS (またはwindows-31j)からUTF-8に変換
+        
+        // デバッグ用: 変換後のコンテンツの冒頭を表示して、文字化けが解消されているか確認
+        console.log("Converted content (first 200 chars):", content.substring(0, 200));
+        // 特に地点名が含まれると思われる2行目を確認
+        const linesForDebug = content.trim().split('\n');
+        if (linesForDebug.length > 1) {
+            console.log("Second line of converted content:", linesForDebug[1]);
+            const locationLinePartsForDebug = linesForDebug[1].split(',');
+            if (locationLinePartsForDebug.length > 4) {
+                console.log("Extracted location part (raw from 2nd line, 5th col):", locationLinePartsForDebug[4]);
+                console.log("Extracted location part (trimmed):", locationLinePartsForDebug[4].trim());
+            }
+        }
+
         const parseResult = parseCSV(content); // parseCSVに直接contentを渡す
         hourlyCsvData = parseResult.parsedData;
         locationName = parseResult.locationName;
@@ -250,11 +272,10 @@ async function loadHourlyCSVAndRender() {
         document.getElementById("chartcanvas").style.display = "block"; // グラフセクションを表示
     } catch (error) {
         console.error("CSVファイルの読み込みまたは解析中にエラーが発生しました:", error);
-        alert("CSVファイルの読み込みに失敗しました。ファイルが正しい場所にあるか、ファイル名が正しいか確認してください。");
+        alert("CSVファイルの読み込みに失敗しました。ファイルが正しい場所にあるか、ファイル名が正しいか、またはブラウザの開発者ツールでエラーを確認してください。");
     }
 }
 
-// shiftJISToUTF8 関数は不要になったため削除
 
 // 時別CSVのクレンジング
 function parseCSV(content) {
@@ -263,6 +284,7 @@ function parseCSV(content) {
 
     // 地点名を取得 (2行目の5列目, 0-indexed)
     const locationLine = lines[1].split(',');
+    // console.log("locationLine from parseCSV:", locationLine); // デバッグ用
     const extractedLocationName = locationLine[4] ? locationLine[4].trim() : '';
 
     // データが始まる行を特定 (例: 5行目からデータが始まる)
