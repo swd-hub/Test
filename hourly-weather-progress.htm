@@ -229,14 +229,14 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 });
 
-// ShiftJIS→UTF8 変換関数: 'shift-jis'の代わりに'windows-31j'を試す
+// ShiftJIS→UTF8 変換関数（修正版）
 function shiftJISToUTF8(arrayBuffer) {
-    // ほとんどの日本語Shift-JISは'windows-31j'でカバーできます。
-    // 'shift-jis'でダメな場合、'windows-31j'を試すのが定石です。
-    const decoder = new TextDecoder('windows-31j'); // ★ここをwindows-31jに変更
+    // 日本語CSV（Excel保存）に対応するShift-JISとして読み込む
+    const decoder = new TextDecoder('shift-jis'); // ← ★修正ポイント
     const uint8Array = new Uint8Array(arrayBuffer);
     return decoder.decode(uint8Array);
 }
+
 
 // fetchでCSVを読み込む関数
 async function loadHourlyCSVAndRender() {
