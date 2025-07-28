@@ -7,6 +7,7 @@
 <meta charset="UTF-8">
 <title>気象経過</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@latest"></script>
     <style>
@@ -229,14 +230,16 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 });
 
-// UTF-8として読み込む（修正）
+// Encoding.js を使った Shift-JIS → UTF-8 変換関数
 function shiftJISToUTF8(arrayBuffer) {
-    const decoder = new TextDecoder('utf-8'); // ←★ここ
     const uint8Array = new Uint8Array(arrayBuffer);
-    return decoder.decode(uint8Array);
+    const unicodeArray = Encoding.convert(uint8Array, {
+        to: 'UNICODE',
+        from: 'SJIS',
+        type: 'string'
+    });
+    return unicodeArray;
 }
-
-
 
 // fetchでCSVを読み込む関数
 async function loadHourlyCSVAndRender() {
