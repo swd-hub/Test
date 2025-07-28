@@ -365,99 +365,112 @@ function handleHourlyGraphUpdate() {
 
 // 時別グラフ描画関数
 function updateHourlyCharts(data) {
-    console.log("📊 グラフ描画関数呼び出し OK");
-    console.log("受け取ったデータ件数:", data.length);
-
     const labels = data.map(d => {
-        const year = String(d.dateTime.getFullYear()).slice(-2);
+        const year = String(d.dateTime.getFullYear()).slice(-2); // 下2桁
         const month = d.dateTime.getMonth() + 1;
         const day = d.dateTime.getDate();
         const hour = d.dateTime.getHours();
         return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}時`;
     });
-    console.log("ラベル数:", labels.length);
-    console.log("先頭ラベル:", labels[0]);
-
+    
     const temperatures = data.map(d => d.temperature);
     const precipitations = data.map(d => d.precipitation);
     const sunshines = data.map(d => d.sunshine);
 
-    console.log("温度配列の先頭値:", temperatures[0]);
-    console.log("降水量配列の先頭値:", precipitations[0]);
-    console.log("日照時間配列の先頭値:", sunshines[0]);
-
     let maxTempValue = parseFloat(document.getElementById('hourlyTempMax').value);
-    if (isNaN(maxTempValue) || maxTempValue <= 0) {
-        console.warn("気温最大値が不正。デフォルトに変更: 30");
-        maxTempValue = 30;
-    }
+    if (isNaN(maxTempValue) || maxTempValue <= 0) maxTempValue = 30; // デフォルト値
 
     let maxPrecValue = parseFloat(document.getElementById('hourlyPrecMax').value);
-    if (isNaN(maxPrecValue) || maxPrecValue <= 0) {
-        console.warn("降水量最大値が不正。デフォルトに変更: 10");
-        maxPrecValue = 10;
-    }
+    if (isNaN(maxPrecValue) || maxPrecValue <= 0) maxPrecValue = 10; // デフォルト値
 
     let maxSunValue = parseFloat(document.getElementById('hourlySunMax').value);
-    if (isNaN(maxSunValue) || maxSunValue <= 0) {
-        console.warn("日照時間最大値が不正。デフォルトに変更: 1");
-        maxSunValue = 1;
-    }
-
-    console.log("最大値設定:", { maxTempValue, maxPrecValue, maxSunValue });
+    if (isNaN(maxSunValue) || maxSunValue <= 0) maxSunValue = 1; // デフォルト値
 
     const createChart = (ctx, type, labels, datasets, yMax, yTitleText) => {
-        console.log(`📈 グラフ作成開始 (${yTitleText})`);
         return new Chart(ctx, {
             type: type,
             data: { labels, datasets },
             options: {
-                animation: false,
                 layout: { padding: { left: 20, right: 20, top: 20, bottom: 20 } },
                 plugins: {
                     legend: { labels: { font: { size: 30 } } }
                 },
                 scales: {
                     x: {
-                        ticks: { font: { size: 28 }, maxTicksLimit: 24 },
-                        title: { display: true, text: '年-月-日 時刻', font: { size: 30 } }
+                        ticks: { font: { size: 28 } },
+                        title: {
+                            display: true,
+                            text: '年-月-日 時刻',
+                            font: { size: 30 }
+                        }
                     },
                     y: {
                         ticks: { font: { size: 28 } },
-                        title: { display: true, text: yTitleText, font: { size: 30 } },
+                        title: {
+                            display: true,
+                            text: yTitleText,
+                            font: { size: 30 }
+                        },
                         suggestedMax: yMax,
-                        beginAtZero: true
+                        beginAtZero: true // 0から開始
                     }
                 }
             }
         });
     };
 
+    // 気温チャート
     if (hourlyTempChart) hourlyTempChart.destroy();
     hourlyTempChart = createChart(
         document.getElementById('hourlyTempChart').getContext('2d'),
         'line', labels,
-        [{ label: '時別気温(℃)', data: temperatures, borderColor: 'rgba(255, 165, 0, 1)', borderWidth: 3, fill: false, tension: 0.1 }],
-        maxTempValue, '気温 (℃)'
+        [
+            {
+                label: '時別気温(℃)',
+                data: temperatures,
+                borderColor: 'rgba(255, 165, 0, 1)',
+                borderWidth: 3,
+                fill: false,
+                tension: 0.1 // 滑らかな線
+            }
+        ],
+        maxTempValue,
+        '気温 (℃)'
     );
 
+    // 降水量チャート
     if (hourlyPrecChart) hourlyPrecChart.destroy();
     hourlyPrecChart = createChart(
         document.getElementById('hourlyPrecChart').getContext('2d'),
         'bar', labels,
-        [{ label: '時別降水量(mm)', data: precipitations, backgroundColor: 'rgba(54, 162, 235, 0.8)', maxBarThickness: 10 }],
-        maxPrecValue, '降水量 (mm)'
+        [
+            {
+                label: '時別降水量(mm)',
+                data: precipitations,
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                maxBarThickness: 10
+            }
+        ],
+        maxPrecValue,
+        '降水量 (mm)'
     );
 
+    // 日照時間チャート
     if (hourlySunChart) hourlySunChart.destroy();
     hourlySunChart = createChart(
         document.getElementById('hourlySunChart').getContext('2d'),
         'bar', labels,
-        [{ label: '時別日照時間(時間)', data: sunshines, backgroundColor: 'rgba(255, 206, 86, 0.8)', maxBarThickness: 10 }],
-        maxSunValue, '日照時間 (時間)'
+        [
+            {
+                label: '時別日照時間(時間)',
+                data: sunshines,
+                backgroundColor: 'rgba(255, 206, 86, 0.8)',
+                maxBarThickness: 10
+            }
+        ],
+        maxSunValue,
+        '日照時間 (時間)'
     );
-
-    console.log("✅ グラフ描画完了");
 }
      </script>
 
