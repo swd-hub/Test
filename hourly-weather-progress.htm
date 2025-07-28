@@ -229,13 +229,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 });
 
-// ShiftJIS→UTF8 変換関数を再び定義
-function shiftJISToUTF8(arrayBuffer) {
-    const decoder = new TextDecoder('shift-jis');
-    const uint8Array = new Uint8Array(arrayBuffer);
-    return decoder.decode(uint8Array);
-}
-
 // fetchでCSVを読み込む関数
 async function loadHourlyCSVAndRender() {
     try {
@@ -244,13 +237,9 @@ async function loadHourlyCSVAndRender() {
             throw new Error(`CSVファイルの読み込みに失敗しました: ${response.statusText}`);
         }
         
-        // ★修正点：response.arrayBuffer() を使用し、Shift-JIS変換を行う
-        const arrayBuffer = await response.arrayBuffer();
-        const content = shiftJISToUTF8(arrayBuffer); // Shift-JISからUTF-8に変換
-        
-        // ここで content の内容を一時的に確認するログを残しても良いでしょう
-        // console.log("content", content.substring(0, 500)); // 冒頭500文字だけ表示
-
+        // ★変更点：response.arrayBuffer() の代わりに response.text() を使用
+        // これにより、ブラウザがContent-TypeヘッダーやBOMなどからエンコーディングを自動判別してデコードします。
+        const content = await response.text();       
         const parseResult = parseCSV(content); // parseCSVに直接contentを渡す
         hourlyCsvData = parseResult.parsedData;
         locationName = parseResult.locationName;
@@ -261,10 +250,11 @@ async function loadHourlyCSVAndRender() {
         document.getElementById("chartcanvas").style.display = "block"; // グラフセクションを表示
     } catch (error) {
         console.error("CSVファイルの読み込みまたは解析中にエラーが発生しました:", error);
-        alert("CSVファイルの読み込みに失敗しました。ファイルが正しい場所にあるか、ファイル名が正しいか、またはブラウザの開発者ツールでエラーを確認してください。");
+        alert("CSVファイルの読み込みに失敗しました。ファイルが正しい場所にあるか、ファイル名が正しいか確認してください。");
     }
 }
 
+// shiftJISToUTF8 関数は不要になったため削除
 
 // 時別CSVのクレンジング
 function parseCSV(content) {
