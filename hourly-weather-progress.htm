@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta name="discription" content="気象データの日別値と平年値をグラフ化する。">  
-<meta name="auther" content="澤田泰人">
+<meta name="description" content="気象データの日別値と平年値をグラフ化する。">  
+<meta name="author" content="澤田泰人">
 <meta name="date" content="2025年5月4日">
 <meta charset="UTF-8">
 <title>気象経過</title>
@@ -229,11 +229,11 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 });
 
-// ShiftJIS→UTF8 変換関数を修正: 'shift-jis'の代わりに'windows-31j'を試す
+// ShiftJIS→UTF8 変換関数: 'shift-jis'の代わりに'windows-31j'を試す
 function shiftJISToUTF8(arrayBuffer) {
     // ほとんどの日本語Shift-JISは'windows-31j'でカバーできます。
     // 'shift-jis'でダメな場合、'windows-31j'を試すのが定石です。
-    const decoder = new TextDecoder('windows-31j');
+    const decoder = new TextDecoder('windows-31j'); // ★ここをwindows-31jに変更
     const uint8Array = new Uint8Array(arrayBuffer);
     return decoder.decode(uint8Array);
 }
@@ -246,12 +246,12 @@ async function loadHourlyCSVAndRender() {
             throw new Error(`CSVファイルの読み込みに失敗しました: ${response.statusText}`);
         }
         
+        // response.arrayBuffer() を使用し、Shift-JIS変換を行う
         const arrayBuffer = await response.arrayBuffer();
-        const content = shiftJISToUTF8(arrayBuffer); // Shift-JIS (またはwindows-31j)からUTF-8に変換
+        const content = shiftJISToUTF8(arrayBuffer); // ★ここで変換関数を呼び出し
         
-        // デバッグ用: 変換後のコンテンツの冒頭を表示して、文字化けが解消されているか確認
+        // デバッグ用ログ: 変換後のコンテンツと地点名抽出部分を確認
         console.log("Converted content (first 200 chars):", content.substring(0, 200));
-        // 特に地点名が含まれると思われる2行目を確認
         const linesForDebug = content.trim().split('\n');
         if (linesForDebug.length > 1) {
             console.log("Second line of converted content:", linesForDebug[1]);
@@ -284,7 +284,6 @@ function parseCSV(content) {
 
     // 地点名を取得 (2行目の5列目, 0-indexed)
     const locationLine = lines[1].split(',');
-    // console.log("locationLine from parseCSV:", locationLine); // デバッグ用
     const extractedLocationName = locationLine[4] ? locationLine[4].trim() : '';
 
     // データが始まる行を特定 (例: 5行目からデータが始まる)
