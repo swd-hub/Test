@@ -268,7 +268,8 @@ async function loadHourlyCSVAndRender() {
         const parseResult = parseCSV(content); // parseCSVに直接contentを渡す
         hourlyCsvData = parseResult.parsedData;
         locationName = parseResult.locationName;
-console.log(hourlyCsvData);        
+        
+console.log("hourlyCsvData",hourlyCsvData);        
 
         updateDateFields(); // 日付フィールドを初期化
         updateMainTitle(); // タイトルを初期化
