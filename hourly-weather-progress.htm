@@ -374,11 +374,19 @@ function updateHourlyCharts(data) {
         const hour = d.dateTime.getHours();
         return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}時`;
     });
-    
+
+    /*
     const temperatures = data.map(d => d.temperature);
     const precipitations = data.map(d => d.precipitation);
     const sunshines = data.map(d => d.sunshine);
+   */
 
+const temperature = isNaN(parseFloat(cols[4])) ? 0 : parseFloat(cols[4]);
+const precipitation = isNaN(parseFloat(cols[7])) ? 0 : parseFloat(cols[7]);
+const sunshine = isNaN(parseFloat(cols[10])) ? 0 : parseFloat(cols[10]);
+
+
+    
     let maxTempValue = parseFloat(document.getElementById('hourlyTempMax').value);
     if (isNaN(maxTempValue) || maxTempValue <= 0) maxTempValue = 30; // デフォルト値
 
