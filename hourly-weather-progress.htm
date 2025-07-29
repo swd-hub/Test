@@ -190,7 +190,7 @@ function updateMainTitle(locationName = '出雲') {
 
 
 // ファイル選択または日付変更後にタイトルを更新する
-document.getElementById("fileInput").addEventListener("change", updateMainTitle);
+//document.getElementById("fileInput").addEventListener("change", updateMainTitle);
 document.getElementById("cultivationStartDate").addEventListener("change", updateMainTitle);
 document.getElementById("cultivationEndDate").addEventListener("change", updateMainTitle);
    
@@ -217,8 +217,8 @@ document.getElementById("cultivationEndDate").addEventListener("change", updateM
 
  let hourlyTempChart, hourlyPrecChart, hourlySunChart; // チャートインスタンスを時別用に変更
 
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
+            document.addEventListener('DOMContentLoaded', function() {
+            //document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
             document.getElementById('updateButton').addEventListener('click', handleFileSelect, false);
         });
 
