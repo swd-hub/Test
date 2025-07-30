@@ -308,6 +308,12 @@ function handleFileSelect() {
         });
 }
 
+        // ページ読み込み時に日付をセットしてCSVも読み込み
+window.onload = function () {
+    updateDateFields();       // 自動日付設定（開始日と終了日）
+    handleFileSelect();       // グラフを自動描画
+};
+
 
 // 時別グラフ描画関数
 function updateHourlyCharts(data) {
