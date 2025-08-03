@@ -176,7 +176,7 @@ input[type="date"], input[type="file"], input[type="number"] {
 </div>
 </div>
     <script>
-function updateMainTitle(locationName = '斐川') {
+function updateMainTitle(locationName = '出雲') {
     const startDate = document.getElementById("cultivationStartDate").value;
     const endDate = document.getElementById("cultivationEndDate").value;
 
@@ -236,7 +236,7 @@ function parseCSV(content) {
     // データが始まる行を特定 (例: 5行目からデータが始まる)
     // CSVサンプル:
     // 1: ダウンロードした時刻...
-    // 2: ,,,,斐川,...
+    // 2: ,,,,出雲,...
     // 3: 年,月,日,時,気温(℃),気温(℃),気温(℃),降水量(mm),降水量(mm),降水量(mm),日照時間(時間),日照時間(時間),日照時間(時間)
     // 4: ,,,,,品質情報,均質番号,,品質情報,均質番号,,品質情報,均質番号
     // 5: 2024,1,1,1,7.9,8,1,0.5,8,1,0,8,1
@@ -277,7 +277,7 @@ function parseCSV(content) {
 
 // グラフ描画データ作成と描画のメイン処理
 function handleFileSelect() {
-    fetch('斐川時別値.csv')
+    fetch('出雲時別値.csv')
         .then(response => {
             if (!response.ok) {
                 throw new Error('CSVファイルの読み込みに失敗しました');
@@ -300,19 +300,19 @@ function handleFileSelect() {
             // フィルタリングされたデータでグラフを更新
             updateHourlyCharts(filteredData);
             document.getElementById("chartcanvas").style.display = "block";
-            updateMainTitle('斐川'); // タイトルも固定的に更新
+            updateMainTitle('出雲'); // タイトルも固定的に更新
         })
         .catch(error => {
             console.error('CSV読み込みエラー:', error);
             alert('CSVファイルの読み込みに失敗しました。');
         });
 }
+
 // ページ読み込み時に日付をセットしてCSVも読み込み
 window.onload = function () {
     updateDateFields();       // 自動日付設定（開始日と終了日）
     handleFileSelect();       // グラフを自動描画
 };
-
 
 // 時別グラフ描画関数
 function updateHourlyCharts(data) {
