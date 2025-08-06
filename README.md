@@ -2,4 +2,4 @@
 
 https://swd-hub.github.io/Test/
 
-index.htmlの備忘用はファイル名に注意
+index.htmlのOLDファイルはファイル名にindexを残すと誤動作に注意
