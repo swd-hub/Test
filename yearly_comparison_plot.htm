@@ -139,6 +139,7 @@ async function loadCSVWithFallback() {
 }
 
 
+
 function shiftJISToUTF8(arrayBuffer) {
   const decoder = new TextDecoder('shift-jis');
   const uint8Array = new Uint8Array(arrayBuffer);
@@ -319,4 +320,5 @@ function drawAnnualCharts(labels, avgTemps, maxTemps, minTemps, precSums, sunSum
 </script>
 </body>
 </html>
+
 
