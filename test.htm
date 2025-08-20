@@ -291,9 +291,9 @@ input[type="date"] {
 
           // 「10時間12分」形式
           if (night.includes("時間")) {
-            const h = parseFloat(night.match(/(\d+)時間/)?.[1] || 0);
-            const m = parseFloat(night.match(/(\d+)分/)?.[1] || 0);
-            const s = parseFloat(night.match(/(\d+)秒/)?.[1] || 0);
+            const h = parseFloat(night.match(/(\\d+)時間/)?.[1] || 0);
+            const m = parseFloat(night.match(/(\\d+)分/)?.[1] || 0);
+            const s = parseFloat(night.match(/(\\d+)秒/)?.[1] || 0);
             totalHours = h + m / 60 + s / 3600;
           }
           // 「hh:mm」または「hh:mm:ss」形式
@@ -371,11 +371,30 @@ input[type="date"] {
 
     document.getElementById("loadingMessage").style.display = "none";
   });
+
+  // 表示中のテーブルをCSVとして保存
+  function exportFullYearCSV() {
+    const table = document.getElementById("resultTable");
+    const rows = Array.from(table.querySelectorAll("tr"));
+    const csv = rows.map(row => {
+      const cols = Array.from(row.querySelectorAll("th, td"));
+      return cols.map(col => `"${col.textContent.trim()}"`).join(",");
+    }).join("\\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "izumo_sun_data_selected.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 </script>
 
 </body>
 
 </html>
+
 
 
 
