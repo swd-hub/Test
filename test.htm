@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <title>出雲市の日出・日入・夜間長</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/encoding-japanese@2.2.0/encoding.min.js"></script>
+
   <style>
 /* 画面表示用スタイル */
 @media screen {
@@ -294,12 +296,18 @@ input[type="date"] {
 
     const reader = new FileReader();
     reader.onload = () => {
-      const csvText = reader.result;
+      const sjisArray = new Uint8Array(reader.result);
+      const utf8Text = Encoding.convert(sjisArray, {
+        to: 'UNICODE',
+        from: 'SJIS',
+        type: 'string'
+      });
+
       const startDateStr = document.getElementById("start-date").value;
       const endDateStr = document.getElementById("end-date").value;
-      processCSV(csvText, startDateStr, endDateStr);
+      processCSV(utf8Text, startDateStr, endDateStr);
     };
-    reader.readAsText(file, "UTF-8");
+    reader.readAsArrayBuffer(file); // ← SJISはArrayBufferで読む
   });
 
   function processCSV(csvText, startDateStr, endDateStr) {
