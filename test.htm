@@ -287,18 +287,27 @@ input[type="date"] {
           `;
           tableBody.appendChild(tr);
 
-          // 夜間長の形式が「10時間12分」などの場合
-          const h = parseFloat(night.match(/(\d+)時間/)?.[1] || 0);
-          const m = parseFloat(night.match(/(\d+)分/)?.[1] || 0);
-          const s = parseFloat(night.match(/(\d+)秒/)?.[1] || 0);
-          const totalHours = h + m / 60 + s / 3600;
+          let totalHours = 0;
+
+          // 「10時間12分」形式
+          if (night.includes("時間")) {
+            const h = parseFloat(night.match(/(\d+)時間/)?.[1] || 0);
+            const m = parseFloat(night.match(/(\d+)分/)?.[1] || 0);
+            const s = parseFloat(night.match(/(\d+)秒/)?.[1] || 0);
+            totalHours = h + m / 60 + s / 3600;
+          }
+          // 「hh:mm」または「hh:mm:ss」形式
+          else if (night.includes(":")) {
+            const parts = night.split(":").map(Number);
+            const [h, m, s] = [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+            totalHours = h + m / 60 + s / 3600;
+          }
 
           labels.push(date);
           nightHours.push(Number(totalHours.toFixed(2)));
         }
       });
 
-      // デバッグログ
       console.log("labels:", labels);
       console.log("nightHours:", nightHours);
 
@@ -352,7 +361,7 @@ input[type="date"] {
           },
           y: {
             title: { display: true, text: '夜間長（時間）', font: { size: 16 } },
-            min: 0, // ← 一時的に広げて確認
+            min: 0,
             max: 24,
             ticks: { stepSize: 2, font: { size: 15 } }
           }
@@ -367,5 +376,6 @@ input[type="date"] {
 </body>
 
 </html>
+
 
 
