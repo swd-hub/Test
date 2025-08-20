@@ -287,6 +287,7 @@ input[type="date"] {
           `;
           tableBody.appendChild(tr);
 
+          // 夜間長の形式が「10時間12分」などの場合
           const h = parseFloat(night.match(/(\d+)時間/)?.[1] || 0);
           const m = parseFloat(night.match(/(\d+)分/)?.[1] || 0);
           const s = parseFloat(night.match(/(\d+)秒/)?.[1] || 0);
@@ -296,14 +297,28 @@ input[type="date"] {
           nightHours.push(Number(totalHours.toFixed(2)));
         }
       });
+
+      // デバッグログ
+      console.log("labels:", labels);
+      console.log("nightHours:", nightHours);
+
     } catch (err) {
       const tr = document.createElement("tr");
       tr.innerHTML = `<td colspan="5">CSV読み込みエラー: ${err}</td>`;
       tableBody.appendChild(tr);
     }
 
-    const ctx = document.getElementById('daylightChart').getContext('2d');
-    if (window.daylightChartObj) window.daylightChartObj.destroy();
+    const canvas = document.getElementById('daylightChart');
+    if (!canvas) {
+      console.error("Canvas要素が見つかりません");
+      return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (window.daylightChartObj && typeof window.daylightChartObj.destroy === "function") {
+      window.daylightChartObj.destroy();
+    }
+
     window.daylightChartObj = new Chart(ctx, {
       type: 'line',
       data: {
@@ -331,12 +346,15 @@ input[type="date"] {
           }
         },
         scales: {
-          x: { title: { display: true, text: '日付', font: {size: 16} }, ticks: {font:{size:15}} },
+          x: {
+            title: { display: true, text: '日付', font: { size: 16 } },
+            ticks: { font: { size: 15 } }
+          },
           y: {
-            title: { display: true, text: '夜間長（時間）', font: {size: 16} },
-            min: 8,
-            max: 16,
-            ticks: { stepSize: 2, font:{size:15} }
+            title: { display: true, text: '夜間長（時間）', font: { size: 16 } },
+            min: 0, // ← 一時的に広げて確認
+            max: 24,
+            ticks: { stepSize: 2, font: { size: 15 } }
           }
         }
       }
@@ -349,4 +367,5 @@ input[type="date"] {
 </body>
 
 </html>
+
 
