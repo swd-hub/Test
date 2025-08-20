@@ -271,7 +271,7 @@ input[type="date"] {
     let nightHours = [];
 
     try {
-      const csvText = await fetch("sun_data_2025.csv").then(res => res.text());
+      const csvText = await fetch("izumo_2025_sun_data.csv").then(res => res.text());
       const rows = csvText.trim().split("\n").slice(1); // ヘッダー除去
 
       rows.forEach(row => {
@@ -349,3 +349,4 @@ input[type="date"] {
 </body>
 
 </html>
+
