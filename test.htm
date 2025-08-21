@@ -182,20 +182,20 @@ input[type="date"] {
   <h1>出雲市の日出・日入・夜間長</h1>
 
   <!-- 入力を月＋日で分ける -->
-  <label>開始日:
-    <input type="number" id="start-month" min="1" max="12" value="3" style="width:4em;">月
-    <input type="number" id="start-day" min="1" max="31" value="20" style="width:4em;">日
-  </label>
-  <label>終了日:
-    <input type="number" id="end-month" min="1" max="12" value="4" style="width:4em;">月
-    <input type="number" id="end-day" min="1" max="31" value="20" style="width:4em;">日
-  </label>
-  <button id="btn">取得</button>
+<label>開始日: 
+  <input type="number" id="start-month" min="1" max="12" value="3"> 月
+  <input type="number" id="start-day" min="1" max="31" value="5"> 日
+</label>
 
-  <label id="fileLabel" style="display:none; margin-top: 1em;">
-    ローカルCSVを選択:
-    <input type="file" id="csvFile" accept=".csv">
-  </label>
+<label>終了日: 
+  <input type="number" id="end-month" min="1" max="12" value="3"> 月
+  <input type="number" id="end-day" min="1" max="31" value="20"> 日
+</label>
+
+<button id="btn">実行</button>
+<p id="loadingMessage" style="display:none;">読み込み中...</p>
+<label id="fileLabel">CSVファイルを選択: <input type="file" id="csvFile"></label>
+
 
   <div class="flex-area">
     <table id="resultTable" border="1">
@@ -363,3 +363,4 @@ input[type="date"] {
 </script>
 </body>
 </html>
+
