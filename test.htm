@@ -180,7 +180,8 @@ input[type="date"] {
 </head>
 <body>
   <h1>出雲市の日出・日入・夜間長</h1>
-   <!-- 入力を月＋日で分ける -->
+
+  <!-- 入力を月＋日で分ける -->
   <label>開始日:
     <input type="number" id="start-month" min="1" max="12" value="3" style="width:4em;">月
     <input type="number" id="start-day" min="1" max="31" value="20" style="width:4em;">日
@@ -190,13 +191,14 @@ input[type="date"] {
     <input type="number" id="end-day" min="1" max="31" value="20" style="width:4em;">日
   </label>
   <button id="btn">取得</button>
+
   <label id="fileLabel" style="display:none; margin-top: 1em;">
     ローカルCSVを選択:
     <input type="file" id="csvFile" accept=".csv">
   </label>
 
   <div class="flex-area">
-    <table id="resultTable">
+    <table id="resultTable" border="1">
       <thead>
         <tr>
           <th>月日</th>
@@ -209,31 +211,22 @@ input[type="date"] {
       <tbody></tbody>
     </table>
 
-    <div class="chart-container">
-      <div id="loadingMessage">
-        <div class="spinner"></div>
-        読み込み中...
-      </div>
+    <div class="chart-container" style="width:800px; height:500px;">
+      <div id="loadingMessage" style="display:none;">読み込み中...</div>
       <canvas id="daylightChart"></canvas>
     </div>
   </div>
 
 <script>
-  const today = new Date();
-  const oneMonthLater = new Date(today);
-  oneMonthLater.setMonth(today.getMonth() + 1);
-
-  // 入力値を YYYY-MM-DD → MM-DD に変換
-  function toMMDD(date) {
-    const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-    return localDate.toISOString().slice(5, 10); // "MM-DD"
+  // "03-05" のように MM-DD 形式へ
+  function toMMDD(month, day) {
+    return String(month).padStart(2, "0") + "-" + String(day).padStart(2, "0");
   }
 
-  // CSVの日付を "YYYY/MM/DD" → "MM-DD" に変換
+  // CSVの日付を "YYYY/MM/DD" → "MM-DD"
   function normalizeDate(dateStr) {
     const [y, m, d] = dateStr.split("/");
-    return `${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    return `${m.padStart(2,"0")}-${d.padStart(2,"0")}`;
   }
 
   function parseJapaneseDuration(text) {
@@ -243,17 +236,18 @@ input[type="date"] {
     return h + m / 60 + s / 3600;
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("start-date").value = today.toISOString().slice(0, 10);
-    document.getElementById("end-date").value = oneMonthLater.toISOString().slice(0, 10);
-  });
-
   document.getElementById("btn").addEventListener("click", async () => {
-    document.getElementById("loadingMessage").style.display = "flex";
+    document.getElementById("loadingMessage").style.display = "block";
     document.getElementById("fileLabel").style.display = "none";
 
-    const startDateStr = toMMDD(new Date(document.getElementById("start-date").value));
-    const endDateStr   = toMMDD(new Date(document.getElementById("end-date").value));
+    const startDateStr = toMMDD(
+      document.getElementById("start-month").value,
+      document.getElementById("start-day").value
+    );
+    const endDateStr = toMMDD(
+      document.getElementById("end-month").value,
+      document.getElementById("end-day").value
+    );
 
     try {
       const csvText = await fetch("izumo_2025_sun_data.csv").then(res => {
@@ -275,8 +269,14 @@ input[type="date"] {
     reader.onload = () => {
       const sjisArray = new Uint8Array(reader.result);
       const utf8Text = Encoding.convert(sjisArray, {to:'UNICODE', from:'SJIS', type:'string'});
-      const startDateStr = toMMDD(new Date(document.getElementById("start-date").value));
-      const endDateStr   = toMMDD(new Date(document.getElementById("end-date").value));
+      const startDateStr = toMMDD(
+        document.getElementById("start-month").value,
+        document.getElementById("start-day").value
+      );
+      const endDateStr = toMMDD(
+        document.getElementById("end-month").value,
+        document.getElementById("end-day").value
+      );
       processCSV(utf8Text, startDateStr, endDateStr);
     };
     reader.readAsArrayBuffer(file);
@@ -350,18 +350,12 @@ input[type="date"] {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false,
         plugins: {
-          title: { display: true, text: '昼間長と夜間長の推移', font: { size: 20 } }
+          title: { display: true, text: '昼間長と夜間長の推移' }
         },
         scales: {
-          x: {
-            title: { display: true, text: '月日', font: { size: 16 } }
-          },
-          y: {
-            title: { display: true, text: '時間（h）', font: { size: 16 } },
-            min: 0, max: 24, ticks: { stepSize: 2 }
-          }
+          x: { title: { display: true, text: '月日' } },
+          y: { min:0, max:24, ticks:{stepSize:2}, title:{display:true,text:'時間(h)'} }
         }
       }
     });
@@ -369,5 +363,3 @@ input[type="date"] {
 </script>
 </body>
 </html>
-
-
