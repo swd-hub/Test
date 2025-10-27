@@ -1,0 +1,162 @@
+digraph 斐川町耕畜連携 {
+    // --- 図全体の設定 ---
+    graph [
+        rankdir=TB,
+        fontname="MS Gothic",
+        label="出雲市斐川町における県産飼料生産の組織対応\n\n",
+        labelloc=t,
+        fontsize=16,
+        fontcolor=black,
+        center=true // ここに center=true を追加して中央揃えにします
+    ];
+
+    // --- 共通スタイル ---
+    node [
+        fontsize=11,
+        width=2.0,
+        height=0.7,
+        margin="0.2,0.15",
+        style=filled,
+        fillcolor=white, // デフォルトのノード背景色は白
+        fontname="MS Gothic"
+    ];
+
+	edge [
+	    fontsize=10,
+	    fontname="MS Gothic",
+	    labelfontsize=10,
+	    arrowhead=none,
+	    arrowtail=none
+	];
+
+    // --- クラスタ定義：斐川町ＷＣＳ生産協議会 ---
+    subgraph cluster_斐川町WCS生産協議会 {
+        label=" \n\n\n\n";
+        fontname="MS Gothic";
+        fontsize=12;
+        style=filled;
+        color="#E0E0E0"; // クラスタの枠線の色
+
+        subgraph cluster_コントラクター_斐川 {
+            label="コントラクター";
+            fontname="MS Gothic";
+            fontsize=10;
+            style=filled;
+            color=white;
+
+            "株式会社 米らいふ";
+            "株式会社 錦織農産";
+            "農事組合法人 おきす";
+        }
+
+        // 「斐川町ＷＣＳ生産協議会」：太字で四角、背景色と枠線は#E0E0E0
+        "斐川町ＷＣＳ生産協議会" [
+            label=<<b>斐川町ＷＣＳ生産協議会</b>>,
+            shape=box,
+            style=filled,
+            fillcolor="#E0E0E0",
+            color="#E0E0E0",
+            fontcolor=black
+        ];
+    }
+
+    // --- クラスタ定義：出雲市 ---
+    subgraph cluster_出雲市 {
+        label=" \n\n";
+        fontname="MS Gothic";
+        fontsize=12;
+        style=filled;
+        color="#F0F0F0"; // クラスタの枠線の色
+
+        subgraph cluster_出雲市斐川農業事務所 {
+            label="　\n\n\n";
+            fontname="MS Gothic";
+            fontsize=10;
+            style=filled;
+           // color=white;
+            color="#F0F0F0";
+
+            // 「斐川町地域農業再生協議会」：通常の文字で丸、塗りつぶしなし、枠線は黒
+            "斐川町地域\n農業再生協議会" [
+                label="斐川町地域\n農業再生協議会",
+                shape=oval,
+                color=black,
+                fontcolor=black
+            ];
+        }
+
+        // 「出雲市斐川農業事務所」：太字で四角、背景色と枠線は#F0F0F0
+        "出雲市斐川農業事務所" [
+            label=<<b>出雲市斐川農業事務所</b>>,
+            shape=box,
+            style=filled,
+            fillcolor="#F0F0F0",
+            color="#F0F0F0",
+            fontcolor=black
+        ];
+    }
+
+    // --- 他のノード ---
+    "東部農林水産振興センター\n出雲事務所";
+    "東部農林水産振興センター\n雲南事務所"
+    "畜産技術センター\n酪農・担い手支援科";
+    "農業技術センター\n技術普及部";
+    "株式会社 農笑ファーム";
+    "ＪＡしまね\n斐川地区本部";
+    "ＪＡしまね\n雲南地区本部"
+    "斐川町内外\n畜産農家";
+    "島根県\n畜産課";
+    "島根県\n農業協同組合";
+    "農林水産省\n中国四国農政局";
+
+    // --- ランク制御 ---
+    { rank=same; "東部農林水産振興センター\n出雲事務所"; "農業技術センター\n技術普及部"; }
+    { rank=same; "斐川町内外\n畜産農家"; "株式会社 農笑ファーム"; }
+    { rank=same; "斐川町内外\n畜産農家"; "ＪＡしまね\n雲南地区本部"; }
+
+
+    // --- 矢印定義（xlabelで線上部にテキスト） ---
+    "東部農林水産振興センター\n出雲事務所" -> "斐川町ＷＣＳ生産協議会" [xlabel="稲ＷＣＳ栽培指導\n栽培研修会対応", color="blue", fontcolor="blue", penwidth=3];
+
+    "東部農林水産振興センター\n出雲事務所" -> "株式会社 錦織農産" [xlabel="補助事業\n報告支援", color="blue", fontcolor="blue", penwidth=3];
+    "東部農林水産振興センター\n出雲事務所" -> "農事組合法人 おきす" [xlabel="補補助事業\n報告支援", color="blue", fontcolor="blue", penwidth=3];
+    "東部農林水産振興センター\n出雲事務所" -> "農林水産省\n中国四国農政局" [xlabel="補助事業計画\n内容照会", color="blue", fontcolor="blue", penwidth=3];
+
+    "東部農林水産振興センター\n出雲事務所" -> "株式会社 米らいふ" [xlabel="耕畜連携\nマッチング\n\n補助事業\n報告支援", color="blue", fontcolor="blue", penwidth=3];
+    "東部農林水産振興センター\n出雲事務所" -> "東部農林水産振興センター\n雲南事務所" [xlabel="耕畜連携\nマッチング", color="blue", fontcolor="blue", penwidth=3];
+    "東部農林水産振興センター\n雲南事務所" -> "斐川町内外\n畜産農家" [xlabel="耕畜連携\nマッチング"];
+    
+    "東部農林水産振興センター\n出雲事務所" -> "株式会社 米らいふ" [xlabel="デントコーン栽培指導", color="blue", fontcolor="blue", penwidth=3];
+
+    "東部農林水産振興センター\n出雲事務所" -> "畜産技術センター\n酪農・担い手支援科" [xlabel="デントコーン栽培暦改訂", color="blue", fontcolor="blue", penwidth=3];
+
+
+    "株式会社 米らいふ" -> "株式会社 農笑ファーム" [xlabel="収穫受委託"];
+    "株式会社 米らいふ" -> "斐川町内外\n畜産農家" [xlabel="デントコーン売買"];
+
+
+    "畜産技術センター\n酪農・担い手支援科" -> "株式会社 農笑ファーム" [xlabel="　　　デントコーン種子手配\n　　　デントコーン栽培指導\n　　　デントコーン売買"];
+
+    "畜産技術センター\n酪農・担い手支援科" -> "株式会社 米らいふ" [xlabel="デントコーン種子手配"];
+
+    "斐川町ＷＣＳ生産協議会" -> "ＪＡしまね\n斐川地区本部" [xlabel="運営事務・稲ＷＣＳ売買"];
+    "ＪＡしまね\n斐川地区本部" -> "斐川町内畜産農家" [label="稲ＷＣＳ売買\n県産水田粗飼料利用\n拡大推進事業補助金"];
+
+    "斐川町地域\n農業再生協議会" -> "斐川町ＷＣＳ生産協議会" [xlabel="水田活用の\n直接支払交付金"];
+
+    "農林水産省\n中国四国農政局" -> "斐川町地域\n農業再生協議会" [xlabel="水田活用の\n直接支払交付金", penwidth=3];
+    "農林水産省\n中国四国農政局" -> "株式会社 米らいふ" [xlabel="補助事業\n報告", penwidth=3];
+    "農林水産省\n中国四国農政局" -> "農事組合法人 おきす" [xlabel="補助事業\n報告", penwidth=3];
+
+    "島根県\n農業協同組合" -> "ＪＡしまね\n斐川地区本部" [xlabel="第４次農業戦略\n実践３カ年\n営農計画"];
+
+    "ＪＡしまね\n雲南地区本部" -> "斐川町内外\n畜産農家" [xlabel="県産水田粗飼料利用\n拡大推進事業補助金"];
+
+    "島根県\n畜産課" -> "ＪＡしまね\n斐川地区本部" [xlabel="県産水田粗飼料利用\n拡大推進事業補助金"];
+    "島根県\n畜産課" -> "ＪＡしまね\n雲南地区本部" [xlabel="県産水田粗飼料利用\n拡大推進事業補助金"];
+
+    "島根県\n畜産課" -> "株式会社 錦織農産" [xlabel="補助事業\n報告"];
+
+
+    "農業技術センター\n技術普及部" -> "東部農林水産振興センター\n出雲事務所" [xlabel="稲ＷＣＳ研修会", color="blue", penwidth=3];
+}
