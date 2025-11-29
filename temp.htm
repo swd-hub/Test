@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>気象経過</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+/* 表示用スタイル */
+canvas {
+  margin: 30px 0;
+  max-width: 100%;
+  height: auto;
+}
+
+#csvFileInput {
+  display: none;
+}
+
+.file-label {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #eee;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+/* 印刷用スタイル */
+@media print {
+  body {
+    font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+    font-size: 12pt;
+    color: #000;
+    background: #fff;
+    margin: 20mm;
+  }
+
+  h1 {
+    font-size: 18pt;
+    margin-bottom: 10mm;
+    text-align: center;
+  }
+
+  canvas {
+    page-break-inside: avoid;
+    margin-bottom: 20mm;
+    max-width: 100%;
+    height: auto;
+  }
+
+  #csvFileInput,
+  .file-label,
+  button {
+    display: none !important;
+  }
+
+  footer::after {
+    content: "ページ: " counter(page);
+    position: fixed;
+    bottom: 10mm;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 10pt;
+    color: #666;
+  }
+}
+  </style>
+</head>
+<body>
+  <h1 id="mainTitle">気象経過 出雲</h1>
+
+  <!-- ラベルをボタン風にしてファイル選択を起動 -->
+<input type="file" id="csvFileInput" accept=".csv">
+<br><br>
+<label>開始日: <input type="date" id="startDate" value="2025-01-01"></label>
+<br>
+<label>終了日: <input type="date" id="endDate" value="2025-12-31"></label>
+<br>
+<button onclick="updateGraph()">グラフ更新</button>
+
+  <div id="csvDates"></div>
+  
+
+
+<canvas id="weatherChart" width="1000" height="400"></canvas>
+
+
+<script>
+let csvData = [];
+
+window.addEventListener('DOMContentLoaded', () => {
+  loadCSVWithFallback(); // ← canvasが確実に存在してから呼ぶ
+});
+
+function triggerFileInput() {
+  document.getElementById('csvFileInput').click();
+}
+
+document.getElementById('csvFileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const content = shiftJISToUTF8(event.target.result);
+    csvData = parseCSV(content);
+    updateGraph();
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+async function loadCSVWithFallback() {
+  try {
+    const response = await fetch('出雲日別値.csv');
+    const arrayBuffer = await response.arrayBuffer();
+    const utf8Content = shiftJISToUTF8(arrayBuffer);
+    csvData = parseCSV(utf8Content);
+    updateGraph();
+  } catch (error) {
+    alert("CSVの取得に失敗しました。ファイルを選択してください。");
+    document.getElementById('csvFileInput').style.display = 'inline';
+  }
+}
+
+function shiftJISToUTF8(arrayBuffer) {
+  const decoder = new TextDecoder('shift-jis');
+  const uint8Array = new Uint8Array(arrayBuffer);
+  return decoder.decode(uint8Array);
+}
+
+function parseCSV(content) {
+  const lines = content.trim().split('\n').filter(line => line.trim() !== "");
+  let lines1 = lines[2].split(',');
+  let lines2 = lines[3].split(',');
+  let lines3 = lines[4].split(',');
+  let combinedHead = [];
+  for (let i = 0; i < lines1.length; i++) {
+    combinedHead.push(lines1[i].replace(/\r/g, '') + lines2[i].replace(/\r/g, '') + lines3[i].replace(/\r/g, ''));
+  }
+
+  const targetHeaders = ["年", "月", "日", "平均気温(℃)", "降水量の合計(mm)", "日照時間(時間)",
+    "最高気温(℃)", "最低気温(℃)"];
+  let indicesToSelect = targetHeaders.map(header => combinedHead.findIndex(h => h.includes(header)));
+
+  const dataLines = lines.slice(6).map(line => {
+    const cols = line.split(',');
+    const selectedCols = indicesToSelect.map(index => index >= 0 ? cols[index] || '0' : '0');
+    return selectedCols.join(',');
+  });
+
+  dataLines.unshift(targetHeaders.join(','));
+  return dataLines.slice(1).map(line => {
+    const cols = line.split(",");
+    return {
+      date: new Date(Date.UTC(cols[0], cols[1] - 1, cols[2])),
+      year: parseInt(cols[0]),
+      monthDay: `${cols[1].padStart(2, '0')}-${cols[2].padStart(2, '0')}`,
+      temperature: parseFloat(cols[3]) || 0
+    };
+  });
+}
+
+function updateGraph() {
+  const canvas = document.getElementById('weatherChart');
+  if (!canvas) {
+    console.error("weatherChart が見つかりません");
+    return;
+  }
+  const ctx = canvas.getContext('2d');
+
+  const start = document.getElementById("startDate").value;
+  const end = document.getElementById("endDate").value;
+  const startMonthDay = start.slice(5); // "MM-DD"
+  const endMonthDay = end.slice(5);     // "MM-DD"
+
+  const groupedByYear = {};
+  csvData.forEach(row => {
+    if (row.monthDay >= startMonthDay && row.monthDay <= endMonthDay) {
+      if (!groupedByYear[row.year]) groupedByYear[row.year] = [];
+      groupedByYear[row.year].push(row);
+    }
+  });
+
+  const datasets = Object.keys(groupedByYear).sort().map((year, idx) => {
+    return {
+      label: `${year}`,
+      data: groupedByYear[year].map(d => ({ x: d.monthDay, y: d.temperature })),
+      borderColor: `hsl(${(idx * 60) % 360}, 70%, 50%)`,
+      fill: false
+    };
+  });
+
+  // 安全に destroy() を呼び出す
+  if (window.weatherChart && typeof window.weatherChart.destroy === 'function') {
+    window.weatherChart.destroy();
+  }
+
+  window.weatherChart = new Chart(ctx, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      scales: {
+        x: {
+          type: 'category',
+          title: { display: true, text: '日付 (MM-DD)' }
+        },
+        y: {
+          title: { display: true, text: '平均気温 (℃)' }
+        }
+      }
+    }
+  });
+}
+
+
+function drawAnnualCharts(labels, avgTemps, maxTemps, minTemps, precSums, sunSums) {
+  const createChart = (ctx, datasets, yLabel) => {
+    return new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { labels: { font: { size: 20 } } }
+        },
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: '年',
+              font: { size: 20 }
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: yLabel,
+              font: { size: 20 }
+            }
+          }
+        }
+      }
+    });
+  };
+
+  // 平均・最高・最低気温をまとめて描画
+  createChart(document.getElementById('annualTempChart').getContext('2d'), [
+    {
+      label: '平均気温(℃)',
+      data: avgTemps,
+      borderColor: 'orange',
+      borderWidth: 3,
+      fill: false
+    },
+    {
+      label: '最高気温(℃)',
+      data: maxTemps,
+      borderColor: 'red',
+      borderWidth: 3,
+      fill: false
+    },
+    {
+      label: '最低気温(℃)',
+      data: minTemps,
+      borderColor: 'blue',
+      borderWidth: 3,
+      fill: false
+    }
+  ], '℃');
+
+  // 降水量グラフ
+  createChart(document.getElementById('annualPrecChart').getContext('2d'), [
+    {
+      label: '累積降水量(mm)',
+      data: precSums,
+      borderColor: 'blue',
+      borderWidth: 3,
+      fill: false
+    }
+  ], 'mm');
+
+  // 日照時間グラフ
+  createChart(document.getElementById('annualSunChart').getContext('2d'), [
+    {
+      label: '日照時間積算(時間)',
+      data: sunSums,
+      borderColor: 'goldenrod',
+      borderWidth: 3,
+      fill: false
+    }
+  ], '時間');
+}
+
+
+
+</script>
+</body>
+</html>
