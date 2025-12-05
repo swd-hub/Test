@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>家畜市場 取引状況グラフ化ツール v3</title>
+    <title>家畜市場 取引状況グラフ化ツール v4</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: "Helvetica Neue", Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
@@ -19,7 +19,7 @@
         .radio-label { margin-right: 15px; cursor: pointer; font-size: 0.95rem; }
         
         button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; }
-        button:hover { background-color: #0056b3; }
+        .main-button { margin-top: 10px; }
         
         h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #ddd; padding-bottom: 5px; }
         #errorMessage { color: red; font-weight: bold; margin-top: 10px; font-size: 0.9rem; }
@@ -30,24 +30,32 @@
         .market-checkbox-item { display: block; margin-bottom: 5px; cursor: pointer; font-size: 0.9rem; }
         .market-checkbox-item input { margin-right: 8px; }
         .market-checkbox-item:hover { background-color: #e9ecef; }
-        .selection-count { font-size: 0.85rem; color: #666; float: right; }
+        
+        .selection-header { display: flex; align-items: center; justify-content: space-between; }
+        .deselect-button { padding: 5px 10px; font-size: 0.85rem; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
+        .deselect-button:hover { background-color: #c82333; }
+        .selection-count { font-size: 0.85rem; color: #666; margin-left: auto; padding-left: 10px; }
     </style>
 </head>
 <body>
 
-    <h1>月別肉用子牛取引状況 可視化ツール v3</h1>
+    <h1>月別肉用子牛取引状況 可視化ツール v4</h1>
 
     <div class="container">
         <div class="input-area">
             <h2>1. データ入力</h2>
             <p>表データをコピーして貼り付けてください。</p>
             <textarea id="dataInput" placeholder="ExcelやPDFからテキストを貼り付け..."></textarea>
-            <button onclick="parseAndSetupUI()">データを読込・市場リスト作成</button>
+            <button onclick="parseAndSetupUI()" class="main-button">データを読込・市場リスト作成</button>
             <div id="errorMessage"></div>
 
             <div id="marketSelectionContainer">
-                <h2>2. 市場を選択 <span id="selectionCount" class="selection-count">(0/7)</span></h2>
-                <p style="font-size:0.85rem; margin-top:0;">以下から比較したい市場を選んでください</p>
+                <div class="selection-header">
+                    <h2 style="margin-right: 10px;">2. 市場を選択</h2>
+                    <button onclick="deselectAllMarkets()" class="deselect-button">全解除</button>
+                    <span id="selectionCount" class="selection-count">(0/7)</span>
+                </div>
+                <p style="font-size:0.85rem; margin-top:0;">以下から比較したい市場を選んでください（最大7つ）</p>
                 <div id="marketSelectionArea">
                     </div>
             </div>
@@ -82,6 +90,16 @@
     let myChart = null;
     const defaultLabels = ["11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月"];
 
+    // 【新規追加】全解除ボタンの機能
+    function deselectAllMarkets() {
+        const checkboxes = document.querySelectorAll('input[name="marketSelect"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        // 選択解除後、グラフを更新（データなしの状態にする）
+        handleSelectionChange(); 
+    }
+
     function parseAndSetupUI() {
         const text = document.getElementById('dataInput').value;
         const lines = text.split('\n');
@@ -91,7 +109,6 @@
         let currentMarket = null;
         let currentMetric = null;
 
-        // キーワード定義
         const keywords = {
             "取引頭数": "count", "平均価格": "price", "平均体重": "weight", 
             "平均日齢": "age", "1kg単価": "unitPrice", "１ｋｇ単価": "unitPrice"
@@ -99,36 +116,30 @@
 
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
-            // 見やすく整形
             let cleanLine = line.replace(/,/g, '').replace(/\s+/g, ' ');
 
             if (cleanLine.length === 0) continue;
 
             const numberCount = (cleanLine.match(/\d+/g) || []).length;
 
-            // --- 市場名行の判定 ---
-            // 条件: 「北海道」「市場」「合計」「県」などを含み、数字だらけの行ではない
             const isMarketHeader = (
                 (line.includes("北海道") || line.includes("市場") || line.includes("集散") || line.includes("合計") || line.includes("総計") || line.includes("県")) 
                 && numberCount < 3 
-                && !line.includes("月") // "4月"などの行を除外
+                && !line.includes("月")
             );
 
             if (isMarketHeader) {
-                // 市場名取得
                 let marketName = cleanLine.split(' ')[0] + (cleanLine.split(' ')[1] || "");
-                marketName = marketName.replace(/＊|\*/g, ""); // 記号削除
+                marketName = marketName.replace(/＊|\*/g, "");
 
-                // === 除外フィルター処理 ===
-                
+                // === 除外フィルター処理 (v3からの継承) ===
                 // 1. ヘッダー行「品種：黒毛和種」などを除外
                 if (marketName.includes("品種") || marketName.includes("黒毛和種")) {
-                    currentMarket = null; // 現在の市場コンテキストを切る
+                    currentMarket = null;
                     continue;
                 }
 
                 // 2. 都道府県の合計行（県計、道計など）を除外
-                // ※「全国」や単なる「合計」は残す（前の指示により）
                 if (marketName.includes("県計") || marketName.includes("県合計") || 
                     marketName.includes("道計") || marketName.includes("道合計") || 
                     marketName.includes("都計") || marketName.includes("府計")) {
@@ -136,7 +147,6 @@
                     continue;
                 }
 
-                // 有効な市場として登録
                 currentMarket = {
                     name: marketName,
                     data: { count: {}, price: {}, weight: {}, age: {}, unitPrice: {} }
@@ -198,7 +208,6 @@
             checkbox.name = 'marketSelect';
             checkbox.onchange = handleSelectionChange;
 
-            // 最初の7つを自動チェック
             const currentCheckedCount = container.querySelectorAll('input:checked').length;
             if (currentCheckedCount < 7) {
                 checkbox.checked = true;
@@ -219,7 +228,7 @@
 
         if (checkedBoxes.length > 7) {
             alert("比較できる市場は最大7つまでです。");
-            this.checked = false; // チェックを外す
+            this.checked = false;
         }
         updateChart();
     }
@@ -299,7 +308,6 @@
     }
 
     window.onload = function() {
-        // サンプル：品種ヘッダーや県計が含まれたデータ
         const sampleData = `品種：黒毛和種
 北海道 ホクレン南北海道家畜市場
 取引頭数 雌 632 785 563 676 625 688 718 690 681 597 604 585 601
