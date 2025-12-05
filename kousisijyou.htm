@@ -32,6 +32,46 @@
         .selection-header { display: flex; align-items: center; justify-content: space-between; }
         .deselect-button { padding: 5px 10px; font-size: 0.85rem; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
         .selection-count { font-size: 0.85rem; color: #666; margin-left: auto; padding-left: 10px; }
+        
+        /* ------------------------------------------------ */
+/* @media print: 印刷時のスタイル設定               */
+/* ------------------------------------------------ */
+@media print {
+    /* 1. ページ全体から不要な要素を非表示にする */
+    body > * {
+        visibility: hidden;
+    }
+
+    /* 2. グラフエリア (chart-area) とその子要素を可視化 */
+    .chart-area,
+    .chart-area * {
+        visibility: visible;
+    }
+    
+    /* 3. グラフエリアをページの左上隅に配置し、幅を100%にする */
+    .chart-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        /* 印刷時に背景色やシャドウが不要な場合は削除 */
+        box-shadow: none; 
+        background: white; 
+        padding: 0 !important;
+        margin: 0 !important;
+        flex: none; /* flex設定を無効化 */
+    }
+    
+    /* 4. 印刷設定エリア（controls）やタイトルも必要であれば個別に調整 */
+    .controls {
+        display: none; /* グラフの表示設定コントロールは印刷しない */
+    }
+    
+    /* グラフがページをまたぐのを避ける設定（推奨） */
+    #myChart {
+        page-break-inside: avoid;
+    }
+}
     </style>
 </head>
 <body>
