@@ -3,47 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>家畜市場 取引状況グラフ化ツール</title>
+    <title>家畜市場 取引状況グラフ化ツール v3</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        body { font-family: "Helvetica Neue", Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
         .container { display: flex; flex-wrap: wrap; gap: 20px; }
         .input-area { flex: 1; min-width: 300px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .chart-area { flex: 2; min-width: 400px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        textarea { width: 100%; height: 300px; margin-bottom: 10px; font-family: monospace; font-size: 12px; border: 1px solid #ccc; padding: 5px; }
+        
+        textarea { width: 100%; height: 200px; margin-bottom: 10px; font-family: monospace; font-size: 12px; border: 1px solid #ccc; padding: 5px; box-sizing: border-box; }
+        
         .controls { margin-bottom: 15px; padding: 10px; background: #eef; border-radius: 5px; }
         .control-group { margin-bottom: 10px; }
         .control-group label { font-weight: bold; margin-right: 10px; }
-        .radio-label { margin-right: 15px; cursor: pointer; }
-        button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .radio-label { margin-right: 15px; cursor: pointer; font-size: 0.95rem; }
+        
+        button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; }
         button:hover { background-color: #0056b3; }
+        
         h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #ddd; padding-bottom: 5px; }
         #errorMessage { color: red; font-weight: bold; margin-top: 10px; font-size: 0.9rem; }
+
+        /* 市場選択エリア */
+        #marketSelectionContainer { display: none; margin-top: 20px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; }
+        #marketSelectionArea { max-height: 300px; overflow-y: auto; border-top: 1px solid #eee; margin-top: 5px; padding-top: 5px; }
+        .market-checkbox-item { display: block; margin-bottom: 5px; cursor: pointer; font-size: 0.9rem; }
+        .market-checkbox-item input { margin-right: 8px; }
+        .market-checkbox-item:hover { background-color: #e9ecef; }
+        .selection-count { font-size: 0.85rem; color: #666; float: right; }
     </style>
 </head>
 <body>
 
-    <h1>月別肉用子牛取引状況 可視化ツール</h1>
+    <h1>月別肉用子牛取引状況 可視化ツール v3</h1>
 
     <div class="container">
         <div class="input-area">
-            <h2>1. データを貼り付け</h2>
-            <p>Excelや表からデータをコピーして貼り付けてください。<br><small>※最大7市場まで自動抽出します</small></p>
-            <textarea id="dataInput" placeholder="ここにデータをペースト...
-例：
-北海道 ホクレン南北海道家畜市場
-取引頭数 雌 632 785 ...
-       雄 880 944 ..."></textarea>
-            <button onclick="processData()">グラフを更新</button>
+            <h2>1. データ入力</h2>
+            <p>表データをコピーして貼り付けてください。</p>
+            <textarea id="dataInput" placeholder="ExcelやPDFからテキストを貼り付け..."></textarea>
+            <button onclick="parseAndSetupUI()">データを読込・市場リスト作成</button>
             <div id="errorMessage"></div>
+
+            <div id="marketSelectionContainer">
+                <h2>2. 市場を選択 <span id="selectionCount" class="selection-count">(0/7)</span></h2>
+                <p style="font-size:0.85rem; margin-top:0;">以下から比較したい市場を選んでください</p>
+                <div id="marketSelectionArea">
+                    </div>
+            </div>
         </div>
 
         <div class="chart-area">
-            <h2>2. グラフ表示</h2>
+            <h2>3. グラフ表示</h2>
             
             <div class="controls">
                 <div class="control-group">
-                    <label>表示項目 (Y軸):</label>
+                    <label>表示項目 (Y軸):</label> <br>
                     <label class="radio-label"><input type="radio" name="metric" value="count" checked onchange="updateChart()"> 取引頭数</label>
                     <label class="radio-label"><input type="radio" name="metric" value="price" onchange="updateChart()"> 平均価格</label>
                     <label class="radio-label"><input type="radio" name="metric" value="weight" onchange="updateChart()"> 平均体重</label>
@@ -51,7 +66,7 @@
                     <label class="radio-label"><input type="radio" name="metric" value="unitPrice" onchange="updateChart()"> 1kg単価</label>
                 </div>
                 <div class="control-group">
-                    <label>性別区分:</label>
+                    <label>性別区分:</label> <br>
                     <label class="radio-label"><input type="radio" name="gender" value="total" checked onchange="updateChart()"> 計 (平均)</label>
                     <label class="radio-label"><input type="radio" name="gender" value="female" onchange="updateChart()"> 雌</label>
                     <label class="radio-label"><input type="radio" name="gender" value="male" onchange="updateChart()"> 雄</label>
@@ -63,69 +78,77 @@
     </div>
 
 <script>
-    let parsedMarkets = [];
+    let parsedAllMarkets = [];
     let myChart = null;
-
-    // デフォルトの月ラベル（データから取得できない場合のフォールバック）
     const defaultLabels = ["11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月"];
 
-    function processData() {
+    function parseAndSetupUI() {
         const text = document.getElementById('dataInput').value;
         const lines = text.split('\n');
-        parsedMarkets = [];
+        parsedAllMarkets = [];
         document.getElementById('errorMessage').textContent = "";
-
+        
         let currentMarket = null;
         let currentMetric = null;
 
-        // 正規表現パターン
-        const marketNamePattern = /(?:北海道|市場|家畜|集散)/; // 市場名の特徴
-        // 項目キーワード
+        // キーワード定義
         const keywords = {
-            "取引頭数": "count",
-            "平均価格": "price",
-            "平均体重": "weight",
-            "平均日齢": "age",
-            "1kg単価": "unitPrice",
-            "１ｋｇ単価": "unitPrice" // 全角対応
+            "取引頭数": "count", "平均価格": "price", "平均体重": "weight", 
+            "平均日齢": "age", "1kg単価": "unitPrice", "１ｋｇ単価": "unitPrice"
         };
-        
-        // 行ごとの解析
+
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
-            // 空白を統一（タブや複数のスペースをシングルスペースに）
-            let cleanLine = line.replace(/,/g, '').replace(/\s+/g, ' '); 
+            // 見やすく整形
+            let cleanLine = line.replace(/,/g, '').replace(/\s+/g, ' ');
 
             if (cleanLine.length === 0) continue;
 
-            // 1. 市場名の判定（北海道〜で始まり、数字を含まない、あるいは特定のキーワードを含む）
-            // データ行には数字が多いため、数字が少ない行をヘッダーとみなす簡易ロジック
             const numberCount = (cleanLine.match(/\d+/g) || []).length;
-            
-            // 市場名行とみなす条件: "北海道"を含み、かつ数字の羅列ではない
-            if ((line.includes("北海道") || line.includes("市場")) && numberCount < 3) {
-                // 新しい市場を作成
-                if (parsedMarkets.length >= 7) break; // 最大7市場まで
 
-                // 市場名を抽出（スペースで区切られた最初の部分など）
+            // --- 市場名行の判定 ---
+            // 条件: 「北海道」「市場」「合計」「県」などを含み、数字だらけの行ではない
+            const isMarketHeader = (
+                (line.includes("北海道") || line.includes("市場") || line.includes("集散") || line.includes("合計") || line.includes("総計") || line.includes("県")) 
+                && numberCount < 3 
+                && !line.includes("月") // "4月"などの行を除外
+            );
+
+            if (isMarketHeader) {
+                // 市場名取得
                 let marketName = cleanLine.split(' ')[0] + (cleanLine.split(' ')[1] || "");
-                // 特定のゴミを除く
-                marketName = marketName.replace("＊", "").replace("*", "");
+                marketName = marketName.replace(/＊|\*/g, ""); // 記号削除
+
+                // === 除外フィルター処理 ===
                 
+                // 1. ヘッダー行「品種：黒毛和種」などを除外
+                if (marketName.includes("品種") || marketName.includes("黒毛和種")) {
+                    currentMarket = null; // 現在の市場コンテキストを切る
+                    continue;
+                }
+
+                // 2. 都道府県の合計行（県計、道計など）を除外
+                // ※「全国」や単なる「合計」は残す（前の指示により）
+                if (marketName.includes("県計") || marketName.includes("県合計") || 
+                    marketName.includes("道計") || marketName.includes("道合計") || 
+                    marketName.includes("都計") || marketName.includes("府計")) {
+                    currentMarket = null;
+                    continue;
+                }
+
+                // 有効な市場として登録
                 currentMarket = {
                     name: marketName,
-                    data: {
-                        count: {}, price: {}, weight: {}, age: {}, unitPrice: {}
-                    }
+                    data: { count: {}, price: {}, weight: {}, age: {}, unitPrice: {} }
                 };
-                parsedMarkets.push(currentMarket);
-                currentMetric = null; // 市場が変わったらメトリクスリセット
+                parsedAllMarkets.push(currentMarket);
+                currentMetric = null; 
                 continue;
             }
 
             if (!currentMarket) continue;
 
-            // 2. 項目の判定
+            // --- 項目判定 ---
             for (const [key, value] of Object.entries(keywords)) {
                 if (line.includes(key)) {
                     currentMetric = value;
@@ -133,7 +156,7 @@
                 }
             }
 
-            // 3. データの抽出 (雌、雄、計/平均)
+            // --- データ抽出 ---
             if (currentMetric) {
                 let gender = null;
                 if (cleanLine.includes("雌")) gender = "female";
@@ -141,14 +164,10 @@
                 else if (cleanLine.includes("計") || cleanLine.includes("平均")) gender = "total";
 
                 if (gender) {
-                    // 数値を抽出
-                    // 日本語の文字を除去して数値配列にする
                     let numbers = cleanLine.split(' ')
                         .map(s => parseFloat(s))
                         .filter(n => !isNaN(n));
                     
-                    // 月データとして扱う（通常12~13ヶ月分あるはず）
-                    // 合計列が含まれている場合があるので、ここでは配列そのまま保存し、描画時に調整
                     if (numbers.length > 0) {
                         currentMarket.data[currentMetric][gender] = numbers;
                     }
@@ -156,62 +175,90 @@
             }
         }
 
-        if (parsedMarkets.length === 0) {
-            document.getElementById('errorMessage').textContent = "データを解析できませんでした。形式を確認してください。";
+        if (parsedAllMarkets.length === 0) {
+            document.getElementById('errorMessage').textContent = "有効なデータが見つかりませんでした。";
+            document.getElementById('marketSelectionContainer').style.display = 'none';
             return;
         }
 
+        createMarketCheckboxes();
+    }
+
+    function createMarketCheckboxes() {
+        const container = document.getElementById('marketSelectionArea');
+        container.innerHTML = "";
+        
+        parsedAllMarkets.forEach((market, index) => {
+            const label = document.createElement('label');
+            label.className = 'market-checkbox-item';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = index;
+            checkbox.name = 'marketSelect';
+            checkbox.onchange = handleSelectionChange;
+
+            // 最初の7つを自動チェック
+            const currentCheckedCount = container.querySelectorAll('input:checked').length;
+            if (currentCheckedCount < 7) {
+                checkbox.checked = true;
+            }
+
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(market.name));
+            container.appendChild(label);
+        });
+
+        document.getElementById('marketSelectionContainer').style.display = 'block';
+        handleSelectionChange(); 
+    }
+
+    function handleSelectionChange() {
+        const checkedBoxes = document.querySelectorAll('input[name="marketSelect"]:checked');
+        document.getElementById('selectionCount').textContent = `(${checkedBoxes.length}/7)`;
+
+        if (checkedBoxes.length > 7) {
+            alert("比較できる市場は最大7つまでです。");
+            this.checked = false; // チェックを外す
+        }
         updateChart();
     }
 
     function updateChart() {
-        if (parsedMarkets.length === 0) return;
+        const checkedIndices = Array.from(document.querySelectorAll('input[name="marketSelect"]:checked'))
+                                    .map(cb => parseInt(cb.value));
+        const targetIndices = checkedIndices.slice(0, 7);
 
         const ctx = document.getElementById('myChart').getContext('2d');
         const metric = document.querySelector('input[name="metric"]:checked').value;
         const gender = document.querySelector('input[name="gender"]:checked').value;
 
-        // データセットの作成
         const datasets = [];
         const colors = [
-            'rgb(255, 99, 132)', 'rgb(54, 162, 235)', 'rgb(255, 206, 86)', 
-            'rgb(75, 192, 192)', 'rgb(153, 102, 255)', 'rgb(255, 159, 64)', 'rgb(201, 203, 207)'
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#333333'
         ];
 
-        // X軸ラベルの決定（データ長から推測、または固定）
-        // 多くのデータは13ヶ月分+合計 なので、先頭13個を取得する
-        let dataLength = 13; 
-
-        parsedMarkets.forEach((market, index) => {
-            if (!market.data[metric] || !market.data[metric][gender]) {
-                // データがない場合はスキップ
-                return;
-            }
+        let colorIndex = 0;
+        targetIndices.forEach(idx => {
+            const market = parsedAllMarkets[idx];
+            if (!market.data[metric] || !market.data[metric][gender]) return;
 
             let dataValues = market.data[metric][gender];
-            
-            // データのトリミング（合計列などを除くため、とりあえず13個までとする）
-            // ※画像では11月から翌11月までで13列あるように見える
-            if (dataValues.length > 13) {
-                dataValues = dataValues.slice(0, 13);
-            }
+            if (dataValues.length > 13) dataValues = dataValues.slice(0, 13);
 
             datasets.push({
                 label: market.name,
                 data: dataValues,
-                borderColor: colors[index % colors.length],
-                backgroundColor: colors[index % colors.length],
+                borderColor: colors[colorIndex % colors.length],
+                backgroundColor: colors[colorIndex % colors.length],
                 tension: 0.1,
                 fill: false
             });
+            colorIndex++;
         });
 
-        // 既存チャートの破棄
-        if (myChart) {
-            myChart.destroy();
-        }
+        if (myChart) myChart.destroy();
 
-        // 単位のラベル設定
         let yLabel = "";
         if (metric === 'count') yLabel = "頭数";
         else if (metric === 'price' || metric === 'unitPrice') yLabel = "円";
@@ -220,45 +267,24 @@
 
         myChart = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: defaultLabels,
-                datasets: datasets
-            },
+            data: { labels: defaultLabels, datasets: datasets },
             options: {
                 responsive: true,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
+                interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    title: {
-                        display: true,
-                        text: `${getMetricLabel(metric)} (${getGenderLabel(gender)}) 推移`
-                    },
+                    title: { display: true, text: `${getMetricLabel(metric)} (${getGenderLabel(gender)}) 推移` },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
                                 let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    label += new Intl.NumberFormat('ja-JP').format(context.parsed.y) + yLabel;
-                                }
+                                if (label) label += ': ';
+                                if (context.parsed.y !== null) label += new Intl.NumberFormat('ja-JP').format(context.parsed.y) + yLabel;
                                 return label;
                             }
                         }
                     }
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: yLabel
-                        }
-                    }
-                }
+                scales: { y: { beginAtZero: true, title: { display: true, text: yLabel } } }
             }
         });
     }
@@ -272,26 +298,21 @@
         return labels[g] || g;
     }
 
-    // 初期サンプルデータ（デモ用）
-    const sampleData = `北海道 ホクレン南北海道家畜市場
-取引頭数 雌 632 785 563 676 625 688 718 690 681 597 604 585 601 7813
-       雄 880 944 805 902 789 940 1060 929 812 794 881 842 865 10563
-       計 1512 1729 1368 1578 1414 1628 1778 1619 1493 1391 1485 1427 1466 18376
-平均価格 雌 492461 476069 525605 547652 580108 677015 629563 595819 646333 664295 609425 633152 674834 603115
-       雄 612606 600128 656085 683328 722827 805909 745047 747471 777784 778781 751776 753167 793066 734208
-       平均 562387 543803 602386 625206 659744 751438 698412 682838 717826 729645 693877 703967 744596 678471
-北海道 ホクレン十勝地区家畜市場
-取引頭数 雌 1133 1141 906 846 896 891 965 865 1533 210 1151 612 0 10016
-       雄 1317 1441 1182 1052 1255 1323 1375 1263 2069 326 1699 976 0 13961
-       計 2450 2582 2088 1898 2151 2214 2340 2128 3602 536 2850 1588 0 23977
-平均価格 雌 469808 477356 521954 543656 577121 673423 663126 636985 675729 673284 636583 631679 0 607306
-       雄 606744 616590 647460 675278 702378 799050 782590 770885 791081 774505 754294 759162 0 735208
-       平均 543418 555327 583002 616610 650202 748493 733323 716457 741987 734847 706755 710031 0 681779`;
-
-    // ページ読み込み時にサンプルデータをセット
     window.onload = function() {
+        // サンプル：品種ヘッダーや県計が含まれたデータ
+        const sampleData = `品種：黒毛和種
+北海道 ホクレン南北海道家畜市場
+取引頭数 雌 632 785 563 676 625 688 718 690 681 597 604 585 601
+       雄 880 944 805 902 789 940 1060 929 812 794 881 842 865
+       計 1512 1729 1368 1578 1414 1628 1778 1619 1493 1391 1485 1427 1466
+平均価格 平均 562387 543803 602386 625206 659744 751438 698412 682838 717826 729645 693877 703967 744596
+北海道 道計
+取引頭数 計 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 0
+北海道 ホクレン十勝地区家畜市場
+取引頭数 計 2450 2582 2088 1898 2151 2214 2340 2128 3602 536 2850 1588 0
+平均価格 平均 543418 555327 583002 616610 650202 748493 733323 716457 741987 734847 706755 710031 0`;
         document.getElementById('dataInput').value = sampleData;
-        processData();
+        parseAndSetupUI();
     };
 </script>
 
