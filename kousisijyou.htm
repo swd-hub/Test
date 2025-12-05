@@ -69,7 +69,7 @@
                     <label class="radio-label"><input type="radio" name="metric" value="price" onchange="updateChart()"> 平均価格</label>
                     <label class="radio-label"><input type="radio" name="metric" value="weight" onchange="updateChart()"> 平均体重</label>
                     <label class="radio-label"><input type="radio" name="metric" value="age" onchange="updateChart()"> 平均日齢</label>
-                    <label class="radio-label"><input type="radio" name="metric" value="unitPrice" onchange="updateChart()"> 1kg単価</label>
+                    <label class="radio-label"><input type="radio" name="metric" value="unitPrice" onchange="updateChart()"> １㎏単価</label>
                 </div>
                 <div class="control-group">
                     <label>性別区分:</label> <br>
@@ -112,7 +112,7 @@
 
         const keywords = {
             "取引頭数": "count", "平均価格": "price", "平均体重": "weight", 
-            "平均日齢": "age", "1kg単価": "unitPrice", "１ｋｇ単価": "unitPrice"
+            "平均日齢": "age", "１㎏単価": "unitPrice"
         };
 
         // --- X軸ラベルの自動抽出ロジック (V7から変更なし) ---
@@ -338,7 +338,7 @@
     }
 
     function getMetricLabel(m) {
-        const labels = { count: "取引頭数", price: "平均価格", weight: "平均体重", age: "平均日齢", unitPrice: "1kg単価" };
+        const labels = { count: "取引頭数", price: "平均価格", weight: "平均体重", age: "平均日齢", unitPrice: "１㎏単価" };
         return labels[m] || m;
     }
     function getGenderLabel(g) {
