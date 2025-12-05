@@ -56,8 +56,8 @@
         padding: 0 !important;
         margin: 0 !important;
         flex: none; 
-        /* ★修正: 印刷領域に合わせて高さを固定する（A4縦向きに収まる目安） */
-        height: 90vh; 
+        /* ★A4横向きに収まる目安の高さに修正 (widthの約65%に設定) */
+        height: 65vw; 
     }
     
     /* 4. 不要なコントロールパネルを非表示にする */
@@ -75,8 +75,8 @@
         page-break-inside: avoid;
         margin-top: 1px;
         max-width: 95vw !important;
-        /* ★追加: 高さを親要素（.chart-area: 90vh）に合わせて制限する */
-        max-height: 90vh !important; 
+        /* ★高さを新しい値に合わせて制限する */
+        max-height: 65vw !important; 
     }
 }
     </style>
@@ -337,6 +337,7 @@ function updateChart() {
     const TITLE_FONT_SIZE = 20;
     const AXIS_TITLE_FONT_SIZE = 16;
     const AXIS_TICKS_FONT_SIZE = 20;
+    const LEGEND_FONT_SIZE = 18; // ★追加: 凡例のフォントサイズ
     // ----------------------
 
     const datasets = [];
@@ -355,7 +356,6 @@ function updateChart() {
             data: dataValues,
             borderColor: colors[colorIndex % colors.length],
             backgroundColor: colors[colorIndex % colors.length],
-            // ★ ラインの太さを明示
             borderWidth: LINE_THICKNESS,
             spanGaps: true, 
             tension: 0.1,
@@ -378,13 +378,19 @@ function updateChart() {
                 title: { 
                     display: true, 
                     text: `${getMetricLabel(metric)} (${getGenderLabel(gender)}) 推移`,
-                    // ★ グラフタイトルのフォントサイズを明示
                     font: {
                         size: TITLE_FONT_SIZE
                     }
                 },
+                // ★凡例の設定を追加
+                legend: {
+                    labels: {
+                        font: {
+                            size: LEGEND_FONT_SIZE // ★凡例のフォントサイズを適用
+                        }
+                    }
+                },
                 tooltip: {
-                    // ツールチップのフォントは、Chart.defaults.global.tooltips.bodyFontSize などで設定が必要ですが、今回はデフォルトで対応します。
                     callbacks: {
                         label: function(context) {
                             let label = context.dataset.label || '';
@@ -402,13 +408,11 @@ function updateChart() {
                     title: { 
                         display: true, 
                         text: yLabel,
-                        // ★ Y軸タイトルのフォントサイズを明示
                         font: {
                             size: AXIS_TITLE_FONT_SIZE
                         }
                     },
                     ticks: {
-                        // ★ Y軸目盛のフォントサイズを明示
                         font: {
                             size: AXIS_TICKS_FONT_SIZE
                         }
@@ -416,7 +420,6 @@ function updateChart() {
                 },
                 x: {
                     ticks: {
-                        // ★ X軸目盛のフォントサイズを明示
                         font: {
                             size: AXIS_TICKS_FONT_SIZE
                         }
@@ -426,7 +429,6 @@ function updateChart() {
         }
     });
 }
-
     function getMetricLabel(m) {
         const labels = { count: "取引頭数", price: "平均価格", weight: "平均体重", age: "平均日齢", unitPrice: "１㎏単価" };
         return labels[m] || m;
