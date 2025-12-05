@@ -33,43 +33,50 @@
         .deselect-button { padding: 5px 10px; font-size: 0.85rem; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
         .selection-count { font-size: 0.85rem; color: #666; margin-left: auto; padding-left: 10px; }
         
-        /* ------------------------------------------------ */
+/* ------------------------------------------------ */
 /* @media print: 印刷時のスタイル設定               */
 /* ------------------------------------------------ */
 @media print {
-    /* 1. ページ全体から不要な要素を非表示にする */
-    body > * {
-        visibility: hidden;
+    /* 1. 全ての要素を可視化したままにする（デフォルトから変更なし） */
+    
+    /* 2. 入力エリア全体を非表示にする */
+    .input-area {
+        display: none;
     }
 
-    /* 2. グラフエリア (chart-area) とその子要素を可視化 */
-    .chart-area,
-    .chart-area * {
-        visibility: visible;
-    }
-    
-    /* 3. グラフエリアをページの左上隅に配置し、幅を100%にする */
+/* 3. グラフエリア (chart-area) は表示したまま、その中の不要な要素を非表示にする */
     .chart-area {
         position: absolute;
         left: 0;
         top: 0;
         width: 100%;
-        /* 印刷時に背景色やシャドウが不要な場合は削除 */
+        /* 印刷時の不要なスタイルを無効化 */
         box-shadow: none; 
         background: white; 
         padding: 0 !important;
         margin: 0 !important;
-        flex: none; /* flex設定を無効化 */
+        flex: none; 
+        /* ★修正: 印刷領域に合わせて高さを固定する（A4縦向きに収まる目安） */
+        height: 90vh; 
     }
     
-    /* 4. 印刷設定エリア（controls）やタイトルも必要であれば個別に調整 */
+    /* 4. 不要なコントロールパネルを非表示にする */
     .controls {
-        display: none; /* グラフの表示設定コントロールは印刷しない */
+        display: none;
     }
     
-    /* グラフがページをまたぐのを避ける設定（推奨） */
+    /* 5. 「3. グラフ表示」のセクションタイトルを非表示にする */
+    .chart-area h2 {
+        display: none;
+    }
+
+/* 6. グラフ（キャンバス）がページをまたぐのを避ける設定 */
     #myChart {
         page-break-inside: avoid;
+        margin-top: 1px;
+        max-width: 95vw !important;
+        /* ★追加: 高さを親要素（.chart-area: 90vh）に合わせて制限する */
+        max-height: 90vh !important; 
     }
 }
     </style>
