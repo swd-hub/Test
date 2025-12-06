@@ -309,29 +309,22 @@
         handleSelectionChange(); 
     }
 
-function handleSelectionChange() {
-    const checkedBoxes = document.querySelectorAll('input[name="marketSelect"]:checked');
-    // ★修正点: 最大選択数/7の表示を、選択数のみの表示に変更 (または無制限であることを示す)
-    // 無制限を示すためにここでは /7 を削除し、単に現在の選択数を表示します。
-    document.getElementById('selectionCount').textContent = `(${checkedBoxes.length})`;
+    function handleSelectionChange() {
+        const checkedBoxes = document.querySelectorAll('input[name="marketSelect"]:checked');
+        document.getElementById('selectionCount').textContent = `(${checkedBoxes.length}/7)`;
 
-    // ★修正点: 最大7つまでという制限とアラートのロジックを完全に削除
-    // if (checkedBoxes.length > 7 && this && this.checked) {
-    //     alert("比較できる市場は最大7つまでです。");
-    //     this.checked = false;
-    //     document.getElementById('selectionCount').textContent = `(${checkedBoxes.length - 1})`;
-    // }
-    
-    updateChart();
-}
+        if (checkedBoxes.length > 7 && this && this.checked) {
+            alert("比較できる市場は最大7つまでです。");
+            this.checked = false;
+            document.getElementById('selectionCount').textContent = `(${checkedBoxes.length - 1}/7)`;
+        }
+        updateChart();
+    }
 
 function updateChart() {
     const checkedIndices = Array.from(document.querySelectorAll('input[name="marketSelect"]:checked'))
-                                 .map(cb => parseInt(cb.value));
-    
-    // ★修正点: 選択されたインデックスを7つに切り詰めるロジックを削除し、全てをターゲットにする
-    // const targetIndices = checkedIndices.slice(0, 7);
-    const targetIndices = checkedIndices;
+                                .map(cb => parseInt(cb.value));
+    const targetIndices = checkedIndices.slice(0, 7);
 
     const ctx = document.getElementById('myChart').getContext('2d');
     const metric = document.querySelector('input[name="metric"]:checked').value;
@@ -348,8 +341,6 @@ function updateChart() {
     // ----------------------
 
     const datasets = [];
-    // ★修正点: 7色以上の線を表現できるように、色配列をより長くするか、動的に生成するロジックを検討できます。
-    // ここでは、提供された7色を繰り返して使用するようにします。
     const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#333333'];
 
     let colorIndex = 0;
@@ -362,10 +353,9 @@ function updateChart() {
 
         datasets.push({
             label: market.name,
-            // ★修正点: colors配列が不足しないように、colorIndex % colors.length を使用して色を繰り返す
+            data: dataValues,
             borderColor: colors[colorIndex % colors.length],
             backgroundColor: colors[colorIndex % colors.length],
-            data: dataValues,
             borderWidth: LINE_THICKNESS,
             spanGaps: true, 
             tension: 0.1,
