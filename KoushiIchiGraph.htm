@@ -125,7 +125,7 @@
     <div class="container">
         <div class="input-area">
             <h2>1. データ入力</h2>
-            <p>表データをコピーして貼り付けてください。（**月ヘッダー行を含める推奨**）</p>
+            <p>エクセルシートの表をコピーして貼り付けてください。</p>
             <textarea id="dataInput" placeholder="ExcelやPDFからテキストを貼り付け..."></textarea>
             <button onclick="parseAndSetupUI()" class="main-button">データを読込・市場リスト作成</button>
             <div id="errorMessage"></div>
@@ -133,9 +133,9 @@
             <div id="marketSelectionContainer">
                 <div class="selection-header">
                     <h2 style="margin-right: 10px;">2. 市場を選択</h2>
+                </div>
                     <button onclick="deselectAllMarkets()" class="deselect-button">全解除</button>
                     <span id="selectionCount" class="selection-count">(0/7)</span>
-                </div>
                 <p style="font-size:0.85rem; margin-top:0;">以下から比較したい市場を選んでください（最大7つ）</p>
                 <div id="marketSelectionArea">
                     </div>
