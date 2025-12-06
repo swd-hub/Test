@@ -8,7 +8,7 @@
     <style>
         body { font-family: "Helvetica Neue", Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
         
-        /* ★追加: タイトルとボタンをフレックスコンテナで囲む */
+        /* タイトルとボタンをフレックスコンテナで囲む */
         .header-container {
             display: flex;
             align-items: center;
@@ -16,7 +16,7 @@
             margin-bottom: 20px;
         }
 
-        /* ★追加: リンクボタンのスタイル */
+        /* リンクボタンのスタイル */
         .source-link-button {
             padding: 8px 15px;
             background-color: #6c757d; /* 落ち着いたグレー */
@@ -32,34 +32,30 @@
             background-color: #5a6268;
         }
 
-.container { display: flex; flex-wrap: wrap; gap: 20px; }
-/* ★修正: input-area を前面に表示する設定を追加 */
+        .container { display: flex; flex-wrap: wrap; gap: 20px; }
+        
+        /* input-area を前面に表示する設定 */
         .input-area { 
             flex: 1; 
             min-width: 300px; 
             background: white; 
             padding: 20px; 
             border-radius: 8px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-            
-            /* 重なり順序を制御するために必要 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             position: relative; 
-            /* chart-area (デフォルトz-index: auto/0) より前面にする */
             z-index: 10; 
         }
-.chart-area { 
+        .chart-area { 
             flex: 2; 
             min-width: 400px; 
             background: white; 
             padding: 20px; 
             border-radius: 8px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-            /* 念のため、重なり順序を制御するために必要 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             position: relative; 
-            /* z-index: auto または 0 で input-area の背後になる */
         }
         
-textarea { 
+        textarea { 
             width: 100%; 
             height: 200px; 
             margin-bottom: 10px; 
@@ -81,6 +77,35 @@ textarea {
         h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #ddd; padding-bottom: 5px; }
         #errorMessage { color: red; font-weight: bold; margin-top: 10px; font-size: 0.9rem; }
 
+        /* グラフエリアのヘッダー用ラッパー (タイトルとボタンを横並びにする) */
+        .chart-header-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+        }
+        /* ラッパー内のh2は線を消して余白を調整 */
+        .chart-header-wrapper h2 {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+            margin-top: 0;
+        }
+        /* 画像保存ボタンのスタイル */
+        .download-btn {
+            width: auto; /* 全幅ではなく自動幅に */
+            padding: 5px 15px;
+            font-size: 14px;
+            background-color: #28a745; /* 緑色 */
+            color: white;
+            border-radius: 4px;
+        }
+        .download-btn:hover {
+            background-color: #218838;
+        }
+
         /* 市場選択エリア */
         #marketSelectionContainer { display: none; margin-top: 20px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; }
         #marketSelectionArea { max-height: 300px; overflow-y: auto; border-top: 1px solid #eee; margin-top: 5px; padding-top: 5px; }
@@ -91,62 +116,36 @@ textarea {
         .selection-count { font-size: 0.85rem; color: #666; margin-left: auto; padding-left: 10px; }
         
 /* ------------------------------------------------ */
-/* @media print: 印刷時のスタイル設定               */
+/* @media print: 印刷時のスタイル設定               */
 /* ------------------------------------------------ */
 @media print {
-    /* 1. 全ての要素を可視化したままにする（デフォルトから変更なし） */
-    /* ★追加: 印刷時にメインタイトルを非表示にする */
-    .header-container h1 {
-        display: none;
-    }
-    /* 2. 入力エリア全体を非表示にする */
-    .input-area {
-        display: none;
-    }
-
-    /* 3. グラフエリア (chart-area) は表示したまま、その中の不要な要素を非表示にする */
+    .header-container h1 { display: none; }
+    .input-area { display: none; }
     .chart-area {
         position: absolute;
         left: 2vw;
-/* ★修正: グラフを上から5%程度下に下げる */
         top: 5vw;
         width: 100%;
-        /* 印刷時の不要なスタイルを無効化 */
         box-shadow: none; 
         background: white; 
         padding: 0 !important;
         margin: 0 !important;
         flex: none; 
-        /* ★A4横向きに収まる目安の高さに修正 (widthの約65%に設定) */
         height: 65vw; 
     }
+    .controls { display: none; }
     
-    /* 4. 不要なコントロールパネルを非表示にする */
-    .controls {
-        display: none;
-    }
-    
-    /* 5. 「3. グラフ表示」のセクションタイトルを非表示にする */
-    .chart-area h2 {
-        display: none;
-    }
+    /* 印刷時はグラフエリアのヘッダー(H2と保存ボタン)ごと消す */
+    .chart-header-wrapper { display: none; }
 
-    /* 6. グラフ（キャンバス）がページをまたぐのを避ける設定 */
     #myChart {
         page-break-inside: avoid;
         margin-top: 1px;
         max-width: 95vw !important;
-        /* ★高さを新しい値に合わせて制限する */
         max-height: 65vw !important; 
     }
-
-    /* ★追加: 印刷時にリンクボタンを非表示にする */
-    .source-link-button { 
-        display: none; 
-    }
+    .source-link-button { display: none; }
 }
-
-
     </style>
 </head>
 <body>
@@ -181,7 +180,10 @@ textarea {
         </div>
 
         <div class="chart-area">
-            <h2>3. グラフ表示（印刷：Ctrl＋P）</h2>
+            <div class="chart-header-wrapper">
+                <h2>3. グラフ表示（印刷：Ctrl＋P）</h2>
+                <button onclick="downloadChartImage()" class="download-btn">画像保存(PNG)</button>
+            </div>
             
             <div class="controls">
                 
@@ -209,10 +211,7 @@ textarea {
     let parsedAllMarkets = [];
     let myChart = null;
     
-    // 標準の11月始まりの13ヶ月サイクル（ヘッダー行がない場合のフォールバック）
     const standardLabels = ["11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月"];
-    
-    // 検出されたカスタムラベルを格納する変数
     let customLabels = null;
 
     function deselectAllMarkets() {
@@ -237,7 +236,7 @@ textarea {
             "平均日齢": "age", "１㎏単価": "unitPrice"
         };
 
-        // --- X軸ラベルの自動抽出ロジック (V7から変更なし) ---
+        // --- X軸ラベルの自動抽出ロジック ---
         customLabels = null;
         for (let j = 0; j < Math.min(10, lines.length); j++) {
             const line = lines[j].trim();
@@ -272,7 +271,6 @@ textarea {
 
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
-            // カンマを削除し、複数のスペースを単一のスペースに置換
             let cleanLine = line.replace(/,/g, '').replace(/\s+/g, ' ');
 
             if (cleanLine.length === 0) continue;
@@ -313,7 +311,6 @@ textarea {
 
             if (!currentMarket) continue;
 
-            // --- 項目判定とデータ抽出 ---
             for (const [key, value] of Object.entries(keywords)) {
                 if (line.includes(key)) {
                     currentMetric = value;
@@ -331,13 +328,9 @@ textarea {
                     let numbers = cleanLine.split(' ')
                         .map(s => {
                             const num = parseFloat(s);
-                            if (isNaN(num)) {
-                                return undefined; // NaNは一旦undefinedにする
-                            }
-                            // ★ 0 の場合は null を返し、グラフでNAとして扱う（この修正がV8の主要点）
+                            if (isNaN(num)) return undefined;
                             return num === 0 ? null : num;
                         })
-                        // undefined (元の文字列が数値ではなかったもの) だけをフィルタリングで除外。nullは残す
                         .filter(n => n !== undefined); 
                     
                     if (numbers.length > 0) {
@@ -408,11 +401,11 @@ function updateChart() {
     const finalLabels = customLabels || standardLabels;
 
     // --- カスタム設定値 ---
-    const LINE_THICKNESS = 4; // ラインの太さ (borderWidth)
+    const LINE_THICKNESS = 4;
     const TITLE_FONT_SIZE = 20;
     const AXIS_TITLE_FONT_SIZE = 16;
     const AXIS_TICKS_FONT_SIZE = 20;
-    const LEGEND_FONT_SIZE = 18; // ★追加: 凡例のフォントサイズ
+    const LEGEND_FONT_SIZE = 18;
     // ----------------------
 
     const datasets = [];
@@ -449,7 +442,11 @@ function updateChart() {
         options: {
             responsive: true,
             interaction: { mode: 'index', intersect: false },
+            // 背景色を白に設定（画像保存時に透明にならないように）
             plugins: {
+                customCanvasBackgroundColor: {
+                    color: 'white',
+                },
                 title: { 
                     display: true, 
                     text: `${getMetricLabel(metric)} (${getGenderLabel(gender)}) 推移`,
@@ -457,11 +454,10 @@ function updateChart() {
                         size: TITLE_FONT_SIZE
                     }
                 },
-                // ★凡例の設定を追加
                 legend: {
                     labels: {
                         font: {
-                            size: LEGEND_FONT_SIZE // ★凡例のフォントサイズを適用
+                            size: LEGEND_FONT_SIZE 
                         }
                     }
                 },
@@ -482,7 +478,7 @@ function updateChart() {
                     beginAtZero: true, 
                     title: { 
                         display: true, 
-                        text:"",// yLabel,
+                        text: "",
                         font: {
                             size: AXIS_TITLE_FONT_SIZE
                         }
@@ -501,7 +497,19 @@ function updateChart() {
                     }
                 }
             }
-        }
+        },
+        // 背景色プラグイン定義
+        plugins: [{
+            id: 'customCanvasBackgroundColor',
+            beforeDraw: (chart, args, options) => {
+                const {ctx} = chart;
+                ctx.save();
+                ctx.globalCompositeOperation = 'destination-over';
+                ctx.fillStyle = options.color || '#99ffff';
+                ctx.fillRect(0, 0, chart.width, chart.height);
+                ctx.restore();
+            }
+        }]
     });
 }
     function getMetricLabel(m) {
@@ -518,6 +526,24 @@ function updateChart() {
         if (m === 'weight') return "kg";
         if (m === 'age') return "日";
         return "";
+    }
+
+    // ★修正: グラフタイトルをファイル名にする
+    function downloadChartImage() {
+        if (!myChart) {
+            alert("グラフが表示されていません");
+            return;
+        }
+        const link = document.createElement('a');
+        link.href = myChart.toBase64Image();
+        
+        // グラフのタイトルを取得
+        let title = myChart.options.plugins.title.text || 'chart';
+        
+        // ファイル名として設定 (例: 取引頭数 (計・平均) 推移.png)
+        link.download = title + '.png';
+        
+        link.click();
     }
 
     window.onload = function() {
