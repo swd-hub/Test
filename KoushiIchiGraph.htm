@@ -210,9 +210,15 @@
 <script>
     let parsedAllMarkets = [];
     let myChart = null;
+    let marketColorMap = {}; // ★追加：市場名と色のマッピングを保持する
     
     const standardLabels = ["11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月"];
     let customLabels = null;
+	const FIXED_COLORS = [ // ★追加：固定のカラーパレット
+	    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+	    '#9966FF', '#FF9F40', '#333333', '#1f77b4', 
+	    '#ff7f0e', '#2ca02c' // 7色以上比較したい場合のため、色を追加
+	];
 
     function deselectAllMarkets() {
         const checkboxes = document.querySelectorAll('input[name="marketSelect"]');
@@ -391,7 +397,7 @@
 
 function updateChart() {
     const checkedIndices = Array.from(document.querySelectorAll('input[name="marketSelect"]:checked'))
-                                .map(cb => parseInt(cb.value));
+                                .map(cb => parseInt(cb.value));
     const targetIndices = checkedIndices.slice(0, 7);
 
     const ctx = document.getElementById('myChart').getContext('2d');
@@ -409,12 +415,31 @@ function updateChart() {
     // ----------------------
 
     const datasets = [];
-    const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#333333'];
+    // 💡 色固定のための処理
+    // 既存の市場数から、次に割り当てるべき色のインデックスを計算
+    let nextColorIndex = Object.keys(marketColorMap).length; 
 
-    let colorIndex = 0;
+    // 元のcolors配列は、グローバル定数 FIXED_COLORS を使用するため不要です（または削除します）
+    // const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#333333'];
+
+    // let colorIndex = 0; // ← 不要
+
     targetIndices.forEach(idx => {
         const market = parsedAllMarkets[idx];
         if (!market.data[metric] || !market.data[metric][gender]) return;
+
+        let marketColor;
+        
+        // 1. すでにこの市場に色が割り当てられているかチェック
+        if (marketColorMap[market.name]) {
+            marketColor = marketColorMap[market.name];
+        } else {
+            // 2. 割り当てられていなければ、次の色をパレットから取得して割り当て
+            marketColor = FIXED_COLORS[nextColorIndex % FIXED_COLORS.length];
+            marketColorMap[market.name] = marketColor; // マッピングに保存
+            nextColorIndex++; // 次に割り当てる色のインデックスを更新
+        }
+        // -----------------------
 
         let dataValues = market.data[metric][gender];
         if (dataValues.length > finalLabels.length) dataValues = dataValues.slice(0, finalLabels.length);
@@ -422,14 +447,15 @@ function updateChart() {
         datasets.push({
             label: market.name,
             data: dataValues,
-            borderColor: colors[colorIndex % colors.length],
-            backgroundColor: colors[colorIndex % colors.length],
+            // 💡 固定した色を使用
+            borderColor: marketColor,
+            backgroundColor: marketColor,
             borderWidth: LINE_THICKNESS,
-            spanGaps: true, 
+            spanGaps: true, 
             tension: 0.1,
             fill: false
         });
-        colorIndex++;
+        // colorIndex++; // ← 不要
     });
 
     if (myChart) myChart.destroy();
@@ -447,8 +473,8 @@ function updateChart() {
                 customCanvasBackgroundColor: {
                     color: 'white',
                 },
-                title: { 
-                    display: true, 
+                title: { 
+                    display: true, 
                     text: `${getMetricLabel(metric)} (${getGenderLabel(gender)}) 推移`,
                     font: {
                         size: TITLE_FONT_SIZE
@@ -457,7 +483,7 @@ function updateChart() {
                 legend: {
                     labels: {
                         font: {
-                            size: LEGEND_FONT_SIZE 
+                            size: LEGEND_FONT_SIZE 
                         }
                     }
                 },
@@ -473,11 +499,11 @@ function updateChart() {
                     }
                 }
             },
-            scales: { 
-                y: { 
-                    beginAtZero: true, 
-                    title: { 
-                        display: true, 
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    title: { 
+                        display: true, 
                         text: "",
                         font: {
                             size: AXIS_TITLE_FONT_SIZE
@@ -511,8 +537,7 @@ function updateChart() {
             }
         }]
     });
-}
-    function getMetricLabel(m) {
+}    function getMetricLabel(m) {
         const labels = { count: "取引頭数", price: "平均価格(円)", weight: "平均体重（kg）", age: "平均日齢", unitPrice: "１㎏単価（円）" };
         return labels[m] || m;
     }
