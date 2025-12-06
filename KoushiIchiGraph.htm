@@ -145,6 +145,8 @@ textarea {
         display: none; 
     }
 }
+
+
     </style>
 </head>
 <body>
@@ -480,7 +482,7 @@ function updateChart() {
                     beginAtZero: true, 
                     title: { 
                         display: true, 
-                        text: yLabel,
+                        text:"",// yLabel,
                         font: {
                             size: AXIS_TITLE_FONT_SIZE
                         }
@@ -503,7 +505,7 @@ function updateChart() {
     });
 }
     function getMetricLabel(m) {
-        const labels = { count: "取引頭数", price: "平均価格", weight: "平均体重", age: "平均日齢", unitPrice: "１㎏単価" };
+        const labels = { count: "取引頭数", price: "平均価格(円)", weight: "平均体重（kg）", age: "平均日齢", unitPrice: "１㎏単価（円）" };
         return labels[m] || m;
     }
     function getGenderLabel(g) {
