@@ -95,7 +95,10 @@ textarea {
 /* ------------------------------------------------ */
 @media print {
     /* 1. 全ての要素を可視化したままにする（デフォルトから変更なし） */
-    
+    /* ★追加: 印刷時にメインタイトルを非表示にする */
+    .header-container h1 {
+        display: none;
+    }
     /* 2. 入力エリア全体を非表示にする */
     .input-area {
         display: none;
@@ -104,8 +107,9 @@ textarea {
     /* 3. グラフエリア (chart-area) は表示したまま、その中の不要な要素を非表示にする */
     .chart-area {
         position: absolute;
-        left: 0;
-        top: 0;
+        left: 2vw;
+/* ★修正: グラフを上から5%程度下に下げる */
+        top: 5vw;
         width: 100%;
         /* 印刷時の不要なスタイルを無効化 */
         box-shadow: none; 
