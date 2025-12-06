@@ -219,7 +219,16 @@
 	    '#9966FF', '#FF9F40', '#333333', '#1f77b4', 
 	    '#ff7f0e', '#2ca02c' // 7色以上比較したい場合のため、色を追加
 	];
-
+	// 異なるポイントスタイルを定義 (Chart.jsのポイントスタイル)
+	const POINT_STYLES = [ 
+	    'circle', 
+	    'rect', 
+	    'triangle', 
+	    'cross', 
+	    'star', 
+	    'dash', 
+	    'line'
+	];
     function deselectAllMarkets() {
         const checkboxes = document.querySelectorAll('input[name="marketSelect"]');
         checkboxes.forEach(checkbox => {
@@ -408,6 +417,8 @@ function updateChart() {
 
     // --- カスタム設定値 ---
     const LINE_THICKNESS = 4;
+    const POINT_RADIUS = 6; // ★追加: ポイントの大きさ
+    const POINT_BORDER_WIDTH = 2; // ★追加: ポイントの枠線の太さ
     const TITLE_FONT_SIZE = 20;
     const AXIS_TITLE_FONT_SIZE = 16;
     const AXIS_TICKS_FONT_SIZE = 20;
@@ -416,30 +427,29 @@ function updateChart() {
 
     const datasets = [];
     // 💡 色固定のための処理
-    // 既存の市場数から、次に割り当てるべき色のインデックスを計算
-    let nextColorIndex = Object.keys(marketColorMap).length; 
+    let nextColorIndex = Object.keys(marketColorMap).length; 
 
-    // 元のcolors配列は、グローバル定数 FIXED_COLORS を使用するため不要です（または削除します）
-    // const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#333333'];
-
-    // let colorIndex = 0; // ← 不要
-
-    targetIndices.forEach(idx => {
+    // グラフに追加するデータセットを作成
+    targetIndices.forEach((idx, i) => { // ★i (0, 1, 2...) を使用してポイントスタイルを割り当てる
         const market = parsedAllMarkets[idx];
         if (!market.data[metric] || !market.data[metric][gender]) return;
 
         let marketColor;
         
-        // 1. すでにこの市場に色が割り当てられているかチェック
+        // 1. 色の固定
         if (marketColorMap[market.name]) {
             marketColor = marketColorMap[market.name];
         } else {
-            // 2. 割り当てられていなければ、次の色をパレットから取得して割り当て
             marketColor = FIXED_COLORS[nextColorIndex % FIXED_COLORS.length];
             marketColorMap[market.name] = marketColor; // マッピングに保存
             nextColorIndex++; // 次に割り当てる色のインデックスを更新
         }
-        // -----------------------
+        
+        // 2. ポイントスタイルと白黒対応の設定 (POINT_STYLESはグローバルで定義されていると仮定)
+        const marketPointStyle = POINT_STYLES[i % POINT_STYLES.length];
+        
+        // 白黒印刷で識別できるように、ポイントの塗りつぶしは白、枠線は線の色
+        const marketPointBackgroundColor = 'white'; 
 
         let dataValues = market.data[metric][gender];
         if (dataValues.length > finalLabels.length) dataValues = dataValues.slice(0, finalLabels.length);
@@ -447,15 +457,22 @@ function updateChart() {
         datasets.push({
             label: market.name,
             data: dataValues,
-            // 💡 固定した色を使用
+            
+            // 線の設定
             borderColor: marketColor,
-            backgroundColor: marketColor,
+            backgroundColor: marketColor, // Chart.jsのラインチャートでは通常未使用だが、背景色として残しておく
             borderWidth: LINE_THICKNESS,
             spanGaps: true, 
             tension: 0.1,
-            fill: false
+            fill: false,
+            
+            // ★ポイント設定の追加/修正 (白黒印刷対応)
+            pointStyle: marketPointStyle,        // 市場ごとに異なる図形
+            pointRadius: POINT_RADIUS,          // ポイントのサイズ
+            pointBorderWidth: POINT_BORDER_WIDTH, // 枠線の太さ
+            pointBorderColor: marketColor,        // 枠線の色は線の色と合わせる
+            pointBackgroundColor: marketPointBackgroundColor // 塗りつぶしは白 (白黒印刷で図形が黒つぶれしないように)
         });
-        // colorIndex++; // ← 不要
     });
 
     if (myChart) myChart.destroy();
@@ -468,7 +485,6 @@ function updateChart() {
         options: {
             responsive: true,
             interaction: { mode: 'index', intersect: false },
-            // 背景色を白に設定（画像保存時に透明にならないように）
             plugins: {
                 customCanvasBackgroundColor: {
                     color: 'white',
@@ -484,6 +500,26 @@ function updateChart() {
                     labels: {
                         font: {
                             size: LEGEND_FONT_SIZE 
+                        },
+                        // ★凡例にもポイントスタイルを適用
+                        usePointStyle: true,
+                        // 凡例のポイントは白い背景に線で表示
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            if (data.datasets.length) {
+                                return data.datasets.map((dataset, i) => {
+                                    return {
+                                        text: dataset.label,
+                                        fillStyle: dataset.pointBackgroundColor || dataset.backgroundColor, // 白 (塗りつぶし)
+                                        strokeStyle: dataset.pointBorderColor || dataset.borderColor,    // 線の色 (枠線)
+                                        lineWidth: dataset.pointBorderWidth || 1,                        // 枠線の太さ
+                                        pointStyle: dataset.pointStyle,                                  // 図形
+                                        hidden: !chart.isDatasetVisible(i),
+                                        index: i
+                                    };
+                                });
+                            }
+                            return [];
                         }
                     }
                 },
@@ -537,7 +573,8 @@ function updateChart() {
             }
         }]
     });
-}    function getMetricLabel(m) {
+}
+function getMetricLabel(m) {
         const labels = { count: "取引頭数", price: "平均価格(円)", weight: "平均体重（kg）", age: "平均日齢", unitPrice: "１㎏単価（円）" };
         return labels[m] || m;
     }
