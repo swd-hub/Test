@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>肉用子牛市場（黒毛和種） 取引状況グラフ化ツール v8</title>
+    <title>肉用子牛市場（黒毛和種） 取引状況グラフ化ツール v9</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: "Helvetica Neue", Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
@@ -53,6 +53,7 @@
             border-radius: 8px; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             position: relative; 
+            z-index: 10; 
         }
         
         textarea { 
@@ -151,7 +152,7 @@
 <body>
 
     <div class="header-container">
-        <h1>月別肉用子牛取引状況（黒毛和種） 可視化ツール v8</h1>
+        <h1>月別肉用子牛取引状況（黒毛和種） 可視化ツール v9</h1>
         <a href="https://www.alic.go.jp/operation/livestock/calf-report.html" 
            target="_blank" 
            class="source-link-button">
@@ -163,7 +164,7 @@
         <div class="input-area">
             <h2>1. データ入力</h2>
             <p>エクセルシートの表をコピーして貼り付けてください。</p>
-            <textarea id="dataInput" placeholder="ExcelやPDFからテキストを貼り付け..."></textarea>
+            <textarea id="dataInput" placeholder="ExcelやCSVからテキストを貼り付け..."></textarea>
             <button onclick="parseAndSetupUI()" class="main-button">データを読込・市場リスト作成</button>
             <div id="errorMessage"></div>
 
@@ -189,8 +190,8 @@
                 
                 <div class="control-group">
                     <label>表示項目 (Y軸):</label> <br>
-                    <label class="radio-label"><input type="radio" name="metric" value="count" checked onchange="updateChart()"> 取引頭数</label>
-                    <label class="radio-label"><input type="radio" name="metric" value="price" onchange="updateChart()"> 平均価格</label>
+                    <label class="radio-label"><input type="radio" name="metric" value="count" onchange="updateChart()"> 取引頭数</label>
+                    <label class="radio-label"><input type="radio" name="metric" value="price" checked onchange="updateChart()"> 平均価格</label>
                     <label class="radio-label"><input type="radio" name="metric" value="weight" onchange="updateChart()"> 平均体重</label>
                     <label class="radio-label"><input type="radio" name="metric" value="age" onchange="updateChart()"> 平均日齢</label>
                     <label class="radio-label"><input type="radio" name="metric" value="unitPrice" onchange="updateChart()"> １㎏単価</label>
@@ -210,25 +211,25 @@
 <script>
     let parsedAllMarkets = [];
     let myChart = null;
-    let marketColorMap = {}; // ★追加：市場名と色のマッピングを保持する
+    let marketColorMap = {}; 
     
     const standardLabels = ["11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月"];
     let customLabels = null;
-	const FIXED_COLORS = [ // ★追加：固定のカラーパレット
-	    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
-	    '#9966FF', '#FF9F40', '#333333', '#1f77b4', 
-	    '#ff7f0e', '#2ca02c' // 7色以上比較したい場合のため、色を追加
-	];
-	// 異なるポイントスタイルを定義 (Chart.jsのポイントスタイル)
-	const POINT_STYLES = [ 
-	    'circle', 
-	    'rect', 
-	    'triangle', 
-	    'cross', 
-	    'star', 
-	    'dash', 
-	    'line'
-	];
+    const FIXED_COLORS = [ 
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+        '#9966FF', '#FF9F40', '#333333', '#1f77b4', 
+        '#ff7f0e', '#2ca02c' 
+    ];
+    // 異なるポイントスタイルを定義 (Chart.jsのポイントスタイル)
+    const POINT_STYLES = [ 
+        'circle', 
+        'rect', 
+        'triangle', 
+        'cross', 
+        'star', 
+        'dash', 
+        'line'
+    ];
     function deselectAllMarkets() {
         const checkboxes = document.querySelectorAll('input[name="marketSelect"]');
         checkboxes.forEach(checkbox => {
@@ -368,6 +369,9 @@
         const container = document.getElementById('marketSelectionArea');
         container.innerHTML = "";
         
+        // ▼ 指定されたデフォルト選択対象のキーワード
+        const defaultTargets = ["島根県島根中央家畜市場", "島根県西部家畜市場", "総合計"];
+
         parsedAllMarkets.forEach((market, index) => {
             const label = document.createElement('label');
             label.className = 'market-checkbox-item';
@@ -378,8 +382,8 @@
             checkbox.name = 'marketSelect';
             checkbox.onchange = handleSelectionChange;
 
-            const currentCheckedCount = container.querySelectorAll('input:checked').length;
-            if (currentCheckedCount < 7) {
+            // ▼ デフォルト選択ロジックを変更: 特定の市場名が含まれている場合にチェックする
+            if (defaultTargets.some(target => market.name.includes(target))) {
                 checkbox.checked = true;
             }
 
@@ -406,7 +410,7 @@
 
 function updateChart() {
     const checkedIndices = Array.from(document.querySelectorAll('input[name="marketSelect"]:checked'))
-                                .map(cb => parseInt(cb.value));
+                                .map(cb => parseInt(cb.value));
     const targetIndices = checkedIndices.slice(0, 7);
 
     const ctx = document.getElementById('myChart').getContext('2d');
@@ -427,7 +431,7 @@ function updateChart() {
 
     const datasets = [];
     // 💡 色固定のための処理
-    let nextColorIndex = Object.keys(marketColorMap).length; 
+    let nextColorIndex = Object.keys(marketColorMap).length; 
 
     // グラフに追加するデータセットを作成
     targetIndices.forEach((idx, i) => { // ★i (0, 1, 2...) を使用してポイントスタイルを割り当てる
@@ -462,7 +466,7 @@ function updateChart() {
             borderColor: marketColor,
             backgroundColor: marketColor, // Chart.jsのラインチャートでは通常未使用だが、背景色として残しておく
             borderWidth: LINE_THICKNESS,
-            spanGaps: true, 
+            spanGaps: true, 
             tension: 0.1,
             fill: false,
             
@@ -489,8 +493,8 @@ function updateChart() {
                 customCanvasBackgroundColor: {
                     color: 'white',
                 },
-                title: { 
-                    display: true, 
+                title: { 
+                    display: true, 
                     text: `${getMetricLabel(metric)} (${getGenderLabel(gender)}) 推移`,
                     font: {
                         size: TITLE_FONT_SIZE
@@ -499,7 +503,7 @@ function updateChart() {
                 legend: {
                     labels: {
                         font: {
-                            size: LEGEND_FONT_SIZE 
+                            size: LEGEND_FONT_SIZE 
                         },
                         // ★凡例にもポイントスタイルを適用
                         usePointStyle: true,
@@ -535,11 +539,11 @@ function updateChart() {
                     }
                 }
             },
-            scales: { 
-                y: { 
-                    beginAtZero: true, 
-                    title: { 
-                        display: true, 
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    title: { 
+                        display: true, 
                         text: "",
                         font: {
                             size: AXIS_TITLE_FONT_SIZE
@@ -611,13 +615,15 @@ function getMetricLabel(m) {
     window.onload = function() {
         const sampleData = `品種：黒毛和種（例示）
 都道府県 市場名 11月 12月 1月 2月 3月 4月 5月 6月 7月 8月 9月 10月 11月 合計・平均
-北海道 ホクレン南北海道家畜市場（サンプル）
-取引頭数 雌 632 785 563 676 625 688 718 690 681 597 604 585 601
-平均価格 平均 562387 543803 602386 625206 659744 751438 698412 682838 717826 729645 693877 703967 744596
-北海道 ホクレン十勝地区家畜市場（サンプル）
-取引頭数 計 0 2582 2088 1898 0 2214 2340 2128 3602 536 2850 1588 0
-全国 合計（サンプル）
-平均価格 平均 100000 200000 300000 400000 500000 600000 700000 800000 900000 1000000 1100000 1200000 1300000`;
+島根県 島根県島根中央家畜市場
+取引頭数 計 0 0 0 0 0 0 0 0 0 0 0 0 0
+平均価格 平均 0 0 0 0 0 0 0 0 0 0 0 0 0
+島根県 島根県西部家畜市場
+取引頭数 計 0 0 0 0 0 0 0 0 0 0 0 0 0
+平均価格 平均 0 0 0 0 0 0 0 0 0 0 0 0 0
+全国 総合計
+取引頭数 計 0 0 0 0 0 0 0 0 0 0 0 0 0
+平均価格 平均 0 0 0 0 0 0 0 0 0 0 0 0 0`;
 
         document.getElementById('dataInput').value = sampleData;
         parseAndSetupUI();
