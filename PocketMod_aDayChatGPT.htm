@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="ChatGPT 日本語チャット GPT-5.1">
+<title>2×4区画スケジュール（2ページ）</title>
+
+<style>
+  @page { size: A4 landscape; margin: 0; }
+  @media print { body { margin: 0; } }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+    font-size: 9pt;
+  }
+
+  /* ★ 1ページ分（2×4＝8区画） */
+  .sheet {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 1mm;
+    width: 100vw;
+    height: 100vh;
+    page-break-after: always;   /* ← ★次のページを強制 */
+  }
+
+  .panel {
+    border: 0.7pt solid #000;
+    padding: 1mm;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .header {
+    font-weight: bold;
+    margin-bottom: 1mm;
+    flex: 0 0 auto;
+  }
+
+  table {
+    width: 100%;
+    height: 100%;
+    border-collapse: collapse;
+    font-size: 7pt;
+    flex: 1 1 auto;
+  }
+
+  tr { height: auto; }
+  td { border-top: 0.3pt solid #bbb; padding: 0 0.3mm; }
+  tr:first-child td { border-top: 0.7pt solid #000; }
+  td.time { width: 7mm; text-align: right; }
+</style>
+</head>
+
+<body>
+
+<!-- ▼ 1ページ目 -->
+<div class="sheet" id="sheet1"></div>
+
+<!-- ▼ 2ページ目（同じ内容） -->
+<div class="sheet" id="sheet2"></div>
+
+<script>
+const hours = Array.from({length: 17}, (_, i) => i + 5);
+
+function createPanel() {
+  const div = document.createElement("div");
+  div.className = "panel";
+
+  div.innerHTML = `
+    <div class="header">日付：＿＿＿＿＿＿</div>
+    <table>
+      ${hours.map(h => `<tr><td class="time">${h}</td><td></td></tr>`).join("")}
+    </table>
+  `;
+
+  return div;
+}
+
+function fillSheet(targetId) {
+  const sheet = document.getElementById(targetId);
+  for (let i = 0; i < 8; i++) {
+    sheet.appendChild(createPanel());
+  }
+}
+
+// ★ 2ページとも 8区画を生成
+fillSheet("sheet1");
+fillSheet("sheet2");
+</script>
+
+</body>
+</html>
