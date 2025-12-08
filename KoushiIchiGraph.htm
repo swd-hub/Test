@@ -8,7 +8,6 @@
     <style>
         body { font-family: "Helvetica Neue", Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
         
-        /* タイトルとボタンをフレックスコンテナで囲む */
         .header-container {
             display: flex;
             align-items: center;
@@ -16,17 +15,16 @@
             margin-bottom: 20px;
         }
 
-        /* リンクボタンのスタイル */
         .source-link-button {
             padding: 8px 15px;
-            background-color: #6c757d; /* 落ち着いたグレー */
+            background-color: #6c757d;
             color: white;
             text-decoration: none;
             border-radius: 5px;
             font-size: 14px;
             transition: background-color 0.2s;
-            white-space: nowrap; /* ボタン内のテキストが折り返さないように */
-            margin-left: 20px; /* タイトルとの間隔 */
+            white-space: nowrap;
+            margin-left: 20px;
         }
         .source-link-button:hover {
             background-color: #5a6268;
@@ -34,7 +32,6 @@
 
         .container { display: flex; flex-wrap: wrap; gap: 20px; }
         
-        /* input-area を前面に表示する設定 */
         .input-area { 
             flex: 1; 
             min-width: 300px; 
@@ -78,7 +75,6 @@
         h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #ddd; padding-bottom: 5px; }
         #errorMessage { color: red; font-weight: bold; margin-top: 10px; font-size: 0.9rem; }
 
-        /* グラフエリアのヘッダー用ラッパー (タイトルとボタンを横並びにする) */
         .chart-header-wrapper {
             display: flex;
             justify-content: space-between;
@@ -87,19 +83,17 @@
             margin-bottom: 15px;
             padding-bottom: 5px;
         }
-        /* ラッパー内のh2は線を消して余白を調整 */
         .chart-header-wrapper h2 {
             border-bottom: none;
             margin-bottom: 0;
             padding-bottom: 0;
             margin-top: 0;
         }
-        /* 画像保存ボタンのスタイル */
         .download-btn {
-            width: auto; /* 全幅ではなく自動幅に */
+            width: auto;
             padding: 5px 15px;
             font-size: 14px;
-            background-color: #28a745; /* 緑色 */
+            background-color: #28a745;
             color: white;
             border-radius: 4px;
         }
@@ -107,7 +101,6 @@
             background-color: #218838;
         }
 
-        /* 市場選択エリア */
         #marketSelectionContainer { display: none; margin-top: 20px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; }
         #marketSelectionArea { max-height: 300px; overflow-y: auto; border-top: 1px solid #eee; margin-top: 5px; padding-top: 5px; }
         .market-checkbox-item { display: block; margin-bottom: 5px; cursor: pointer; font-size: 0.9rem; }
@@ -116,9 +109,6 @@
         .deselect-button { padding: 5px 10px; font-size: 0.85rem; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
         .selection-count { font-size: 0.85rem; color: #666; margin-left: auto; padding-left: 10px; }
         
-/* ------------------------------------------------ */
-/* @media print: 印刷時のスタイル設定               */
-/* ------------------------------------------------ */
 @media print {
     .header-container h1 { display: none; }
     .input-area { display: none; }
@@ -135,8 +125,6 @@
         height: 65vw; 
     }
     .controls { display: none; }
-    
-    /* 印刷時はグラフエリアのヘッダー(H2と保存ボタン)ごと消す */
     .chart-header-wrapper { display: none; }
 
     #myChart {
@@ -163,8 +151,8 @@
     <div class="container">
         <div class="input-area">
             <h2>1. データ入力</h2>
-            <p>エクセルシートの表をコピーして上書で貼り付けてください。</p>
-            <textarea id="dataInput" placeholder="ExcelやCSVからテキストを貼り付け..."></textarea>
+            <p>エクセルシートの表をコピーして貼り付けてください。</p>
+            <textarea id="dataInput" placeholder="ExcelやPDFからテキストを貼り付け..."></textarea>
             <button onclick="parseAndSetupUI()" class="main-button">データを読込・市場リスト作成</button>
             <div id="errorMessage"></div>
 
@@ -187,7 +175,6 @@
             </div>
             
             <div class="controls">
-                
                 <div class="control-group">
                     <label>表示項目 (Y軸):</label> <br>
                     <label class="radio-label"><input type="radio" name="metric" value="count" onchange="updateChart()"> 取引頭数</label>
@@ -211,25 +198,20 @@
 <script>
     let parsedAllMarkets = [];
     let myChart = null;
-    let marketColorMap = {}; 
+    let marketColorMap = {};
+    // ★修正・追加：市場名とポイント形状の対応マップ
+    let marketPointStyleMap = {}; 
     
     const standardLabels = ["11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月"];
     let customLabels = null;
     const FIXED_COLORS = [ 
         '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
         '#9966FF', '#FF9F40', '#333333', '#1f77b4', 
-        '#ff7f0e', '#2ca02c' 
+        '#ff7f0e', '#2ca02c'
     ];
-    // 異なるポイントスタイルを定義 (Chart.jsのポイントスタイル)
-    const POINT_STYLES = [ 
-        'circle', 
-        'rect', 
-        'triangle', 
-        'cross', 
-        'star', 
-        'dash', 
-        'line'
-    ];
+    // 使用できるポイント形状のリスト
+    const POINT_STYLES = [ 'circle', 'rect', 'triangle', 'cross', 'star', 'dash', 'line' ];
+
     function deselectAllMarkets() {
         const checkboxes = document.querySelectorAll('input[name="marketSelect"]');
         checkboxes.forEach(checkbox => {
@@ -252,28 +234,21 @@
             "平均日齢": "age", "１㎏単価": "unitPrice"
         };
 
-        // --- X軸ラベルの自動抽出ロジック ---
         customLabels = null;
         for (let j = 0; j < Math.min(10, lines.length); j++) {
             const line = lines[j].trim();
             if (line.includes("月") && !line.match(/^(\s*\d[\s\d]*){5,}/)) {
-                
                 let parts = line.split(/\s+/).filter(part => part.includes("月"));
-                
                 if (parts.length >= 12) {
-                    
                     const totalIndex = parts.findIndex(p => p.includes("合計") || p.includes("平均") || p.includes("総計"));
-                    
                     if (totalIndex !== -1) {
                         customLabels = parts.slice(0, totalIndex); 
                     } else {
                         customLabels = parts.slice(0, 12); 
                     }
-
                     if (customLabels.length === 12) {
                         customLabels.push(customLabels[0]);
                     }
-                    
                     if (customLabels.length === 13) {
                         break;
                     } else {
@@ -282,8 +257,6 @@
                 }
             }
         }
-        // ---------------------------------------------
-
 
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
@@ -303,7 +276,6 @@
                 let marketName = cleanLine.split(' ')[0] + (cleanLine.split(' ')[1] || "");
                 marketName = marketName.replace(/＊|\*/g, "");
 
-                // === 除外フィルター処理 ===
                 if (marketName.includes("品種") || marketName.includes("黒毛和種")) {
                     currentMarket = null;
                     continue;
@@ -369,8 +341,9 @@
         const container = document.getElementById('marketSelectionArea');
         container.innerHTML = "";
         
-        // ▼ 指定されたデフォルト選択対象のキーワード
-        const defaultTargets = ["島根県島根中央家畜市場", "島根県西部家畜市場", "総合計"];
+        // チェック対象の優先キーワード
+        const defaultTargets = ["島根中央", "西部", "総合計"];
+        let hasPriorityMatch = false;
 
         parsedAllMarkets.forEach((market, index) => {
             const label = document.createElement('label');
@@ -382,15 +355,24 @@
             checkbox.name = 'marketSelect';
             checkbox.onchange = handleSelectionChange;
 
-            // ▼ デフォルト選択ロジックを変更: 特定の市場名が含まれている場合にチェックする
+            // キーワードを含む市場があればチェックを入れる
             if (defaultTargets.some(target => market.name.includes(target))) {
                 checkbox.checked = true;
+                hasPriorityMatch = true;
             }
 
             label.appendChild(checkbox);
             label.appendChild(document.createTextNode(market.name));
             container.appendChild(label);
         });
+
+        // 追加ロジック：もし優先キーワード(島根など)が一つも見つからなかった場合
+        if (!hasPriorityMatch) {
+            const checkboxes = container.querySelectorAll('input[name="marketSelect"]');
+            for(let i = 0; i < Math.min(checkboxes.length, 3); i++) {
+                checkboxes[i].checked = true;
+            }
+        }
 
         document.getElementById('marketSelectionContainer').style.display = 'block';
         handleSelectionChange(); 
@@ -408,177 +390,164 @@
         updateChart();
     }
 
-function updateChart() {
-    const checkedIndices = Array.from(document.querySelectorAll('input[name="marketSelect"]:checked'))
-                                .map(cb => parseInt(cb.value));
-    const targetIndices = checkedIndices.slice(0, 7);
+    function updateChart() {
+        const checkedIndices = Array.from(document.querySelectorAll('input[name="marketSelect"]:checked'))
+                                    .map(cb => parseInt(cb.value));
+        const targetIndices = checkedIndices.slice(0, 7);
 
-    const ctx = document.getElementById('myChart').getContext('2d');
-    const metric = document.querySelector('input[name="metric"]:checked').value;
-    const gender = document.querySelector('input[name="gender"]:checked').value;
-    
-    const finalLabels = customLabels || standardLabels;
-
-    // --- カスタム設定値 ---
-    const LINE_THICKNESS = 4;
-    const POINT_RADIUS = 6; // ★追加: ポイントの大きさ
-    const POINT_BORDER_WIDTH = 2; // ★追加: ポイントの枠線の太さ
-    const TITLE_FONT_SIZE = 20;
-    const AXIS_TITLE_FONT_SIZE = 16;
-    const AXIS_TICKS_FONT_SIZE = 20;
-    const LEGEND_FONT_SIZE = 18;
-    // ----------------------
-
-    const datasets = [];
-    // 💡 色固定のための処理
-    let nextColorIndex = Object.keys(marketColorMap).length; 
-
-    // グラフに追加するデータセットを作成
-    targetIndices.forEach((idx, i) => { // ★i (0, 1, 2...) を使用してポイントスタイルを割り当てる
-        const market = parsedAllMarkets[idx];
-        if (!market.data[metric] || !market.data[metric][gender]) return;
-
-        let marketColor;
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const metric = document.querySelector('input[name="metric"]:checked').value;
+        const gender = document.querySelector('input[name="gender"]:checked').value;
         
-        // 1. 色の固定
-        if (marketColorMap[market.name]) {
-            marketColor = marketColorMap[market.name];
-        } else {
-            marketColor = FIXED_COLORS[nextColorIndex % FIXED_COLORS.length];
-            marketColorMap[market.name] = marketColor; // マッピングに保存
-            nextColorIndex++; // 次に割り当てる色のインデックスを更新
-        }
-        
-        // 2. ポイントスタイルと白黒対応の設定 (POINT_STYLESはグローバルで定義されていると仮定)
-        const marketPointStyle = POINT_STYLES[i % POINT_STYLES.length];
-        
-        // 白黒印刷で識別できるように、ポイントの塗りつぶしは白、枠線は線の色
-        const marketPointBackgroundColor = 'white'; 
+        const finalLabels = customLabels || standardLabels;
 
-        let dataValues = market.data[metric][gender];
-        if (dataValues.length > finalLabels.length) dataValues = dataValues.slice(0, finalLabels.length);
+        const LINE_THICKNESS = 4;
+        const POINT_RADIUS = 6;
+        const POINT_BORDER_WIDTH = 2;
+        const TITLE_FONT_SIZE = 20;
+        const AXIS_TITLE_FONT_SIZE = 16;
+        const AXIS_TICKS_FONT_SIZE = 20;
+        const LEGEND_FONT_SIZE = 18;
 
-        datasets.push({
-            label: market.name,
-            data: dataValues,
+        const datasets = [];
+        let nextColorIndex = Object.keys(marketColorMap).length; 
+
+        targetIndices.forEach((idx, i) => { 
+            const market = parsedAllMarkets[idx];
+            if (!market.data[metric] || !market.data[metric][gender]) return;
+
+            // 1. 色の固定ロジック（維持）
+            let marketColor;
+            if (marketColorMap[market.name]) {
+                marketColor = marketColorMap[market.name];
+            } else {
+                marketColor = FIXED_COLORS[nextColorIndex % FIXED_COLORS.length];
+                marketColorMap[market.name] = marketColor; 
+                nextColorIndex++; 
+            }
             
-            // 線の設定
-            borderColor: marketColor,
-            backgroundColor: marketColor, // Chart.jsのラインチャートでは通常未使用だが、背景色として残しておく
-            borderWidth: LINE_THICKNESS,
-            spanGaps: true, 
-            tension: 0.1,
-            fill: false,
-            
-            // ★ポイント設定の追加/修正 (白黒印刷対応)
-            pointStyle: marketPointStyle,        // 市場ごとに異なる図形
-            pointRadius: POINT_RADIUS,          // ポイントのサイズ
-            pointBorderWidth: POINT_BORDER_WIDTH, // 枠線の太さ
-            pointBorderColor: marketColor,        // 枠線の色は線の色と合わせる
-            pointBackgroundColor: marketPointBackgroundColor // 塗りつぶしは白 (白黒印刷で図形が黒つぶれしないように)
+            // 2. ★ポイント形状の固定ロジック（新規追加）
+            let marketPointStyle;
+            if (marketPointStyleMap[market.name]) {
+                marketPointStyle = marketPointStyleMap[market.name];
+            } else {
+                // まだ割り当てられていない場合は、現在のマップサイズをインデックスとして形状を割り当てる
+                const currentStyleIndex = Object.keys(marketPointStyleMap).length;
+                marketPointStyle = POINT_STYLES[currentStyleIndex % POINT_STYLES.length];
+                marketPointStyleMap[market.name] = marketPointStyle;
+            }
+
+            const marketPointBackgroundColor = 'white'; 
+
+            let dataValues = market.data[metric][gender];
+            if (dataValues.length > finalLabels.length) dataValues = dataValues.slice(0, finalLabels.length);
+
+            datasets.push({
+                label: market.name,
+                data: dataValues,
+                borderColor: marketColor,
+                backgroundColor: marketColor, 
+                borderWidth: LINE_THICKNESS,
+                spanGaps: true, 
+                tension: 0.1,
+                fill: false,
+                pointStyle: marketPointStyle,        // ★固定された形状
+                pointRadius: POINT_RADIUS,          
+                pointBorderWidth: POINT_BORDER_WIDTH, 
+                pointBorderColor: marketColor,        
+                pointBackgroundColor: marketPointBackgroundColor 
+            });
         });
-    });
 
-    if (myChart) myChart.destroy();
+        if (myChart) myChart.destroy();
 
-    let yLabel = getUnitLabel(metric);
+        let yLabel = getUnitLabel(metric);
 
-    myChart = new Chart(ctx, {
-        type: 'line',
-        data: { labels: finalLabels, datasets: datasets },
-        options: {
-            responsive: true,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                customCanvasBackgroundColor: {
-                    color: 'white',
-                },
-                title: { 
-                    display: true, 
-                    text: `${getMetricLabel(metric)} (${getGenderLabel(gender)}) 推移`,
-                    font: {
-                        size: TITLE_FONT_SIZE
-                    }
-                },
-                legend: {
-                    labels: {
-                        font: {
-                            size: LEGEND_FONT_SIZE 
-                        },
-                        // ★凡例にもポイントスタイルを適用
-                        usePointStyle: true,
-                        // 凡例のポイントは白い背景に線で表示
-                        generateLabels: function(chart) {
-                            const data = chart.data;
-                            if (data.datasets.length) {
-                                return data.datasets.map((dataset, i) => {
-                                    return {
-                                        text: dataset.label,
-                                        fillStyle: dataset.pointBackgroundColor || dataset.backgroundColor, // 白 (塗りつぶし)
-                                        strokeStyle: dataset.pointBorderColor || dataset.borderColor,    // 線の色 (枠線)
-                                        lineWidth: dataset.pointBorderWidth || 1,                        // 枠線の太さ
-                                        pointStyle: dataset.pointStyle,                                  // 図形
-                                        hidden: !chart.isDatasetVisible(i),
-                                        index: i
-                                    };
-                                });
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: finalLabels, datasets: datasets },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    customCanvasBackgroundColor: {
+                        color: 'white',
+                    },
+                    title: { 
+                        display: true, 
+                        text: `${getMetricLabel(metric)} (${getGenderLabel(gender)}) 推移`,
+                        font: { size: TITLE_FONT_SIZE }
+                    },
+                    legend: {
+                        labels: {
+                            font: { size: LEGEND_FONT_SIZE },
+                            usePointStyle: true,
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                if (data.datasets.length) {
+                                    return data.datasets.map((dataset, i) => {
+                                        return {
+                                            text: dataset.label,
+                                            // ポイントの見た目を正しく反映させるために、pointStyleを渡す
+                                            pointStyle: dataset.pointStyle, 
+                                            fillStyle: dataset.pointBackgroundColor || dataset.backgroundColor, 
+                                            strokeStyle: dataset.pointBorderColor || dataset.borderColor,    
+                                            lineWidth: dataset.pointBorderWidth || 1,                        
+                                            hidden: !chart.isDatasetVisible(i),
+                                            index: i
+                                        };
+                                    });
+                                }
+                                return [];
                             }
-                            return [];
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.parsed.y !== null) label += new Intl.NumberFormat('ja-JP').format(context.parsed.y) + yLabel;
+                                else label += 'データなし (NA)';
+                                return label;
+                            }
                         }
                     }
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) label += ': ';
-                            if (context.parsed.y !== null) label += new Intl.NumberFormat('ja-JP').format(context.parsed.y) + yLabel;
-                            else label += 'データなし (NA)';
-                            return label;
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        title: { 
+                            display: true, 
+                            text: "",
+                            font: { size: AXIS_TITLE_FONT_SIZE }
+                        },
+                        ticks: {
+                            font: { size: AXIS_TICKS_FONT_SIZE }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: { size: AXIS_TICKS_FONT_SIZE }
                         }
                     }
                 }
             },
-            scales: { 
-                y: { 
-                    beginAtZero: true, 
-                    title: { 
-                        display: true, 
-                        text: "",
-                        font: {
-                            size: AXIS_TITLE_FONT_SIZE
-                        }
-                    },
-                    ticks: {
-                        font: {
-                            size: AXIS_TICKS_FONT_SIZE
-                        }
-                    }
-                },
-                x: {
-                    ticks: {
-                        font: {
-                            size: AXIS_TICKS_FONT_SIZE
-                        }
-                    }
+            plugins: [{
+                id: 'customCanvasBackgroundColor',
+                beforeDraw: (chart, args, options) => {
+                    const {ctx} = chart;
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'destination-over';
+                    ctx.fillStyle = options.color || '#99ffff';
+                    ctx.fillRect(0, 0, chart.width, chart.height);
+                    ctx.restore();
                 }
-            }
-        },
-        // 背景色プラグイン定義
-        plugins: [{
-            id: 'customCanvasBackgroundColor',
-            beforeDraw: (chart, args, options) => {
-                const {ctx} = chart;
-                ctx.save();
-                ctx.globalCompositeOperation = 'destination-over';
-                ctx.fillStyle = options.color || '#99ffff';
-                ctx.fillRect(0, 0, chart.width, chart.height);
-                ctx.restore();
-            }
-        }]
-    });
-}
-function getMetricLabel(m) {
+            }]
+        });
+    }
+    
+    function getMetricLabel(m) {
         const labels = { count: "取引頭数", price: "平均価格(円)", weight: "平均体重（kg）", age: "平均日齢", unitPrice: "１㎏単価（円）" };
         return labels[m] || m;
     }
@@ -594,7 +563,6 @@ function getMetricLabel(m) {
         return "";
     }
 
-    // ★修正: グラフタイトルをファイル名にする
     function downloadChartImage() {
         if (!myChart) {
             alert("グラフが表示されていません");
@@ -602,27 +570,22 @@ function getMetricLabel(m) {
         }
         const link = document.createElement('a');
         link.href = myChart.toBase64Image();
-        
-        // グラフのタイトルを取得
         let title = myChart.options.plugins.title.text || 'chart';
-        
-        // ファイル名として設定 (例: 取引頭数 (計・平均) 推移.png)
         link.download = title + '.png';
-        
         link.click();
     }
 
+    // 起動時の処理
     window.onload = function() {
+        // ユーザーが以前に指定したサンプルデータを使用
         const sampleData = `品種：黒毛和種（例示）
 都道府県 市場名 11月 12月 1月 2月 3月 4月 5月 6月 7月 8月 9月 10月 11月 合計・平均
-島根県 島根県島根中央家畜市場（例示）
-取引頭数 計 247 309 258 264 197 272 260 282 236 213 234 217 209
-平均価格 平均 567288 569020 561652 582604 650351 664525 648805 623848 620568 627708 663958 640453 698558
-島根県 島根県西部家畜市場（例示）
-取引頭数 計 129 0 145 0 147 0 164 0 117 0 131 0 146
-平均価格 平均 544116 0 583099 0 608285 0 646304 0 652074 0 673779 0 699653
-全国 総合計（例示）
-取引頭数 計 0 0 0 0 0 0 0 0 0 0 0 0 0
+北海道 ホクレン南北海道家畜市場（サンプル）
+取引頭数 雌 632 785 563 676 625 688 718 690 681 597 604 585 601
+平均価格 平均 562387 543803 602386 625206 659744 751438 698412 682838 717826 729645 693877 703967 744596
+北海道 ホクレン十勝地区家畜市場（サンプル）
+取引頭数 計 0 2582 2088 1898 0 2214 2340 2128 3602 536 2850 1588 0
+全国 合計（サンプル）
 平均価格 平均 522762 560005 555309 595924 633246 671250 666809 648889 646597 662736 667062 670482 717425`;
 
         document.getElementById('dataInput').value = sampleData;
