@@ -161,7 +161,7 @@ textarea {
     <div class="container">
         <div class="input-area">
             <h2>1. データ入力</h2>
-            <p>エクセルシートの表をコピーして貼り付けてください。</p>
+            <p>エクセルシートの表をコピーして上書きしてください。</p>
             <textarea id="dataInput" placeholder="Excelの全データを貼り付け..."></textarea>
             <button onclick="parseAndSetupUI()" class="main-button">データを読込・市場リスト作成</button>
             <div id="errorMessage"></div>
@@ -219,7 +219,7 @@ textarea {
         '#ff7f0e', '#2ca02c'
     ];
     // 使用できるポイント形状のリスト
-    const POINT_STYLES = [ 'circle', 'rect', 'triangle', 'cross', 'star', 'dash', 'line' ];
+    const POINT_STYLES = [ 'circle', 'rect', 'triangle', 'cross', 'star', 'crossRot', 'rectRot' ];
 
     function deselectAllMarkets() {
         const checkboxes = document.querySelectorAll('input[name="marketSelect"]');
