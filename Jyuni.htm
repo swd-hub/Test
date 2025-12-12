@@ -120,6 +120,44 @@ const metricsMap = [
     { key: 'unitPrice', label: '1kg単価', unit: '円' }
 ];
 
+function isMarketHeaderLine(line) {
+    return (
+        (line.includes("道") || line.includes("県") || line.includes("府") || line.includes("都")) &&
+        (line.includes("市場") || line.includes("集散") || line.includes("家畜市場")) &&
+        !line.includes("頭") && !line.includes("価格") && !line.includes("体重") &&
+        !line.includes("日齢") && !line.includes("単価") && !line.includes("（")
+    );
+}
+
+function normalizeMarketName(line) {
+    // タブ区切りを分解して余分な記号除去
+    const parts = line.split('\t').map(p => p.trim().replace(/＊|\*/g, ""));
+
+    // 都道府県（例：兵庫県・北海道）
+    const prefecture = parts[0];
+
+    // 市場名（例：淡路家畜市場）
+    const market = parts.slice(1).join("_").trim();
+
+    // 最終形式 → 「兵庫県_淡路家畜市場」
+    return `${prefecture}_${market}`;
+}
+
+function normalizeMarketName(line) {
+    // タブ区切りを分解して余分な記号除去
+    const parts = line.split('\t').map(p => p.trim().replace(/＊|\*/g, ""));
+
+    // 都道府県（例：兵庫県・北海道）
+    const prefecture = parts[0];
+
+    // 市場名（例：淡路家畜市場）
+    const market = parts.slice(1).join("_").trim();
+
+    // 最終形式 → 「兵庫県_淡路家畜市場」
+    return `${prefecture}_${market}`;
+}
+
+
 function processData() {
     const text = document.getElementById('dataInput').value;
     const targetMonth = document.getElementById('targetMonth').value.trim();
@@ -148,9 +186,8 @@ function processData() {
     let headerLine = null;
 
     for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (line.includes('市場名')) {
-            headerLine = line;
+        if (lines[i].includes('市場名')) {
+            headerLine = lines[i];
             break;
         }
     }
@@ -187,7 +224,7 @@ function processData() {
 
         const parts = line.split('\t').map(p => p.trim()).filter(p => p.length > 0);
 
-        // 総合計ヘッダ判定
+        // ▼ 総合計
         const isTotalHeader = (line.startsWith('総合計') && !line.includes('月'));
         if (isTotalHeader) {
             currentMarketName = '総合計';
@@ -197,20 +234,11 @@ function processData() {
             continue;
         }
 
-        // 市場名行判定
-        const isMarketHeader = (
-            parts.length >= 2 &&
-            (line.includes("道") || line.includes("県") || line.includes("府") || line.includes("都")) &&
-            (line.includes("市場") || line.includes("集散")) &&
-            !line.includes("頭") && !line.includes("価格") && !line.includes("体重") && 
-            !line.includes("日齢") && !line.includes("単価") && !line.includes("（")
-        );
+        // ▼ 市場名（都道府県_市場名）
+        if (isMarketHeaderLine(line)) {
+            const fullName = normalizeMarketName(line);
 
-        if (isMarketHeader) {
-            let name = parts.slice(1).join(' ').replace(/＊|\*/g, "").trim();
-            if (name.includes("品種") || name.includes("黒毛和種")) continue;
-            
-            currentMarketName = name;
+            currentMarketName = fullName;
             if (!marketMap[currentMarketName]) {
                 marketMap[currentMarketName] = { '雄': {}, '雌': {}, '計': {} };
             }
@@ -231,29 +259,27 @@ function processData() {
             const line2 = i + 2 < lines.length ? lines[i + 2] : "";
             const line3 = i + 3 < lines.length ? lines[i + 3] : "";
 
-const isTotalContext = (currentMarketName === '総合計');
+            const isTotalContext = (currentMarketName === '総合計');
 
-extractMetricData(line1, '雌', detectedMetric, monthIndex, currentMarketName, isTotalContext);
-extractMetricData(line2, '雄', detectedMetric, monthIndex, currentMarketName, isTotalContext);
-extractMetricData(line3, '計', detectedMetric, monthIndex, currentMarketName, isTotalContext);
-
+            extractMetricData(line1, '雌', detectedMetric, monthIndex, currentMarketName, isTotalContext);
+            extractMetricData(line2, '雄', detectedMetric, monthIndex, currentMarketName, isTotalContext);
+            extractMetricData(line3, '計', detectedMetric, monthIndex, currentMarketName, isTotalContext);
         }
     }
 
+    // マップ → 配列へ
     Object.keys(marketMap).forEach(mName => {
         ['雄', '雌', '計'].forEach(g => {
-            let dataObj = { name: mName };
+            let obj = { name: mName };
             let hasData = false;
+
             metricsMap.forEach(m => {
-                const val = marketMap[mName][g][m.key];
-                dataObj[m.key] = val || null;
-                if (val !== undefined && val !== null && val !== 0) {
-                    hasData = true;
-                }
+                const v = marketMap[mName][g][m.key];
+                obj[m.key] = v || null;
+                if (v !== undefined && v !== null && v !== 0) hasData = true;
             });
-            if (hasData) {
-                parsedDataByGender[g].push(dataObj);
-            }
+
+            if (hasData) parsedDataByGender[g].push(obj);
         });
     });
 
@@ -265,7 +291,6 @@ extractMetricData(line3, '計', detectedMetric, monthIndex, currentMarketName, i
     calculateScores();
     renderTables();
 }
-
 
 function extractMetricData(line, gender, metricKey, monthIdx, currentMarketName, isTotalContext = false) {
     if (!line) return;
@@ -464,5 +489,4 @@ function renderTables() {
 </body>
 </html>
 	
-
 
