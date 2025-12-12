@@ -40,8 +40,9 @@
     .controls { margin-top: 15px; display: flex; gap: 15px; align-items: center; background: #eef; padding: 15px; border-radius: 5px; flex-wrap: wrap; }
     input[type="text"], input[type="number"] { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
     input[type="number"] { width: 80px; }
-    button { padding: 10px 24px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-    button:hover { background-color: #0056b3; }
+    /* 削除されたボタンのスタイルをコメントアウトまたは削除 */
+    /* button { padding: 10px 24px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; } */
+    /* button:hover { background-color: #0056b3; } */
     
     #errorMessage { color: red; font-weight: bold; margin-top: 10px; }
     
@@ -97,10 +98,9 @@
     <div class="input-area">
         <textarea id="dataInput" placeholder="ここにExcelやPDFからコピーしたデータを貼り付けてください..."></textarea>
         <div class="controls">
-            <label>抽出対象年: <input type="number" id="targetYear" value="2025" placeholder="例: 2025"></label>
-            <label>抽出対象月: <input type="number" id="targetMonth" value="8" placeholder="例: 8"></label>
-            <button onclick="processData()">データ読み込み＆表作成</button>
-        </div>
+            <label>抽出対象年: <input type="number" id="targetYear" placeholder="例: 2025" oninput="processDataFromControls()"></label>
+            <label>抽出対象月: <input type="number" id="targetMonth" placeholder="例: 8" oninput="processDataFromControls()"></label>
+            </div>
         <div id="errorMessage"></div>
     </div>
 
@@ -124,7 +124,7 @@ const metricsMap = [
     { key: 'unitPrice', label: '1kg単価', unit: '円' }
 ];
 
-// 市場名を含む行の検出ロジック
+// 市場名を含む行の検出ロジック (変更なし)
 function isMarketHeaderLine(line) {
     if (line.includes("ページ") || line.includes("月別肉用子牛取引状況表") || line.includes("都道府県") || line.includes("総合計") || line.includes("品種：")) return false;
 
@@ -142,12 +142,11 @@ function isMarketHeaderLine(line) {
     return false;
 }
 
-// 都道府県と市場名を分離し、オブジェクトとして返す
+// 都道府県と市場名を分離し、オブジェクトとして返す (変更なし)
 function extractPrefAndMarket(line) {
     let parts = line.split(/\t/).map(p => p.trim()).filter(p => p.length > 0);
     
     if (parts.length < 2) {
-        // parts[0]が市場名と見なされる場合
         const rawName = parts[0] || '';
         return { prefecture: rawName, market: '' }; 
     }
@@ -156,22 +155,20 @@ function extractPrefAndMarket(line) {
     let market = parts[1].replace(/＊|\*|－|-/g, "").trim();
     
     if (market.includes("県合計")) {
-        // 県合計の場合も分離
         return { prefecture: prefecture, market: '県合計' };
     }
     
     return { prefecture: prefecture, market: market };
 }
 
-// 市場名からキーを生成
+// 市場名からキーを生成 (変更なし)
 function createMarketKey(pref, market) {
-    // 総合計でない限り、結合して一意のキーとする
     if (pref === '総合計') return '総合計';
     return `${pref}_${market}`;
 }
 
 
-// データの抽出と格納（型の厳密化）
+// データの抽出と格納（型の厳密化） (変更なし)
 function extractAndStore(lineParts, dataStartIndexInLine, marketName, gender, metricKey) {
     const raw = lineParts[dataStartIndexInLine];
 
@@ -190,9 +187,8 @@ function extractAndStore(lineParts, dataStartIndexInLine, marketName, gender, me
     if (!isNaN(num)) {
         if (!marketMap[marketName][gender]) marketMap[marketName][gender] = {};
         marketMap[marketName][gender][metricKey] = num;
-        // console.log(`格納: ${marketName} - ${gender} - ${metricKey} = ${num}`);
     } else {
-         // console.log(`型変換エラー: ${marketName} - ${gender} - ${metricKey} の値 '${raw}' は数値にパースできませんでした。`);
+          // console.log(`型変換エラー: ${marketName} - ${gender} - ${metricKey} の値 '${raw}' は数値にパースできませんでした。`);
     }
 }
 
@@ -200,6 +196,7 @@ function extractAndStore(lineParts, dataStartIndexInLine, marketName, gender, me
 function processData() {
     // console.log("--- processData() 処理開始 ---");
     const text = document.getElementById('dataInput').value;
+    const targetYear = document.getElementById('targetYear').value.trim();
     const targetMonth = document.getElementById('targetMonth').value.trim(); 
     const errorDiv = document.getElementById('errorMessage');
     const resultDiv = document.getElementById('resultArea');
@@ -208,15 +205,11 @@ function processData() {
     resultDiv.innerHTML = "";
     parsedDataByGender = { '雄': [], '雌': [], '計': [] };
     marketMap = {};
-    sortState = {
-        '雄': { key: null, dir: 'asc' },
-        '雌': { key: null, dir: 'asc' },
-        '計': { key: null, dir: 'asc' }
-    };
+    // ソート状態はリセットしない（同じデータで年月だけ変える可能性があるため）
 
-    if (!text) {
-        errorDiv.textContent = "データを貼り付けてください。";
-        // console.log("データ入力なし。処理終了。");
+    if (!text || !targetYear || !targetMonth) {
+        errorDiv.textContent = "データを貼り付け、対象年/月を正しく入力してください。";
+        // console.log("データまたは年月入力不足。処理終了。");
         return;
     }
 
@@ -251,14 +244,14 @@ function processData() {
     // console.log(`対象月: ${targetMonth}月, ヘッダー行インデックス: ${headerLineIndex}, データ列インデックス (0始まり): ${monthIndex}`);
 
     if (monthIndex === -1) {
-        errorDiv.textContent = `対象月（${targetMonth}月）がヘッダーに見つかりません。`;
+        errorDiv.textContent = `対象月（${targetMonth}月）がヘッダーに見つかりません。データがこの月に対応しているか確認してください。`;
         return;
     }
     
     const dataStartIndexInLine = monthIndex; 
     
     // 2. データ解析
-    let currentMarketKey = null; // marketMapのキーとして使用
+    let currentMarketKey = null;
     let currentPrefName = null;
     let currentMarketName = null;
     let currentMetric = null;
@@ -323,10 +316,6 @@ function processData() {
         }
     }
 
-    // console.log("--- 総合計データ抽出結果 (marketMap['総合計']) ---");
-    // console.log(marketMap['総合計']);
-
-
     // 3. マップから配列へ変換
     Object.keys(marketMap).forEach(mKey => {
         // 県合計の行を除外
@@ -337,8 +326,8 @@ function processData() {
         ['雄', '雌', '計'].forEach(g => {
             let obj = { 
                 key: mKey,
-                prefecture: nameParts.prefecture, // 都道府県名を追加
-                market: nameParts.market,         // 市場名を追加
+                prefecture: nameParts.prefecture,
+                market: nameParts.market, 
                 genderName: g 
             };
             let hasData = false;
@@ -362,20 +351,34 @@ function processData() {
         );
     });
 
-
-    if (parsedDataByGender['計'].length === 0 && parsedDataByGender['雄'].length === 0) {
+    if (parsedDataByGender['計'].length === 0 && parsedDataByGender['雄'].length === 0 && parsedDataByGender['雌'].length === 0) {
         errorDiv.textContent = "有効な市場データが見つかりませんでした。";
         return;
     }
-
-    // console.log("--- 抽出後のデータ (parsedDataByGender) ---", parsedDataByGender);
 
     calculateScores(); 
     renderTables();
     // console.log("--- processData() 処理完了 ---");
 }
 
-function calculateScores() {
+// 抽出年月の変更時に実行される関数
+function processDataFromControls() {
+    // 年月変更時はソートをリセットしない
+    processData(); 
+}
+
+// データ入力時のイベントハンドラ
+function handleDataInput() {
+    // データ入力時はソートをリセット
+    sortState = {
+        '雄': { key: null, dir: 'asc' },
+        '雌': { key: null, dir: 'asc' },
+        '計': { key: null, dir: 'asc' }
+    };
+    processData();
+}
+
+function calculateScores() { /* 変更なし */
     ['雄', '雌', '計'].forEach(gender => {
         const data = parsedDataByGender[gender];
         if (!data || data.length === 0) return;
@@ -447,7 +450,7 @@ function calculateScores() {
     });
 }
 
-function formatScoreValue(score, key) {
+function formatScoreValue(score, key) { /* 変更なし */
     if (score === undefined || score === null || score === '-') return `-`;
     
     if (key === 'count') {
@@ -464,7 +467,7 @@ function formatScoreValue(score, key) {
     return `<span class="score-rank-diff ${scoreClass}">${formatted}</span>`;
 }
 
-function sortTable(gender, key) {
+function sortTable(gender, key) { /* 変更なし */
     const data = parsedDataByGender[gender].filter(row => row.key !== '総合計');
     const totalRow = parsedDataByGender[gender].find(row => row.key === '総合計');
 
@@ -509,7 +512,7 @@ function sortTable(gender, key) {
     renderTables();
 }
 
-// 修正後の renderTables
+// 修正後の renderTables (変更なし)
 function renderTables() {
     const container = document.getElementById('resultArea');
     container.innerHTML = "";
@@ -563,7 +566,7 @@ function renderTables() {
             
             // 総合計の場合は1セル結合して表示
             const prefDisplay = isTotal ? `<td class="market-name-col" colspan="2">総合計</td>` : 
-                                         `<td class="market-name-col">${row.prefecture}</td><td class="market-name-col">${row.market}</td>`;
+                                          `<td class="market-name-col">${row.prefecture}</td><td class="market-name-col">${row.market}</td>`;
             
             html += `<tr ${rowClass}>${prefDisplay}`;
             
@@ -580,8 +583,18 @@ function renderTables() {
 }
 
 
-// 初期データ設定
+// 初期データ設定とイベントリスナーの追加
 window.onload = function() {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    // JSの月は0-11なので+1する
+    const currentMonth = today.getMonth() + 1; 
+
+    // デフォルト値の設定
+    document.getElementById('targetYear').value = currentYear;
+    document.getElementById('targetMonth').value = currentMonth;
+
+    // 初期データの設定（既存のダミーデータを残します）
     document.getElementById('dataInput').value = `都道府県	市場名	12月	1月	2月	3月	4月	5月	6月	7月	8月	9月	10月	11月	合計・平均
 北海道	ホクレン南北海道家畜市場
 	取引頭数
@@ -625,6 +638,14 @@ window.onload = function() {
 	（円）	雌	1500	1600	1700	1800	1900	2000	2100	2200	2300	2400	2500	2600	2050
 		雄	1800	1900	2000	2100	2200	2300	2400	2500	2600	2700	2800	2900	2350
 		計	1650	1750	1850	1950	2050	2150	2250	2350	2450	2550	2650	2750	2200`;
+
+
+    // イベントリスナーの追加
+    // テキストエリアへの入力時（貼り付けを含む）に自動処理
+    document.getElementById('dataInput').addEventListener('input', handleDataInput);
+    
+    // 初期表示処理の実行
+    processData();
 };
 </script>
 </body>
