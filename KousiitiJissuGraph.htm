@@ -645,6 +645,7 @@ function renderTable(gender, containerId, analysisAreaId) {
 }
 
 // Chart.jsを使った折れ線グラフの描画
+// Chart.jsを使った折れ線グラフの描画
 function updateGraph(gender, canvasId, analysisAreaId) {
     const selectedMetric = document.querySelector('input[name="metricSelector"]:checked').value;
     const metricInfo = METRICS[selectedMetric];
@@ -656,70 +657,73 @@ function updateGraph(gender, canvasId, analysisAreaId) {
     
     const datasets = [];
     
-    if (window.selectedMarkets.size > 0) {
+    // ★ 修正点1: 市場が選択されていない場合は早期に処理を終了
+    if (window.selectedMarkets.size === 0) {
+        const ctx = document.getElementById(canvasId);
+        if (chartInstances[canvasId]) {
+            chartInstances[canvasId].destroy();
+        }
+        return; 
+    }
+
+    // ★ 修正点2: 市場が選択されている場合のみ、marketKeysToDraw を確実に定義
+    const marketKeysToDraw = Array.from(window.selectedMarkets).sort((a, b) => {
+        if (a === '総合計') return 1;
+        if (b === '総合計') return -1;
+        return a.localeCompare(b, 'ja');
+    });
+
+    marketKeysToDraw.forEach(marketKey => {
+        const marketName = marketKey === '総合計' ? '総合計' : marketKey.split('_')[1];
+        const prefName = marketKey === '総合計' ? '' : marketKey.split('_')[0];
+        const isTotalKey = marketKey === '総合計';
         
-        const marketKeysToDraw = Array.from(window.selectedMarkets).sort((a, b) => {
-            if (a === '総合計') return 1;
-            if (b === '総合計') return -1;
-            return a.localeCompare(b, 'ja');
-        });
-
-        marketKeysToDraw.forEach(marketKey => {
-            const marketName = marketKey === '総合計' ? '総合計' : marketKey.split('_')[1];
-            const prefName = marketKey === '総合計' ? '' : marketKey.split('_')[0];
-            const isTotalKey = marketKey === '総合計';
+        const dataPoints = [];
+        let hasData = false;
+        
+        window.allMonths.forEach((mInfo) => {
+            const month = mInfo.month; 
+            const rawValue = window.parsedData[marketKey]?.[gender]?.[mInfo.index]?.[selectedMetric];
             
-            const dataPoints = [];
-            let hasData = false;
-            
-            window.allMonths.forEach((mInfo) => {
-                const month = mInfo.month; 
-                const rawValue = window.parsedData[marketKey]?.[gender]?.[mInfo.index]?.[selectedMetric];
-                
-                // データが存在する場合のみデータポイントに追加（rawValueがundefined/null/count=0ではない場合）
-                if (rawValue !== undefined && rawValue !== null) {
-                    if (!(selectedMetric === 'count' && rawValue === 0)) {
-                        dataPoints.push({ x: month, y: rawValue });
-                        hasData = true;
-                    }
-                }
-            });
-
-            // データポイントを月順 (X) でソートする
-            dataPoints.sort((a, b) => a.x - b.x);
-
-            if (hasData) {
-                const globalIndex = window.allMarketKeysInOrder.indexOf(marketKey);
-                const safeIndex = globalIndex >= 0 ? globalIndex : 0;
-                
-                const style = getMarketStyle(marketKey, safeIndex);
-                
-                datasets.push({
-                    label: `${marketName}${isTotalKey ? '' : ` (${prefName})`}`,
-                    
-                    data: dataPoints, 
-                    
-                    backgroundColor: style.color,
-                    borderColor: style.color, 
-                    pointRadius: 6, 
-                    pointStyle: style.pointStyle, 
-                    borderWidth: style.borderWidth, 
-                    borderDash: style.dashPattern, 
-
-                    showLine: true, 
-                    tension: 0, // ★ 修正: 直線にするためにtensionを0に固定
-                    fill: false,
-                    type: 'line',
-                    
-                    spanGaps: false,
-                    
-                    // ★ 修正: 不要な補間設定や環状の設定を削除し、直線グラフを確実にする
-                    cubicInterpolationMode: 'linear', 
-                    normalized: false 
-                });
+            // データが存在する場合のみデータポイントに追加 (rawValueが undefined/null または 0 でない場合)
+            if (rawValue !== undefined && rawValue !== null && rawValue !== 0) {
+                dataPoints.push({ x: month, y: rawValue });
+                hasData = true;
             }
         });
-    }
+
+        // データポイントを月順 (X) でソートする
+        dataPoints.sort((a, b) => a.x - b.x);
+
+        if (hasData) {
+            const globalIndex = window.allMarketKeysInOrder.indexOf(marketKey);
+            const safeIndex = globalIndex >= 0 ? globalIndex : 0;
+            
+            const style = getMarketStyle(marketKey, safeIndex);
+            
+            datasets.push({
+                label: `${marketName}${isTotalKey ? '' : ` (${prefName})`}`,
+                
+                data: dataPoints, // 欠損データを含まないデータ配列
+                
+                backgroundColor: style.color,
+                borderColor: style.color, 
+                pointRadius: 6, 
+                pointStyle: style.pointStyle, 
+                borderWidth: style.borderWidth, 
+                borderDash: style.dashPattern, 
+
+                showLine: true, 
+                tension: 0, // 直線グラフ
+                fill: false,
+                type: 'line',
+                
+                spanGaps: false, // 欠損ギャップをスキップ
+                cubicInterpolationMode: 'linear', 
+                normalized: false 
+            });
+        }
+    });
 
     const ctx = document.getElementById(canvasId);
     if (!ctx) return; 
@@ -779,13 +783,11 @@ function updateGraph(gender, canvasId, analysisAreaId) {
                             return ''; 
                         }
                     },
-                    // データが存在するX座標のみを考慮
                     bounds: 'ticks', 
                     grid: { drawOnChartArea: true } 
                 },
                 y: {
                     title: { display: true, text: metricInfo.axisLabel + ' (Y軸)' },
-                    // Y軸の最小値設定を削除（自動調整に任せる）
                     ticks: {
                         callback: function(value) { 
                             if (selectedMetric === 'weight' || selectedMetric === 'age') {
@@ -861,6 +863,8 @@ window.onload = function() {
     
     processData();
 };
+
+
 </script>
 
 </body>
