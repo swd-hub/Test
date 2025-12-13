@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>市場データ分析ツール（表とグラフ）修正版</title>
+    <title>市場データ分析ツール（完全な直線折れ線グラフ版）</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     
     <style>
@@ -56,7 +56,7 @@
             border-top: 3px solid #6c757d;
             
             display: grid;
-            grid-template-columns: minmax(40%, 700px) 1fr; /* 表とグラフを並列表示 */
+            grid-template-columns: minmax(40%, 700px) 1fr; 
             gap: 20px;
         }
 
@@ -67,15 +67,37 @@
             overflow-x: auto;
             max-height: 800px;
         }
-        .table-section h2 { 
+        
+        .table-header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             background-color: #343a40; 
             color: white; 
             padding: 10px; 
             margin: 0; 
             font-size: 1.1rem; 
             border-radius: 8px 8px 0 0;
-            text-align: center;
         }
+        .table-section h2 { 
+            margin: 0; 
+            font-size: 1.1rem; 
+        }
+
+        #marketSelectionControls button {
+            background-color: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        #marketSelectionControls button:hover {
+            background-color: #f5c6cb;
+        }
+
 
         table { 
             width: 100%; 
@@ -135,7 +157,7 @@
 
 <div class="container">
     <div class="header-top">
-        <h1>📊 市場データ分析ツール（表と折れ線グラフ）</h1>
+        <h1>📊 市場データ分析ツール（完全な直線折れ線グラフ版）</h1>
         <a id="sourceButton" href="https://www.alic.go.jp/operation/livestock/calf-report.html" target="_blank">肉用子牛取引情報サイトへ</a>
     </div>
     
@@ -143,6 +165,10 @@
         <textarea id="dataInput" placeholder="ここにExcelからコピーしたデータを貼り付けてください..."></textarea>
         <div class="controls">
             <div class="radio-group">
+                <label>
+                    <input type="radio" name="metricSelector" value="price">
+                    平均価格 (円)
+                </label>
                 <label>
                     <input type="radio" name="metricSelector" value="count" checked>
                     取引頭数 (頭)
@@ -154,10 +180,6 @@
                 <label>
                     <input type="radio" name="metricSelector" value="age">
                     平均日齢 (日)
-                </label>
-                <label>
-                    <input type="radio" name="metricSelector" value="price">
-                    平均価格 (円)
                 </label>
                 <label>
                     <input type="radio" name="metricSelector" value="unitPrice">
@@ -211,30 +233,38 @@ const METRICS = {
     'unitPrice': { label: '1kg単価', unit: '円', axisLabel: '1kg単価 (円)' },
 };
 
-// --- 性別による色、図形、線種の統一定義 ---
-const GENDER_STYLES = {
-    '雄': { 
-        color: 'rgba(54, 162, 235, 1)', // 青 
-        pointStyle: 'circle', 
-        dashPattern: [] 
-    },
-    '雌': { 
-        color: 'rgba(255, 99, 132, 1)', // 赤 
-        pointStyle: 'triangle', 
-        dashPattern: [5, 5] 
-    },
-    '計': { 
-        color: 'rgba(75, 192, 192, 1)', // 緑 
-        pointStyle: 'rect', 
-        dashPattern: [1, 5] 
-    },
-    '総合計': { 
-        color: 'rgba(108, 117, 125, 1)', // 灰色 
-        pointStyle: 'star', 
-        dashPattern: [2, 2],
-        override: true
-    } 
-};
+// --- 市場識別用のパレット ---
+const MARKET_COLORS = [
+    '#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', 
+    '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', 
+    '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', 
+    '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080'
+];
+
+const MARKET_POINT_STYLES = [
+    'circle', 'triangle', 'rect', 'rectRot', 'cross', 'star', 'rectRounded'
+];
+
+function getMarketStyle(marketKey, globalIndex) {
+    if (marketKey === '総合計') {
+        return {
+            color: '#000000',    // 黒
+            pointStyle: 'star',    // 星
+            dashPattern: [5, 5],   // 点線で強調
+            borderWidth: 3
+        };
+    }
+    
+    const colorIndex = globalIndex % MARKET_COLORS.length;
+    const shapeIndex = globalIndex % MARKET_POINT_STYLES.length;
+
+    return {
+        color: MARKET_COLORS[colorIndex],
+        pointStyle: MARKET_POINT_STYLES[shapeIndex],
+        dashPattern: [], 
+        borderWidth: 2
+    };
+}
 
 
 // --------------------------------------------------
@@ -307,7 +337,6 @@ function getMonthHeaderIndices(lines) {
 
         let trimmedPart = part.trim();
         
-        // 「合計」または「平均」を含む列は、月データとして除外する
         if (trimmedPart.includes('合計') || trimmedPart.includes('平均')) {
             continue; 
         }
@@ -319,9 +348,7 @@ function getMonthHeaderIndices(lines) {
         
         const m = parseInt(half,10);
 
-        // 1月から12月の月として認識された場合
         if (!isNaN(m) && m >= 1 && m <= 12 && (trimmedPart.endsWith('月') || trimmedPart === String(m))) {
-            // i はユニークなキーとして重要（12月が2回登場した場合の対策）
             headerMonths.push({ month: m, index: i, text: fullHeaderParts[i] });
         }
     }
@@ -332,53 +359,54 @@ function getMonthHeaderIndices(lines) {
 function extractAllData(parts, headerMonths, currentMarketKey, gender, metricKey) {
     if (!metricKey || !currentMarketKey) return;
 
-    // 【重要修正】データ開始位置を「絶対インデックス」ではなく「キーワードからの相対位置」で特定する
-    // これによりヘッダー行とデータ行でタブの数が違ってもズレなくなる
     let dataStartIndex = -1;
 
-    // 行の中からアンカーとなるキーワード（雌, 雄, 平均など）を探す
     const searchKeywords = [];
     if (gender === '雌') searchKeywords.push('雌');
     else if (gender === '雄') searchKeywords.push('雄');
     else if (gender === '計') {
         searchKeywords.push('計');
         searchKeywords.push('平均');
-        // まれに「平均価格」行などでアンカーが無い場合もあるが、データ構造上 '平均' があるはず
     }
 
-    // アンカー探索
     for (let i = 0; i < parts.length; i++) {
         if (searchKeywords.some(kw => parts[i].includes(kw))) {
-            dataStartIndex = i + 1; // キーワードの次の列からデータが始まるとみなす
+            dataStartIndex = i + 1;
             break;
         }
     }
 
-    // アンカーが見つからない場合のフォールバック（ヘッダー位置に基づく推定）
     if (dataStartIndex === -1 && headerMonths.length > 0) {
-        // 通常、データはヘッダーより1つ右（指標列分）にズレることが多いが、安全策としてヘッダーと同じか+1を試す
-        // ここでは単純にヘッダーの最初のインデックス+1を仮定（多くの市場データ形式に適合）
         dataStartIndex = headerMonths[0].index + 1; 
     }
 
     if (dataStartIndex === -1) return;
 
-    // 抽出処理
     headerMonths.forEach((mInfo, i) => {
-        // headerMonthsは左から順に並んでいるので、dataStartIndexから +i していく（これで連続する月を取得）
-        // ヘッダーで「合計・平均」を除外しているので、ループはデータ行の「合計・平均」の手前で止まる
         const currentDataIndex = dataStartIndex + i;
         
-        let value = parts[currentDataIndex];
+        let valueString = parts[currentDataIndex];
         
-        if (value && value.trim() !== '') {
-            const val = parseFloat(value.replace(/,/g, '').trim());
+        if (valueString && valueString.trim() !== '') {
+            // カンマを除去し、ハイフン、空白などの非数値文字を排除した文字列
+            const cleanedValueString = valueString.replace(/,/g, '').trim();
+
+            if (cleanedValueString === '-' || cleanedValueString === '―' || cleanedValueString === '') {
+                return; // ハイフンや空欄はデータなしとしてスキップ
+            }
+
+            const val = parseFloat(cleanedValueString);
+            
             if (!isNaN(val)) {
+                // 取引頭数('count')で値が0の場合は、格納しない（欠損扱い）
+                if (metricKey === 'count' && val === 0) {
+                    return; // 0頭はデータなしと見なす
+                }
+                
+                // データ格納
                 if (!window.parsedData[currentMarketKey]) window.parsedData[currentMarketKey] = {};
                 if (!window.parsedData[currentMarketKey][gender]) window.parsedData[currentMarketKey][gender] = {};
                 
-                // 【重要修正】mInfo.month (月数) ではなく mInfo.index (一意なID) をキーにする
-                // これにより「12月」が年またぎで2回登場しても上書きされない
                 if (!window.parsedData[currentMarketKey][gender][mInfo.index]) window.parsedData[currentMarketKey][gender][mInfo.index] = {};
                 
                 window.parsedData[currentMarketKey][gender][mInfo.index][metricKey] = val;
@@ -522,9 +550,10 @@ function processData() {
 // --------------------------------------------------
 
 function formatValue(value) { 
-    if (value === undefined || value === null || value === 0) return `-`;
-    
     const selectedMetric = document.querySelector('input[name="metricSelector"]:checked').value;
+    
+    // value === 0 のチェックをここでも行い、0の場合はテーブル表示をハイフンに統一
+    if (value === undefined || value === null || (selectedMetric === 'count' && value === 0)) return `-`;
     
     let formattedValue;
 
@@ -548,15 +577,14 @@ function renderTable(gender, containerId, analysisAreaId) {
     const orderedMarketKeys = [];
     const totalKey = '総合計';
 
-    // データが存在する市場をリストアップ
-    // 【重要修正】 mInfo.index を使ってアクセスする
+    // データが存在する市場のみを抽出
     window.allMarketKeysInOrder.forEach(k => {
-        if (k !== totalKey && window.allMonths.some(mInfo => window.parsedData[k][gender] && window.parsedData[k][gender][mInfo.index] && window.parsedData[k][gender][mInfo.index][selectedMetric])) {
+        if (k !== totalKey && window.allMonths.some(mInfo => window.parsedData[k][gender] && window.parsedData[k][gender][mInfo.index] && window.parsedData[k][gender][mInfo.index][selectedMetric] !== undefined && window.parsedData[k][gender][mInfo.index][selectedMetric] !== null)) {
             orderedMarketKeys.push(k);
         }
     });
 
-    if (window.parsedData[totalKey] && window.allMonths.some(mInfo => window.parsedData[totalKey][gender] && window.parsedData[totalKey][gender][mInfo.index] && window.parsedData[totalKey][gender][mInfo.index][selectedMetric])) {
+    if (window.parsedData[totalKey] && window.allMonths.some(mInfo => window.parsedData[totalKey][gender] && window.parsedData[totalKey][gender][mInfo.index] && window.parsedData[totalKey][gender][mInfo.index][selectedMetric] !== undefined && window.parsedData[totalKey][gender][mInfo.index][selectedMetric] !== null)) {
         orderedMarketKeys.push(totalKey);
     }
 
@@ -570,7 +598,13 @@ function renderTable(gender, containerId, analysisAreaId) {
 
     let title = `【${gender}】 ${metricInfo.label} クロス表`;
     
-    let html = `<h2>${title}</h2>
+    let html = `
+    <div class="table-header-controls">
+        <h2>${title}</h2>
+        <div id="marketSelectionControls">
+            <button onclick="uncheckAllMarkets()">全ての市場を非表示</button>
+        </div>
+    </div>
     <table>
         <thead>
             <tr>
@@ -599,7 +633,6 @@ function renderTable(gender, containerId, analysisAreaId) {
             <td class="pref-col">${prefectureName}</td>
             <td class="market-col">${marketName}</td>`;
         
-        // 【重要修正】 mInfo.index を使ってアクセスする
         window.allMonths.forEach(mInfo => {
             const value = window.parsedData[mKey][gender]?.[mInfo.index]?.[selectedMetric];
             html += `<td>${formatValue(value)}</td>`;
@@ -623,8 +656,6 @@ function updateGraph(gender, canvasId, analysisAreaId) {
     
     const datasets = [];
     
-    const xAxisLabels = window.allMonths.map(mInfo => `${mInfo.month}月`);
-    
     if (window.selectedMarkets.size > 0) {
         
         const marketKeysToDraw = Array.from(window.selectedMarkets).sort((a, b) => {
@@ -632,7 +663,6 @@ function updateGraph(gender, canvasId, analysisAreaId) {
             if (b === '総合計') return -1;
             return a.localeCompare(b, 'ja');
         });
-
 
         marketKeysToDraw.forEach(marketKey => {
             const marketName = marketKey === '総合計' ? '総合計' : marketKey.split('_')[1];
@@ -642,40 +672,50 @@ function updateGraph(gender, canvasId, analysisAreaId) {
             const dataPoints = [];
             let hasData = false;
             
-            // 【重要修正】 mInfo.index を使ってアクセスする
-            window.allMonths.forEach((mInfo, xIndex) => {
-                const month = mInfo.month;
-                const value = window.parsedData[marketKey]?.[gender]?.[mInfo.index]?.[selectedMetric];
+            window.allMonths.forEach((mInfo) => {
+                const month = mInfo.month; 
+                const rawValue = window.parsedData[marketKey]?.[gender]?.[mInfo.index]?.[selectedMetric];
                 
-                if (value !== undefined && value !== null) {
-                    dataPoints.push({ x: xIndex, y: value, month: month });
-                    hasData = true;
-                } else {
-                    dataPoints.push(null);
+                // データが存在する場合のみデータポイントに追加（rawValueがundefined/null/count=0ではない場合）
+                if (rawValue !== undefined && rawValue !== null) {
+                    if (!(selectedMetric === 'count' && rawValue === 0)) {
+                        dataPoints.push({ x: month, y: rawValue });
+                        hasData = true;
+                    }
                 }
             });
 
-            if (hasData) {
-                const styleKey = isTotalKey ? '総合計' : gender;
-                const style = GENDER_STYLES[styleKey];
-                
-                const borderWidth = isTotalKey ? 3 : 2; 
+            // データポイントを月順 (X) でソートする
+            dataPoints.sort((a, b) => a.x - b.x);
 
+            if (hasData) {
+                const globalIndex = window.allMarketKeysInOrder.indexOf(marketKey);
+                const safeIndex = globalIndex >= 0 ? globalIndex : 0;
+                
+                const style = getMarketStyle(marketKey, safeIndex);
+                
                 datasets.push({
                     label: `${marketName}${isTotalKey ? '' : ` (${prefName})`}`,
-                    data: dataPoints,
+                    
+                    data: dataPoints, 
                     
                     backgroundColor: style.color,
                     borderColor: style.color, 
-                    pointRadius: 5,
+                    pointRadius: 6, 
                     pointStyle: style.pointStyle, 
-                    borderWidth: borderWidth, 
+                    borderWidth: style.borderWidth, 
                     borderDash: style.dashPattern, 
 
                     showLine: true, 
-                    tension: 0, 
+                    tension: 0, // ★ 修正: 直線にするためにtensionを0に固定
                     fill: false,
-                    type: 'line' 
+                    type: 'line',
+                    
+                    spanGaps: false,
+                    
+                    // ★ 修正: 不要な補間設定や環状の設定を削除し、直線グラフを確実にする
+                    cubicInterpolationMode: 'linear', 
+                    normalized: false 
                 });
             }
         });
@@ -693,7 +733,7 @@ function updateGraph(gender, canvasId, analysisAreaId) {
     chartInstances[canvasId] = new Chart(ctx_2d, {
         type: 'line', 
         data: {
-            labels: xAxisLabels, 
+            labels: [], 
             datasets: datasets
         },
         options: {
@@ -704,8 +744,8 @@ function updateGraph(gender, canvasId, analysisAreaId) {
                 tooltip: {
                     callbacks: {
                         title: function(context) {
-                            const xIndex = context[0].dataIndex;
-                            return xAxisLabels[xIndex]; 
+                            const xValue = context[0].parsed.x; 
+                            return xValue + '月'; 
                         },
                         label: function(context) {
                             const label = context.dataset.label || '';
@@ -725,12 +765,27 @@ function updateGraph(gender, canvasId, analysisAreaId) {
             },
             scales: {
                 x: {
-                    type: 'category', 
+                    // linear軸（数値軸）で月を扱う
+                    type: 'linear', 
                     title: { display: true, text: '開催月 (X軸)' },
+                    min: 1, 
+                    max: 12, 
+                    ticks: {
+                        stepSize: 1, 
+                        callback: function(value) { 
+                            if (Number.isInteger(value) && value >= 1 && value <= 12) {
+                                return value + '月';
+                            }
+                            return ''; 
+                        }
+                    },
+                    // データが存在するX座標のみを考慮
+                    bounds: 'ticks', 
                     grid: { drawOnChartArea: true } 
                 },
                 y: {
                     title: { display: true, text: metricInfo.axisLabel + ' (Y軸)' },
+                    // Y軸の最小値設定を削除（自動調整に任せる）
                     ticks: {
                         callback: function(value) { 
                             if (selectedMetric === 'weight' || selectedMetric === 'age') {
@@ -767,7 +822,18 @@ function handleMarketSelection(checkbox) {
     } else {
         window.selectedMarkets.delete(marketKey);
     }
+    document.querySelectorAll(`input[data-market-key="${marketKey}"]`).forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
     renderAllAnalysisSections(); 
+}
+
+function uncheckAllMarkets() {
+    window.selectedMarkets.clear();
+    document.querySelectorAll(`input[type="checkbox"][data-market-key]`).forEach(cb => {
+        cb.checked = false;
+    });
+    renderAllAnalysisSections();
 }
 
 function handleMetricChange() {
@@ -786,6 +852,7 @@ window.onload = function() {
     });
     
     window.handleMarketSelection = handleMarketSelection;
+    window.uncheckAllMarkets = uncheckAllMarkets;
 
     const defaultRadio = document.querySelector('input[name="metricSelector"][value="count"]');
     if (defaultRadio) {
