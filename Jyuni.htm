@@ -13,7 +13,912 @@
         margin: 0 auto; 
         background: #fff; 
         padding: 20px; 
-        border-radius: 8px; 
+        border-radius: 8px; <!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>市場データ分析ツール（順位差分スコア：総合計基準）</title>
+    
+    <style>
+        body { font-family: "Helvetica Neue", Arial, sans-serif; padding: 20px; background-color: #f4f6f9; color: #333; }
+        h1 { font-size: 1.4rem; margin-bottom: 10px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+
+        .container { 
+            max-width: 1800px; 
+            margin: 0 auto; 
+            background: #fff; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+        }
+
+        .header-top { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .header-top h1 { margin: 0; flex: 1; min-width: 300px; } 
+
+        #sourceButton {
+            padding: 10px 20px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            white-space: nowrap;
+        }
+        #sourceButton:hover { background-color: #5a6268; }
+
+        .input-area { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+        textarea { width: 100%; height: 150px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 12px; }
+
+        .controls { margin-top: 15px; display: flex; gap: 15px; align-items: center; background: #eef; padding: 15px; border-radius: 5px; flex-wrap: wrap; }
+        input[type="text"], input[type="number"] { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        input[type="number"] { width: 80px; }
+
+        #errorMessage { color: red; font-weight: bold; margin-top: 10px; }
+
+        .tables-container { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 30px; 
+            overflow-x: auto; 
+        }
+        .gender-section h2 { background-color: #343a40; color: white; padding: 10px; margin: 0; font-size: 1.1rem; border-radius: 4px 4px 0 0; }
+
+        table { 
+            width: 100%; 
+            min-width: 1000px; 
+            border-collapse: collapse; 
+            font-size: 13px; 
+            background: white; 
+        }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { 
+            background-color: #f8f9fa; 
+            color: #333; 
+            font-weight: bold; 
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+        th:hover { background-color: #e2e6ea; }
+        th.sort-asc::after { content: " ▲"; color: #007bff; }
+        th.sort-desc::after { content: " ▼"; color: #007bff; }
+
+        tr:nth-child(even) { background-color: #fcfcfc; }
+        tr:hover { background-color: #f1f1f1; }
+
+        .market-name-col { text-align: left; font-weight: bold; }
+        .total-row { background-color: #e9ecef; font-weight: bold; }
+        .total-row td { background-color: #e9ecef; }
+
+        .score-value { font-weight: bold; font-size: 1.1em; }
+
+        .score-rank-diff { font-weight: bold; }
+        .rank-positive { color: #28a745; } 
+        .rank-negative { color: #dc3545; } 
+        .rank-zero { color: #6c757d; }
+
+        .count-rank { font-weight: bold; color: #000; } 
+        .score-note { font-size: 0.9rem; color: #666; margin-bottom: 10px; }
+
+        .date-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px; 
+            flex-wrap: wrap;
+        }
+    </style>
+    
+</head>
+<body>
+
+<div class="container">
+    <div class="header-top">
+        <h1>📊 市場データ分析ツール（順位差分スコア：総合計基準）</h1>
+        <a id="sourceButton" href="https://www.alic.go.jp/operation/livestock/calf-report.html" target="_blank">肉用子牛取引情報サイトへ</a>
+    </div>
+    
+    <p class="score-note">
+        ※ **県合計のデータ**は除外してあります。<br>
+        ※ **取引頭数**は、**頭数が少ない市場が1位**となる順位をそのまま表示します。<br>
+        ※ **その他（価格、体重など）**は、**数値が大きい市場が1位**となる順位で計算され、**総合計順位との差分（順位差分スコア：総合計順位 - 市場順位）**を表示します。（例: 順位差が**+3**なら、市場は総合計より**3ランク良い**ことを示します）
+    </p>
+    <div class="input-area">
+        <textarea id="dataInput" placeholder="ここにExcelやPDFからコピーしたデータを貼り付けてください..."></textarea>
+        <div class="controls">
+            <div class="date-controls">
+                <label>抽出対象月: <input type="number" id="targetMonth" placeholder="例: 8"></label>
+                <span id="transactionDateDisplay">取引月 令和 年 月 日～令和 年 月 日</span>
+            </div>
+        </div>
+        <div id="errorMessage"></div>
+    </div>
+    
+    <pre id="pdDebugArea" style="background: #fffef0; border: 1px solid #f0c36d; padding: 8px; font-size: 12px; overflow: auto; margin-bottom: 20px; display: none;"></pre>
+
+    <div id="resultArea" class="tables-container"></div>
+</div>
+
+<script>
+// --- グローバル変数と定数 ---
+window.parsedDataByGender = { '雄': [], '雌': [], '計': [] };
+window.marketMap = {};
+window.sortState = {
+    '雄': { key: null, dir: 'asc' },
+    '雌': { key: null, dir: 'asc' },
+    '計': { key: null, dir: 'asc' }
+};
+
+window.metricsMap = [
+    { key: 'count', label: '取引頭数', unit: '頭' },
+    { key: 'price', label: '平均価格', unit: '円' },
+    { key: 'weight', label: '平均体重', unit: 'kg' },
+    { key: 'age', label: '平均日齢', unit: '日' },
+    { key: 'unitPrice', label: '1kg単価', unit: '円' }
+];
+
+// --------------------------------------------------
+// --- data-parser.js の内容 (解析・スコア計算ユーティリティ) ---
+// --------------------------------------------------
+
+function updateTransactionDateDisplay(text) {
+    const lines = text.split('\n');
+    let dateRange = '';
+    
+    for (const line of lines) {
+        if (line.includes('取引月') && line.includes('令和')) {
+            dateRange = line.trim();
+            break;
+        }
+    }
+
+    const transactionDateDiv = document.getElementById('transactionDateDisplay');
+    if (transactionDateDiv) {
+        transactionDateDiv.textContent = dateRange || '（取引月情報なし）';
+    }
+}
+
+function extractPrefAndMarket(line) {
+    const parts = line.split(/[\t,]/).map(p => p.trim());
+    
+    let prefecture = '';
+    let market = '';
+    
+    // 最初の有効な部分が都道府県
+    if (parts[0]) {
+        prefecture = parts[0];
+    }
+    
+    // 2番目の有効な部分が市場名
+    if (parts.length > 1 && parts[1]) {
+        market = parts[1].replace(/\*|-/g, '').trim();
+    }
+    
+    // 特例: 総合計行の処理
+    if (line.includes('総合計')) {
+        prefecture = '総合計';
+        market = '';
+    }
+
+    return { prefecture, market };
+}
+
+function createMarketKey(prefecture, market) {
+    if (prefecture === '総合計') return '総合計';
+    return `${prefecture}_${market}`;
+}
+
+// 💥 修正箇所 1: isMarketHeaderLineを強化し、カンマ分割に対応 💥
+function isMarketHeaderLine(line) {
+    if (line.includes("ページ") || line.includes("月別肉用子牛取引状況表") || line.includes("都道府県") || line.includes("品種：") || line.includes("合計・平均")) return false;
+    const prefs = ["北海道", "青森", "岩手", "宮城", "秋田", "山形", "福島", "茨城", "栃木", "群馬", "埼玉", "千葉", "東京", "神奈川", "新潟", "富山", "石川", "福井", "山梨", "長野", "岐阜", "静岡", "愛知", "三重", "滋賀", "京都", "大阪", "兵庫", "奈良", "和歌山", "鳥取", "島根", "岡山", "広島", "山口", "徳島", "香川", "愛媛", "高知", "福岡", "佐賀", "長崎", "熊本", "大分", "宮崎", "鹿児島", "沖縄"];
+    
+    // 1. タブ分割を試みる
+    let parts = line.split(/\t/).map(p => p.trim());
+    parts = parts.filter(p => p.length > 0); // 空要素を除外
+
+    // 2. タブ分割で都道府県と市場名が分かれていない場合（parts.length < 2）、カンマ分割を試みる
+    if (parts.length < 2 && line.includes(',')) {
+        parts = line.split(/,/).map(p => p.trim());
+        // 最初の2つ（都道府県と市場名）だけを抽出
+        parts = parts.slice(0, 2).filter(p => p.length > 0);
+    }
+    
+    if (line.includes("総合計") && !line.includes("合計・平均")) return true;
+    
+    // 都道府県名と市場名の両方が含まれているかチェック
+    const isPrefecture = prefs.some(p => parts[0] && parts[0].includes(p));
+    const isMarket = parts[1] && (parts[1].includes('市場') || parts[1].includes('家畜'));
+
+    // 県合計や集計行を除外
+    if (line.includes("計") && !line.includes("取引頭数") && !line.includes("合計・平均")) return false; 
+    
+    return isPrefecture && isMarket;
+}
+
+// 💥 修正箇所 2: extractAndStoreを調整し、1ヶ月のずれを確実に解消 💥
+// データを抽出してグローバルな marketMap に格納する
+function extractAndStore(parts, dataStartIndexInLine, currentMarketKey, gender, metricKey) {
+    if (!metricKey || !currentMarketKey) return;
+
+    // 最終修正: 1ヶ月のずれを確実に解消するため、
+    // ヘッダーから取得したインデックス（dataStartIndexInLine）から1つ左にずれた列を強制的に参照する。
+    // ※データ行は行頭に市場名などのラベルが入るため、月のデータインデックスがヘッダーより1つ左にずれる傾向にある。
+    
+    const correctDataIndex = dataStartIndexInLine - 1; 
+    let value = null;
+
+    // インデックスが0未満にならないようにガードし、-1のインデックスを優先して試す
+    if (correctDataIndex >= 0 && correctDataIndex < parts.length) {
+        value = parts[correctDataIndex];
+    }
+    
+    // 値がまだ見つからない場合（例えば、データ行がヘッダーと完全にインデックス一致している場合）
+    if (!value || value.trim() === '') {
+        value = parts[dataStartIndexInLine];
+    }
+    
+    if (value && value.trim() !== '') {
+        const val = parseFloat(value.replace(/,/g, '').trim());
+        if (!isNaN(val)) {
+            if (!window.marketMap[currentMarketKey][gender]) {
+                 window.marketMap[currentMarketKey][gender] = {};
+            }
+            window.marketMap[currentMarketKey][gender][metricKey] = val;
+        }
+    }
+}
+
+
+// --- スコア計算ユーティリティ関数 ---
+
+// main.js の processData 内で window.parsedDataByGender が構築された後に呼び出される
+function calculateScores() {
+    ['雄', '雌', '計'].forEach(gender => {
+        let data = window.parsedDataByGender[gender];
+        if (!data || data.length === 0) return;
+
+        const metrics = window.metricsMap;
+
+        metrics.forEach(m => {
+            const metricKey = m.key;
+            
+            // 総合計行と市場行を分ける
+            let totalRow = data.find(row => row.key === '総合計');
+            let marketRows = data.filter(row => row.key !== '総合計' && row[metricKey] !== null && row[metricKey] !== 0);
+            
+            if (marketRows.length === 0) return;
+
+            // 全ての値を抽出
+            let allValues = marketRows
+                .map(row => row[metricKey]);
+            
+            if (allValues.length === 0) return;
+
+            // 順位付けの基準を設定: 全て降順 (値が大きい方が良い)
+            const sortDirection = -1; 
+            
+            // 順位付けのためにソート（値が同じなら同じ順位、次の順位はスキップされる）
+            let sortedUniqueValues = [...new Set(allValues)].sort((a, b) => (a - b) * sortDirection);
+
+            // 値 -> 順位 のマップを作成
+            let valueToRankMap = {};
+            sortedUniqueValues.forEach((val, index) => {
+                valueToRankMap[val] = index + 1;
+            });
+
+            let totalRank = null;
+            if (totalRow && totalRow[metricKey] !== null && totalRow[metricKey] !== 0) {
+                const totalValue = totalRow[metricKey];
+                
+                // 総合計の値を含む全ての市場の値をソート
+                let allValuesIncludingTotal = [...allValues, totalValue];
+                let sortedAllUniqueValues = [...new Set(allValuesIncludingTotal)].sort((a, b) => (a - b) * sortDirection);
+                
+                // 総合計の順位を決定 (1ベース)
+                totalRank = sortedAllUniqueValues.findIndex(val => val === totalValue) + 1;
+            }
+
+
+            // スコアの割り当て
+            marketRows.forEach(row => {
+                const val = row[metricKey];
+                row[`${metricKey}Score`] = null; 
+                
+                if (val !== null && val !== 0) {
+                    const marketRank = valueToRankMap[val];
+                    
+                    if (marketRank) {
+                        if (metricKey === 'count') {
+                            // 頭数: 順位をそのままスコアとして表示 (頭数順位)
+                            // 💥 修正: 頭数のみ、昇順 (値が小さい方が良い) での順位を反映
+                            const countSortDirection = 1; // 昇順 (頭数が少ない方が順位が良い)
+                            let countSortedUniqueValues = [...new Set(allValues)].sort((a, b) => (a - b) * countSortDirection);
+                            let countValueToRankMap = {};
+                            countSortedUniqueValues.forEach((val, index) => {
+                                countValueToRankMap[val] = index + 1;
+                            });
+                            
+                            row[`${metricKey}Score`] = countValueToRankMap[val];
+                        } else {
+                            // 価格など: 順位差分スコア (総合計順位 - 市場順位)
+                            if (totalRank !== null) {
+                                const rankDiff = totalRank - marketRank;
+                                row[`${metricKey}Score`] = rankDiff;
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 総合計行のスコア
+            if (totalRow) {
+                if (metricKey === 'count') {
+                    // 総合計の頭数: 元の値を表示
+                    totalRow[`${metricKey}Score`] = totalRow[metricKey]; 
+                } else {
+                    // 価格、体重など: ハイフン表示
+                    totalRow[`${metricKey}Score`] = '-';
+                }
+            }
+        });
+        
+        // グローバルデータに反映
+        window.parsedDataByGender[gender] = data;
+    });
+}
+
+
+// --------------------------------------------------
+// --- ui-renderer.js の内容 (レンダリング・ソートユーティリティ) ---
+// --------------------------------------------------
+
+function formatScoreValue(score, key) { 
+    if (score === undefined || score === null || score === '-') return `-`;
+    
+    if (key === 'count') {
+        const num = Math.round(parseFloat(score));
+        if (isNaN(num)) return score;
+        
+        // 総合計行の頭数の場合は、頭数をそのまま表示する
+        // 順位が12以下でなければ、総合計行ではない市場のデータとして順位を表示
+        if (score > 12 && score === Math.round(score)) { 
+             return num.toLocaleString(); 
+        }
+        
+        // 市場行の頭数の場合は順位を表示
+        return `<span class="count-rank">${num}</span>`;
+    }
+    
+    // 価格、体重などの順位差分スコア
+    const num = parseInt(score, 10);
+    if (isNaN(num)) return score;
+    
+    const formatted = num > 0 ? `+${num}` : `${num}`;
+    const scoreClass = num > 0 ? "rank-positive" : num < 0 ? "rank-negative" : "rank-zero";
+    return `<span class="score-rank-diff ${scoreClass}">${formatted}</span>`;
+}
+
+// テーブルのソート処理
+function sortTable(gender, key) { 
+    const data = window.parsedDataByGender[gender].filter(row => row.key !== '総合計');
+    const totalRow = window.parsedDataByGender[gender].find(row => row.key === '総合計');
+
+    if (window.sortState[gender].key === key) {
+        window.sortState[gender].dir = window.sortState[gender].dir === 'asc' ? 'desc' : 'asc';
+    } else {
+        window.sortState[gender].key = key;
+        
+        // デフォルトソート方向を設定
+        if (key === 'prefecture' || key === 'market' || key === 'count') {
+            window.sortState[gender].dir = 'asc'; // 頭数 (順位) はascがデフォルト
+        } else {
+            window.sortState[gender].dir = 'desc'; // 価格など (順位差分スコア) はdescがデフォルト
+        }
+    }
+    const dir = window.sortState[gender].dir;
+
+    data.sort((a, b) => {
+        if (key === 'prefecture' || key === 'market') {
+            const comp = a[key].localeCompare(b[key], 'ja');
+            return dir === 'asc' ? comp : -comp;
+        }
+        
+        const sortKey = key === 'count' ? 'countScore' : `${key}Score`; 
+        const valA = a[sortKey];
+        const valB = b[sortKey];
+
+        const isInvalidA = (valA === null || valA === undefined || valA === '-');
+        const isInvalidB = (valB === null || valB === undefined || valB === '-');
+
+        if (isInvalidA && isInvalidB) return 0;
+        if (isInvalidA) return 1; 
+        if (isInvalidB) return -1; 
+
+        if (dir === 'asc') {
+           return valA - valB;
+        } else {
+           return valB - valA;
+        }
+    });
+
+    // ソート後のデータをグローバル変数に戻す
+    window.parsedDataByGender[gender] = totalRow ? [...data, totalRow] : data;
+    renderTables();
+}
+window.sortTable = sortTable; // main.jsから参照できるようグローバルに公開
+
+// テーブルの描画処理
+function renderTables() {
+    const container = document.getElementById('resultArea');
+    container.innerHTML = "";
+    
+    ['雄', '雌', '計'].forEach(g => {
+        const data = window.parsedDataByGender[g];
+        if (data.length === 0) return;
+
+        const section = document.createElement('div');
+        section.className = 'gender-section';
+        
+        let title = `【${g}】 市場データ一覧`;
+        if (g === '計') {
+             const hasCountData = data.some(row => row.countScore !== null && row.countScore !== '-');
+             const hasOtherData = data.some(row => window.metricsMap.filter(m => m.key !== 'count').some(m => row[`${m.key}Score`] !== null && row[`${m.key}Score`] !== '-'));
+             
+             if (hasCountData && hasOtherData) {
+                 title = `【計（頭数）/平均（価格など）】 市場データ一覧`;
+             } else if (hasOtherData) {
+                 title = `【平均】 市場データ一覧`;
+             } else if (hasCountData) {
+                 title = `【計】 市場データ一覧`;
+             }
+        }
+        
+        let html = `<h2>${title}</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th onclick="sortTable('${g}', 'prefecture')" class="${window.sortState[g].key === 'prefecture' ? 'sort-' + window.sortState[g].dir : ''}">都道府県</th>
+                    <th onclick="sortTable('${g}', 'market')" class="${window.sortState[g].key === 'market' ? 'sort-' + window.sortState[g].dir : ''}">市場名</th>`;
+        
+        window.metricsMap.forEach(m => {
+            let headerLabel;
+            if (m.key === 'count') {
+                headerLabel = `${m.label}<br>（順位：少が1位）`;
+                if (g === '計') headerLabel = `取引頭数（計）<br>（順位：少が1位）`;
+            } else {
+                headerLabel = `${m.label}<br>（順位差分：大が良）`;
+                if (g === '計') headerLabel = `${m.label}（平均）<br>（順位差分：大が良）`;
+            }
+
+            const isSorted = window.sortState[g].key === m.key;
+            const sortClass = isSorted ? 'sort-' + (window.sortState[g].key === m.key ? window.sortState[g].dir : '') : '';
+            // HTML内のイベントハンドラとして sortTable を参照
+            html += `<th onclick="sortTable('${g}', '${m.key}')" class="${sortClass}">${headerLabel}</th>`;
+        });
+        html += `</tr></thead><tbody>`;
+        
+        data.forEach(row => {
+            const isTotal = row.key === '総合計';
+            const rowClass = isTotal ? 'class="total-row"' : '';
+            
+            const prefDisplay = isTotal ? `<td class="market-name-col" colspan="2">総合計</td>` : 
+                                          `<td class="market-name-col">${row.prefecture}</td><td class="market-name-col">${row.market}</td>`;
+            
+            html += `<tr ${rowClass}>${prefDisplay}`;
+            
+            window.metricsMap.forEach(m => {
+                let displayValue;
+                if (m.key === 'count' && isTotal) {
+                     displayValue = (row.countScore !== null && row.countScore !== '-') ? Math.round(row.countScore).toLocaleString() : '-';
+                } else {
+                    displayValue = formatScoreValue(row[`${m.key}Score`], m.key);
+                }
+                
+                html += `<td>${displayValue}</td>`;
+            });
+            html += `</tr>`;
+        });
+        html += `</tbody></table>`;
+        section.innerHTML = html;
+        container.appendChild(section);
+    });
+}
+
+
+function updateTransactionDateDisplay_main(text) {
+    const displayElement = document.getElementById('transactionDateDisplay');
+    const regex = /取引月\s*(\S+)/; 
+    const match = text.match(regex);
+    if (match && match[1]) {
+        const dateRange = match[1].replace(/\s/g, ''); 
+        const dateRegex = /(令和)(\d{1,2})年(\d{1,2})月(\d{1,2})日～(令和)(\d{1,2})年(\d{1,2})月(\d{1,2})日/;
+        const dateMatch = dateRange.match(dateRegex);
+        if (dateMatch) {
+            const startYear = parseInt(dateMatch[2], 10);
+            const startMonth = parseInt(dateMatch[3], 10);
+            const startDay = parseInt(dateMatch[4], 10);
+            const endYear = parseInt(dateMatch[6], 10);
+            const endMonth = parseInt(dateMatch[7], 10);
+            const endDay = parseInt(dateMatch[8], 10);
+            displayElement.textContent = `取引月 令和${startYear}年${startMonth}月${startDay}日～令和${endYear}年${endMonth}月${endDay}日`;
+        } else {
+            displayElement.textContent = `取引月 ${dateRange}`;
+        }
+    } else {
+        displayElement.textContent = '取引月 情報が見つかりませんでした。';
+    }
+}
+
+
+// --------------------------------------------------
+// --- main.js の内容 (メインロジック・イベントハンドラ・初期化) ---
+// --------------------------------------------------
+
+// --- ヘッダー解析ユーティリティ ---
+function getMonthHeaderIndices(lines) {
+    let headerLineIndex = -1;
+
+    for (let i = 0; i < lines.length; i++) {
+        // ヘッダー行を特定（都道府県、市場名、月のすべてを含む行）
+        if (lines[i].includes('都道府県') && lines[i].includes('市場名') && lines[i].includes('月')) {
+            headerLineIndex = i;
+            break;
+        }
+    }
+    
+    if (headerLineIndex === -1) return { headerLineIndex: -1, headerMonths: [] };
+
+    // ヘッダー行をタブまたは2つ以上の空白、カンマで分割
+    let fullHeaderParts = lines[headerLineIndex].split(/\t/);
+    if (fullHeaderParts.length <= 1) fullHeaderParts = lines[headerLineIndex].split(/\s{2,}/);
+    if (fullHeaderParts.length <= 1) fullHeaderParts = lines[headerLineIndex].split(/,/);
+
+    const headerMonths = [];
+
+    // 分割されたヘッダーから月のインデックスを抽出
+    for (let i = 0; i < fullHeaderParts.length; i++) {
+        let part = fullHeaderParts[i]; // trimしない
+        if (!part) continue; // 空要素はスキップ
+
+        let trimmedPart = part.trim();
+        
+        // 「合計」や「平均」が含まれる列はスキップ
+        if (trimmedPart.includes('合計') || trimmedPart.includes('平均')) continue;
+
+        // 月の数字を抽出
+        trimmedPart = trimmedPart.replace(/（.*?）/g,'').replace(/\s+/g,'');
+        const digits = trimmedPart.replace(/[^0-9０-９]/g, '');
+        const half = digits.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+        const m = parseInt(half,10);
+
+        // 数字であり、1〜12の範囲で、「月」で終わる、または数字単独であることを確認
+        if (!isNaN(m) && m >= 1 && m <= 12 && (trimmedPart.endsWith('月') || trimmedPart === String(m))) {
+            // index は fullHeaderParts におけるインデックス
+            headerMonths.push({ month: m, index: i, text: fullHeaderParts[i] });
+        }
+    }
+    
+    return { headerLineIndex, headerMonths };
+}
+
+// --- メインデータ処理ロジック ---
+function processData() {
+    const rawInput = document.getElementById('dataInput').value;
+    const targetMonthElement = document.getElementById('targetMonth');
+    const targetMonth = targetMonthElement.value.trim();
+    const errorDiv = document.getElementById('errorMessages') || document.getElementById('errorMessage'); // どちらかのIDに対応
+    const resultDiv = document.getElementById('tablesContainer') || document.getElementById('resultArea'); // どちらかのIDに対応
+    const dbg = document.getElementById('pdDebugArea');
+
+    if (dbg) dbg.textContent = '';
+    
+    // エラーメッセージをクリア
+    if (errorDiv) errorDiv.textContent = "";
+    if (resultDiv) resultDiv.innerHTML = "";
+    
+    // データ/マップ/ソート状態をリセット
+    window.parsedDataByGender = { '雄': [], '雌': [], '計': [] };
+    window.marketMap = {};
+    
+    // 💥 修正: 入力チェックを強化
+    const monthNum = parseInt(targetMonth, 10);
+    if (!rawInput.trim() || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        if (errorDiv) errorDiv.textContent = "データを貼り付け、抽出対象月（1～12の数値）を正しく入力してください。";
+        // データが空の場合は、エラー表示後、後続の処理を行わない
+        if (!rawInput.trim()) return; 
+    }
+
+    // 💥 修正: 行のクリーニングを processData の冒頭で一括して行う
+    const lines = rawInput.split('\n')
+                          .map(line => line.replace(/\r/g,'').trim()) // 行の頭と尻尾の空白を確実に削除
+                          .filter(line => line.length > 0);
+    
+    // 取引月情報があれば表示を更新 (data-parser.jsまたはui-renderer.jsの関数)
+    if (typeof updateTransactionDateDisplay_main === 'function') {
+        updateTransactionDateDisplay_main(rawInput); // ui-renderer.js の関数を使用
+    }
+    
+    // 1. ヘッダー情報の解析
+    const { headerLineIndex, headerMonths } = getMonthHeaderIndices(lines);
+
+    if (headerLineIndex === -1) {
+        if (errorDiv) errorDiv.textContent = "エラー: ヘッダー行（都道府県, 市場名, 月を含む行）が見つかりません。正しい形式でデータを貼り付けてください。";
+        return;
+    }
+
+    // 2. 対象月のインデックス特定
+    const matches = headerMonths.filter(h => h.month === monthNum);
+
+    if (matches.length === 0) {
+        if (errorDiv) errorDiv.textContent = `エラー: 指定された月（${monthNum}月）のデータ列がヘッダーに見つかりませんでした。`;
+        return;
+    }
+
+    // 通常、最後のマッチが対象月（最新の列）
+    const dataStartIndexInLine = matches[matches.length - 1].index;
+    if (dbg) dbg.textContent += `Chosen data column index for ${monthNum}月: ${dataStartIndexInLine}\n\n`;
+
+    // 3. 本体解析
+    let currentMarketKey = null;
+    let currentMetric = null;
+
+    for (let i = headerLineIndex + 1; i < lines.length; i++) {
+        const line = lines[i];
+
+        // 冗長な行のスキップ (data-parser.jsのisMarketHeaderLineと重複するが、高速化のため)
+        if (line.includes("ページ：") || line.includes("《") || line.includes("品種：") || line.includes("取引月") || line.includes("合計・平均")) continue;
+
+        // 💥 修正: isMarketHeaderLineはdata-parser.jsの強化版を使用
+        const isHeader = typeof isMarketHeaderLine === 'function' ? isMarketHeaderLine(line) : false;
+
+        if (isHeader) {
+            // 💥 修正: extractPrefAndMarketはdata-parser.jsの強化版を使用
+            const names = typeof extractPrefAndMarket === 'function' ? extractPrefAndMarket(line) : {};
+            const currentPrefName = names.prefecture;
+            const currentMarketName = names.market;
+            
+            // 県合計の行はスキップ
+            if (currentMarketName === '県合計' || currentPrefName === '総合計') {
+                currentMarketKey = currentPrefName === '総合計' ? '総合計' : null; 
+                if (currentMarketKey === '総合計' && !window.marketMap[currentMarketKey]) {
+                    window.marketMap[currentMarketKey] = { '雄': {}, '雌': {}, '計': {} };
+                }
+                currentMetric = null;
+                continue;
+            }
+
+            currentMarketKey = typeof createMarketKey === 'function' ? createMarketKey(currentPrefName, currentMarketName) : `${currentPrefName}_${currentMarketName}`;
+            
+            if (!window.marketMap[currentMarketKey]) window.marketMap[currentMarketKey] = { '雄': {}, '雌': {}, '計': {} };
+            currentMetric = null; 
+            continue; 
+        }
+
+        if (!currentMarketKey) continue; 
+
+        // 4. 指標判定とデータ抽出
+        if (line.includes("取引頭数")) currentMetric = "count";
+        else if (line.includes("平均価格")) currentMetric = "price";
+        else if (line.includes("平均体重")) currentMetric = "weight";
+        else if (line.includes("平均日齢")) currentMetric = "age";
+        else if (line.includes("１㎏単価") || line.includes("1kg単価")) currentMetric = "unitPrice";
+        
+        const isAverageLine = line.trim().startsWith('平均');
+        
+        if (!currentMetric && !isAverageLine) continue;
+
+        // 💥 修正: データ行の分割を堅牢化 (タブ、複数の空白、カンマを試す)
+        let parts = line.split(/\t/);
+        if (parts.length <= 1) parts = line.split(/\s{2,}/);
+        if (parts.length <= 1) parts = line.split(/,/);
+        
+        const hasFemale = line.includes("雌");
+        const hasMale = line.includes("雄");
+        
+        const isCountTotalLine = currentMetric === 'count' && (line.includes("計") || line.includes("合計")) && !line.includes("平均");
+        const isMetricTotalOrAverageLine = (currentMetric !== 'count' && (line.includes("計") || line.includes("平均"))) || isAverageLine;
+
+        // 💥 修正: extractAndStoreはdata-parser.jsの強化版を使用
+        if (typeof extractAndStore === 'function') {
+            if (hasFemale) extractAndStore(parts, dataStartIndexInLine, currentMarketKey, '雌', currentMetric);
+            if (hasMale) extractAndStore(parts, dataStartIndexInLine, currentMarketKey, '雄', currentMetric);
+            
+            if (isCountTotalLine || isMetricTotalOrAverageLine) {
+                let targetMetric = currentMetric;
+                // '平均'行の場合、直前の指標を推測
+                if (isAverageLine && !currentMetric) { 
+                    for (let j = i - 1; j >= headerLineIndex; j--) {
+                        if (lines[j].includes("平均体重")) { targetMetric = "weight"; break; }
+                        if (lines[j].includes("平均価格")) { targetMetric = "price"; break; }
+                        if (lines[j].includes("平均日齢")) { targetMetric = "age"; break; }
+                    }
+                }
+
+                if (targetMetric) extractAndStore(parts, dataStartIndexInLine, currentMarketKey, '計', targetMetric);
+            }
+        }
+    }
+
+    // 5. データ構造の整形とフィルタリング
+    Object.keys(window.marketMap).forEach(mKey => {
+        ['雄', '雌', '計'].forEach(g => {
+            if (Object.keys(window.marketMap[mKey][g]).length === 0 && mKey !== '総合計') return;
+            
+            // keyから都道府県と市場名を再構築
+            const nameParts = mKey === '総合計' 
+                ? { prefecture: '総合計', market: '' } 
+                : mKey.includes('_') ? { prefecture: mKey.split('_')[0], market: mKey.split('_')[1] } : { prefecture: '', market: '' };
+            
+            let obj = { 
+                key: mKey,
+                prefecture: nameParts.prefecture,
+                market: nameParts.market, 
+                genderName: g 
+            };
+            let hasData = false;
+            window.metricsMap.forEach(m => {
+                const v = window.marketMap[mKey][g]?.[m.key] ?? null;
+                obj[m.key] = v !== undefined && v !== null ? v : null;
+                obj[`${m.key}Score`] = null; 
+                if (v !== undefined && v !== null && v !== 0) hasData = true;
+            });
+
+            if (hasData || mKey === '総合計') {
+                window.parsedDataByGender[g].push(obj);
+            }
+        });
+    });
+
+    // データのない行を最終的にフィルタリング
+    ['雄', '雌', '計'].forEach(g => {
+        window.parsedDataByGender[g] = 
+            window.parsedDataByGender[g].filter(row => 
+                row.key === '総合計' || 
+                window.metricsMap.some(m => row[m.key] !== null && row[m.key] !== 0)
+            );
+    });
+
+    if (window.parsedDataByGender['計'].length === 0 && window.parsedDataByGender['雄'].length === 0 && window.parsedDataByGender['雌'].length === 0) {
+        if (errorDiv) errorDiv.textContent = "有効な市場データが見つかりませんでした。";
+        return;
+    }
+
+    // 6. スコア計算とテーブル描画
+    if (typeof calculateScores === 'function') calculateScores(); 
+    if (typeof renderTables === 'function') renderTables();
+}
+
+// --- イベントハンドラ ---
+function handleDataInput() {
+    // 貼り付けや手入力が行われたらソート状態をリセット
+    window.sortState = {
+        '雄': { key: null, dir: 'asc' },
+        '雌': { key: null, dir: 'asc' },
+        '計': { key: null, dir: 'asc' }
+    };
+    processData();
+}
+
+function processDataFromControls() {
+    processData(); 
+}
+
+// --- 初期化ロジック ---
+window.onload = function() {
+    const dataInput = document.getElementById('dataInput');
+    const targetMonthElement = document.getElementById('targetMonth');
+    const tablesContainer = document.getElementById('tablesContainer');
+    const errorDiv = document.getElementById('errorMessages') || document.getElementById('errorMessage');
+
+    // イベントリスナーを設定
+    dataInput.addEventListener('input', handleDataInput);
+    targetMonthElement.addEventListener('input', processDataFromControls);
+    
+    // 2. 初期データの設定
+    const initialData = `			《月別肉用子牛取引状況表（市場区分：全市場）》												
+		取引月　令和07年01月01日～令和07年12月31日，日齢　182～365												ページ：	1
+品種：	黒毛和種	＊：指定市場　－：非指定市場													
+都道府県	市場名	12月	1月	2月	3月	4月	5月	6月	7月	8月	9月	10月	11月	12月	合計・平均
+北海道	ホクレン南北海道家畜市場*														
+	取引頭数　　　　　雌	785	563	676	625	688	718	690	681	597	604	585	601	0	7,028
+	（頭）　　　　　雄	944	805	902	789	940	1,060	929	812	794	881	842	865	0	9,619
+	計	1,729	1,368	1,578	1,414	1,628	1,778	1,619	1,493	1,391	1,485	1,427	1,466	0	16,647
+	平均価格　　　　　雌	476,069	525,605	547,652	580,108	677,015	629,563	595,819	646,333	664,295	609,425	633,152	674,834	0	617,306
+	（円）　　　　　雄	600,128	656,085	683,328	722,827	805,909	745,047	747,471	777,784	778,781	751,776	753,167	793,066	0	747,367
+	平均	543,803	602,386	625,206	659,744	751,438	698,412	682,838	717,826	729,645	693,877	703,967	744,596	0	692,458
+	平均体重　　　　　雌	312	316	314	311	317	317	318	314	311	314	314	320	0	315
+	（Kg）　　　　　雄	331	336	335	334	342	341	342	340	334	340	339	345	0	339
+	平均	322	328	326	324	331	332	331	328	324	330	329	335	0	329
+	平均日齢　　　　　雌	301	308	308	306	309	307	304	305	302	306	303	309	0	306
+	（日）　　　　　雄	290	296	297	296	298	296	295	292	291	295	293	297	0	295
+	平均	295	301	302	301	303	300	299	298	295	299	297	302	0	300
+	１㎏単価　　　　　雌	1,526	1,661	1,747	1,864	2,139	1,983	1,876	2,059	2,137	1,939	2,014	2,110	0	1,959
+	（円）　　　　　雄	1,813	1,953	2,038	2,165	2,355	2,183	2,189	2,285	2,331	2,211	2,220	2,298	0	2,203
+	平均	1,687	1,837	1,918	2,037	2,268	2,106	2,061	2,186	2,251	2,105	2,139	2,224	0	2,105
+	市場数	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+北海道	ホクレン十勝地区家畜市場*														
+	取引頭数　　　　　雌	1,141	906	846	896	891	965	865	1,533	210	1,151	612	938	1,008	10,821
+	（頭）　　　　　雄	1,441	1,182	1,052	1,255	1,323	1,375	1,263	2,069	326	1,699	976	1,290	1,360	15,170
+	計	2,582	2,088	1,898	2,151	2,214	2,340	2,128	3,602	536	2,850	1,588	2,228	2,368	25,991
+	平均価格　　　　　雌	477,956	521,954	543,656	577,121	673,423	663,126	636,985	675,729	673,284	636,583	631,679	680,296	715,321	637,334
+	（円）　　　　　雄	616,590	647,460	675,278	702,378	799,050	782,590	770,885	791,081	774,505	754,294	759,162	787,268	820,353	758,536
+	平均	555,327	593,002	616,610	650,202	748,493	733,323	716,457	741,987	734,847	706,755	710,031	742,232	775,644	708,075
+	平均体重　　　　　雌	322	325	319	321	323	325	325	324	318	324	331	332	321	324
+	（Kg）　　　　　雄	341	342	337	338	344	346	347	347	340	351	356	355	344	346
+	平均	332	335	329	331	336	337	338	338	331	340	347	346	335	337
+	平均日齢　　　　　雌	299	302	305	302	307	303	302	299	299	300	300	302	297	302
+	（日）　　　　　雄	288	294	297	292	293	290	292	290	289	293	294	294	288	292
+	平均	293	297	300	296	299	296	296	294	293	296	297	298	292	296
+	１㎏単価　　　　　雌	1,487	1,605	1,706	1,800	2,085	2,042	1,958	2,083	2,114	1,963	1,908	2,048	2,226	1,965
+	（円）　　　　　雄	1,809	1,893	2,001	2,079	2,322	2,264	2,219	2,278	2,280	2,152	2,131	2,216	2,383	2,191
+	平均	1,671	1,772	1,874	1,967	2,230	2,176	2,117	2,198	2,217	2,079	2,049	2,148	2,319	2,101
+	市場数	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+北海道	ホクレン根室地区家畜市場*														
+	取引頭数　　　　　雌	0	0	0	1	0	0	1	0	0	3	2	0	0	7
+	（頭）　　　　　雄	1	1	3	0	3	1	1	0	1	0	1	0	0	11
+	計	1	1	3	1	3	1	2	0	1	3	3	0	0	18
+	平均価格　　　　　雌	0	0	0	207,900	0	0	249,700	0	0	323,033	17,600	0	0	208,843
+	（円）　　　　　雄	224,400	209,000	209,367	0	258,500	256,300	431,200	0	440,000	0	297,000	0	0	276,100
+	平均	224,400	209,000	209,367	207,900	258,500	256,300	340,450	0	440,000	323,033	110,733	0	0	249,944
+	平均体重　　　　　雌	0	0	0	202	0	0	171	0	0	294	155	0	0	223
+	（Kg）　　　　　雄	287	225	247	0	197	407	326	0	294	0	266	0	0	259
+	平均	287	225	247	202	197	407	249	0	294	294	192	0	0	245
+	平均日齢　　　　　雌	0	0	0	313	0	0	192	0	0	351	252	0	0	295
+	（日）　　　　　雄	349	361	310	0	240	333	335	0	326	0	192	0	0	290
+	平均	349	361	310	313	240	333	264	0	326	351	232	0	0	292
+	１㎏単価　　　　　雌	0	0	0	1,029	0	0	1,460	0	0	1,100	114	0	0	935
+	（円）　　　　　雄	782	929	848	0	1,314	630	1,323	0	1,497	0	1,117	0	0	1,066
+	平均	782	929	848	1,029	1,314	630	1,370	0	1,497	1,100	577	0	0	1,019
+	市場数	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+`;
+
+
+    dataInput.value = initialData;
+
+    // ヘッダー解析から最新月を取得し、デフォルト設定
+    const lines = initialData.split('\n').map(line => line.replace(/\r/g,'').trim()).filter(line => line.length > 0);
+    const { headerMonths } = getMonthHeaderIndices(lines);
+
+    let defaultMonthToSet = 1;
+
+    if (headerMonths.length > 0) {
+        // 最終列の月をデフォルト設定 (このデータでは12月)
+        // 💥 修正: 初期データでは最新の月が'12月'なので、その月をデフォルト設定
+        const latestMonthEntry = headerMonths.reduce((latest, current) => {
+            if (current.index > latest.index) return current;
+            return latest;
+        }, { index: -1 });
+
+        if (latestMonthEntry.index !== -1) {
+            defaultMonthToSet = latestMonthEntry.month;
+        } else {
+             // データセットの最後の有効な月の数字をデフォルトに
+             const allMonths = headerMonths.map(h => h.month);
+             if(allMonths.length > 0) defaultMonthToSet = allMonths[allMonths.length - 1];
+        }
+    }
+    
+    targetMonthElement.value = defaultMonthToSet; 
+    
+    // ロード時にデータ処理を実行
+    processData();
+};
+</script>
+
+</body>
+</html>
         box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
     }
     
@@ -728,3 +1633,4 @@ window.onload = function() {
 </script>
 </body>
 </html>
+
