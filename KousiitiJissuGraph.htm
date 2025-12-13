@@ -248,8 +248,8 @@ const MARKET_POINT_STYLES = [
 function getMarketStyle(marketKey, globalIndex) {
     if (marketKey === '総合計') {
         return {
-            color: '#000000',    // 黒
-            pointStyle: 'star',    // 星
+            color: '#000000',   // 黒
+            pointStyle: 'star',   // 星
             dashPattern: [5, 5],   // 点線で強調
             borderWidth: 3
         };
@@ -527,20 +527,35 @@ function processData() {
         if (errorDiv) errorDiv.textContent = "有効な市場データが見つかりませんでした。";
         return;
     }
-
+    
+    // ★★★ 修正後の初期選択ロジック ★★★
     if (window.allMonths.length > 0) {
+        // 1. 総合計にチェックを入れる
         if (window.parsedData['総合計']) {
             window.selectedMarkets.add('総合計');
         }
+        
+        let shimaneCount = 0;
+        
+        // 2. 島根県の市場にチェックを入れる (最大2つ)
         window.allMarketKeysInOrder.forEach(key => {
-            if (key.startsWith('北海道') || key.startsWith('島根')) {
-                 window.selectedMarkets.add(key);
+            // 島根県の市場かつ、まだ2つ未満の場合に選択する
+            if (key.startsWith('島根') && key !== '総合計' && shimaneCount < 2) {
+                window.selectedMarkets.add(key);
+                shimaneCount++;
             }
         });
-        if (window.selectedMarkets.size === 0 && window.allMarketKeysInOrder.length > 0) {
-            window.selectedMarkets.add(window.allMarketKeysInOrder[0]);
+        
+        // 3. 選択された市場が総合計しかない、または全くない場合に、総合計以外の最初の市場を選択する
+        // (これにより、データが存在する限り最低1つは市場が選択される)
+        if (window.selectedMarkets.size <= 1 && window.allMarketKeysInOrder.length > 0) {
+            const firstMarket = window.allMarketKeysInOrder.find(key => key !== '総合計');
+            if (firstMarket) {
+                window.selectedMarkets.add(firstMarket);
+            }
         }
     }
+    // ★★★ 修正後の初期選択ロジック 終了 ★★★
 
     renderAllAnalysisSections();
 }
@@ -557,11 +572,9 @@ function formatValue(value) {
     
     let formattedValue;
 
-    // ★★★ 修正箇所: すべての数値データをMath.round(四捨五入して整数)に統一する ★★★
+    // 前回の修正: すべての数値データをMath.round(四捨五入して整数)に統一
     formattedValue = Math.round(parseFloat(value)).toLocaleString();
     
-    // 元のコードでweight/ageのみ小数点1桁表示の例外処理があったが、これを削除・上書きし、整数表示に統一
-
     return `<span class="score-value">${formattedValue}</span>`;
 }
 
@@ -644,7 +657,6 @@ function renderTable(gender, containerId, analysisAreaId) {
 }
 
 // Chart.jsを使った折れ線グラフの描画
-// Chart.jsを使った折れ線グラフの描画
 function updateGraph(gender, canvasId, analysisAreaId) {
     const selectedMetric = document.querySelector('input[name="metricSelector"]:checked').value;
     const metricInfo = METRICS[selectedMetric];
@@ -656,7 +668,7 @@ function updateGraph(gender, canvasId, analysisAreaId) {
     
     const datasets = [];
     
-    // ★ 修正点1: 市場が選択されていない場合は早期に処理を終了
+    // 市場が選択されていない場合は早期に処理を終了
     if (window.selectedMarkets.size === 0) {
         const ctx = document.getElementById(canvasId);
         if (chartInstances[canvasId]) {
@@ -665,7 +677,7 @@ function updateGraph(gender, canvasId, analysisAreaId) {
         return; 
     }
 
-    // ★ 修正点2: 市場が選択されている場合のみ、marketKeysToDraw を確実に定義
+    // 市場が選択されている場合のみ、marketKeysToDraw を定義
     const marketKeysToDraw = Array.from(window.selectedMarkets).sort((a, b) => {
         if (a === '総合計') return 1;
         if (b === '総合計') return -1;
@@ -756,7 +768,9 @@ function updateGraph(gender, canvasId, analysisAreaId) {
                             
                             const metricLabel = `(${metricInfo.label})`;
 
-yValue = Math.round(yValue).toLocaleString();
+                            // グラフのツールチップも整数表示に統一
+                            yValue = Math.round(yValue).toLocaleString();
+                            
                             return `${label} ${metricLabel}: ${yValue}${metricInfo.unit}`;
                         }
                     }
@@ -785,7 +799,8 @@ yValue = Math.round(yValue).toLocaleString();
                     title: { display: true, text: metricInfo.axisLabel + ' (Y軸)' },
                     ticks: {
                         callback: function(value) { 
-return Math.round(value).toLocaleString() + metricInfo.unit;
+                            // グラフのY軸目盛りも整数表示に統一
+                            return Math.round(value).toLocaleString() + metricInfo.unit; 
                         }
                     }
                 }
