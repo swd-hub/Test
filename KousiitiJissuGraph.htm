@@ -557,12 +557,11 @@ function formatValue(value) {
     
     let formattedValue;
 
-    if (selectedMetric === 'weight' || selectedMetric === 'age') {
-        formattedValue = parseFloat(value).toFixed(1).toLocaleString();
-    } else {
-        formattedValue = Math.round(parseFloat(value)).toLocaleString();
-    }
+    // ★★★ 修正箇所: すべての数値データをMath.round(四捨五入して整数)に統一する ★★★
+    formattedValue = Math.round(parseFloat(value)).toLocaleString();
     
+    // 元のコードでweight/ageのみ小数点1桁表示の例外処理があったが、これを削除・上書きし、整数表示に統一
+
     return `<span class="score-value">${formattedValue}</span>`;
 }
 
@@ -757,11 +756,7 @@ function updateGraph(gender, canvasId, analysisAreaId) {
                             
                             const metricLabel = `(${metricInfo.label})`;
 
-                            if (selectedMetric === 'weight' || selectedMetric === 'age') {
-                                yValue = parseFloat(yValue).toFixed(1).toLocaleString();
-                            } else {
-                                yValue = Math.round(yValue).toLocaleString();
-                            }
+yValue = Math.round(yValue).toLocaleString();
                             return `${label} ${metricLabel}: ${yValue}${metricInfo.unit}`;
                         }
                     }
@@ -790,11 +785,7 @@ function updateGraph(gender, canvasId, analysisAreaId) {
                     title: { display: true, text: metricInfo.axisLabel + ' (Y軸)' },
                     ticks: {
                         callback: function(value) { 
-                            if (selectedMetric === 'weight' || selectedMetric === 'age') {
-                                return value.toFixed(1) + metricInfo.unit;
-                            } else {
-                                return value.toLocaleString() + metricInfo.unit; 
-                            }
+return Math.round(value).toLocaleString() + metricInfo.unit;
                         }
                     }
                 }
