@@ -226,37 +226,49 @@
         margin-top: 5px;
     }
 
-    #myChart {
+ /*   #myChart {
         max-height: 500px;
-    }
+    } */
     
 @media print {
-    .header-container h1 { display: none; }
-    .resizable-container { display: none; }
-    .left-panel { display: none; }
+
+    .header-container h1,
+    .left-panel,
+    .resizer,
+    .controls,
+    .chart-header-wrapper,
+    .source-link-button {
+        display: none !important;
+    }
+
+    /* 親は消さない */
+    /* .resizable-container は触らない */
+
     .right-panel {
         position: absolute;
-        left: 2vw;
-        top: 3.5vw;
-        width: 100%;
-        box-shadow: none; 
-        background: white; 
+        left: 0;
+        top: 0;
+        width: 100vw;
+        height: 100vh;
+        box-shadow: none;
+        background: white;
         padding: 0 !important;
         margin: 0 !important;
-        flex: none; 
-        height: 65vw; 
+        flex: none;
     }
-    .controls { display: none; }
-    .chart-header-wrapper { display: none; }
 
     #myChart {
         page-break-inside: avoid;
-        margin-top: 1px;
-        max-width: 95vw !important;
-        max-height: 65vw !important; 
+        max-width: 100vw !important;
+        max-height: 100vh !important;
     }
-    .source-link-button { display: none; }
+
+    body {
+        margin: 0;
+    }
 }
+
+
 </style>
 </head>
 <body>
@@ -308,10 +320,17 @@
 
         <!-- 右パネル：3. グラフ表示 -->
         <div class="right-panel" id="rightPanel">
-            <div class="chart-header-wrapper">
-                <h2>3. グラフ表示（印刷：Ctrl＋P）</h2>
-                <button onclick="downloadChartImage()" class="download-btn">画像保存(PNG)</button>
-            </div>
+		<div class="chart-header-wrapper">
+		    <h2>3. グラフ表示（印刷：Ctrl＋P）</h2>
+		    <div>
+		        <button onclick="printChartOnly()" class="download-btn" style="background:#17a2b8;">
+		            グラフ印刷
+		        </button>
+		        <button onclick="downloadChartImage()" class="download-btn">
+		            画像保存(PNG)
+		        </button>
+		    </div>
+		</div>
             
             <div class="controls">
                 <div class="control-group">
@@ -949,6 +968,15 @@
         });
     });
 
+function printChartOnly() {
+    if (!myChart) {
+        alert("グラフが表示されていません");
+        return;
+    }
+    window.print();
+}
+
+
     // ★ウィンドウリサイズ時のグラフ再描画
     window.addEventListener('resize', () => {
         if (myChart && !isResizing) {
@@ -962,21 +990,8 @@
         const sampleData = `品種：黒毛和種（例示）
 都道府県 市場名 11月 12月 1月 2月 3月 4月 5月 6月 7月 8月 9月 10月 11月 合計・平均
 北海道 ホクレン南北海道家畜市場（サンプル）
-取引頭数 雌 632 785 563 676 625 688 718 690 681 597 604 585 601
-取引頭数 雄 512 665 463 576 525 588 618 590 581 497 504 485 501
-取引頭数 計 1144 1450 1026 1252 1150 1276 1336 1280 1262 1094 1108 1070 1102
-平均価格 雌 582387 563803 622386 645206 679744 771438 718412 702838 737826 749645 713877 723967 764596
-平均価格 雄 542387 523803 582386 605206 639744 731438 678412 662838 697826 709645 673877 683967 724596
-平均価格 計 562387 543803 602386 625206 659744 751438 698412 682838 717826 729645 693877 703967 744596
-平均体重 雌 412.5 418.2 415.1 420.3 425.6 430.2 428.1 425.4 423.7 421.5 419.8 418.3 420.1
-平均体重 雄 392.5 398.2 395.1 400.3 405.6 410.2 408.1 405.4 403.7 401.5 399.8 398.3 400.1
-平均体重 計 402.5 408.2 405.1 410.3 415.6 420.2 418.1 415.4 413.7 411.5 409.8 408.3 410.1
-平均日齢 雌 212 215 218 220 222 225 228 230 228 225 220 215 220
-平均日齢 雄 210 213 216 218 220 223 226 228 226 223 218 213 218
 平均日齢 計 211 214 217 219 221 224 227 229 227 224 219 214 219
 １㎏単価 雌 1412 1349 1501 1537 1595 1793 1676 1651 1741 1775 1691 1736 1821
-１㎏単価 雄 1382 1315 1495 1512 1577 1779 1662 1637 1727 1761 1677 1722 1807
-１㎏単価 計 1397 1332 1498 1525 1586 1786 1669 1644 1734 1768 1684 1729 1814
 島根県 島根中央家畜市場（サンプル）
 取引頭数 計 1144 1450 1026 1252 1150 1276 1336 1280 1262 1094 1108 1070 1102
 平均価格 計 562387 543803 602386 625206 659744 751438 698412 682838 717826 729645 693877 703967 744596
