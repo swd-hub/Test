@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="澤田泰人">
+    <meta name="date" content="20251208">
+    <meta name="generator" content="google gemini3 AI">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月別肉用子牛取引状況（黒毛和種） 可視化ツール</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    body { font-family: "Helvetica Neue", Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+    
+    .header-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+
+    .source-link-button {
+        padding: 8px 15px;
+        background-color: #6c757d;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        font-size: 14px;
+        transition: background-color 0.2s;
+        white-space: nowrap;
+        margin-left: 20px;
+    }
+    .source-link-button:hover {
+        background-color: #5a6268;
+    }
+
+.container { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 20px; 
+    overflow-x: auto;
+}
+    
+.input-area { 
+    flex: 1; 
+    min-width: 300px; 
+    background: white; 
+    padding: 20px; 
+    border-radius: 8px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    position: relative; 
+    z-index: 11; 
+}
+.chart-area { 
+    flex: 2; 
+    min-width: 400px; 
+    background: white; 
+    padding: 20px; 
+    border-radius: 8px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    position: relative; 
+    z-index: 10; 
+}
+    
+textarea { 
+    width: 100%; 
+    height: 200px; 
+    margin-bottom: 10px; 
+    font-family: monospace; 
+    font-size: 12px; 
+    border: 1px solid #ccc; 
+    padding: 5px; 
+    resize: both;
+    box-sizing: border-box; 
+}
+
+    .controls { margin-bottom: 15px; padding: 10px; background: #eef; border-radius: 5px; }
+    .control-group { margin-bottom: 10px; display: flex; flex-wrap: wrap; align-items: center; }
+    .control-group label { font-weight: bold; margin-right: 10px; flex-shrink: 0; }
+    .radio-label { margin-right: 15px; cursor: pointer; font-size: 0.95rem; }
+    
+    button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; }
+    .main-button { margin-top: 10px; }
+    
+    h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #ddd; padding-bottom: 5px; }
+
+    .chart-header-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #ddd;
+        margin-bottom: 15px;
+        padding-bottom: 5px;
+    }
+    .chart-header-wrapper h2 {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+        margin-top: 0;
+    }
+    .download-btn {
+        width: auto;
+        padding: 5px 15px;
+        font-size: 14px;
+        background-color: #28a745;
+        color: white;
+        border-radius: 4px;
+    }
+    .download-btn:hover {
+        background-color: #218838;
+    }
+
+    /* 市場選択テーブル用スタイル */
+    #marketSelectionContainer { 
+        display: none; 
+        margin-top: 20px; 
+        padding: 10px; 
+        border: 1px solid #ddd; 
+        border-radius: 5px; 
+        background: #fafafa; 
+    }
+
+    .selection-header { 
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between; 
+        margin-bottom: 10px;
+    }
+
+    .deselect-button { 
+        padding: 5px 10px; 
+        font-size: 0.85rem; 
+        background-color: #dc3545; 
+        color: white; 
+        border: none; 
+        border-radius: 4px; 
+        cursor: pointer; 
+        transition: background-color 0.2s;
+        width: auto;
+    }
+    .deselect-button:hover {
+        background-color: #c82333;
+    }
+
+    .selection-count { 
+        font-size: 0.85rem; 
+        color: #666; 
+        margin-left: auto; 
+        padding-left: 10px; 
+    }
+
+    /* 市場テーブル */
+    #marketTable {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+        margin-top: 10px;
+    }
+
+    #marketTable thead {
+        background-color: #e9ecef;
+        position: sticky;
+        top: 0;
+    }
+
+    #marketTable th {
+        border: 1px solid #bbb;
+        padding: 8px;
+        text-align: center;
+        font-weight: bold;
+        white-space: nowrap;
+    }
+
+    #marketTable td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+
+    #marketTable th:nth-child(1),
+    #marketTable td:nth-child(1) {
+        text-align: center;
+        width: 40px;
+    }
+
+    #marketTable th:nth-child(2),
+    #marketTable th:nth-child(3),
+    #marketTable td:nth-child(2),
+    #marketTable td:nth-child(3) {
+        text-align: left;
+    }
+
+    #marketTable tbody tr:hover {
+        background-color: #f5f5f5;
+    }
+
+    #marketTableContainer {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    
+    .auto-process-indicator { 
+        color: #28a745; 
+        font-size: 0.85rem; 
+        font-weight: bold; 
+        margin-top: 5px;
+    }
+    
+@media print {
+    .header-container h1 { display: none; }
+    .input-area { display: none; }
+    .chart-area {
+        position: absolute;
+        left: 2vw;
+        top: 3.5vw;
+        width: 100%;
+        box-shadow: none; 
+        background: white; 
+        padding: 0 !important;
+        margin: 0 !important;
+        flex: none; 
+        height: 65vw; 
+    }
+    .controls { display: none; }
+    .chart-header-wrapper { display: none; }
+
+    #myChart {
+        page-break-inside: avoid;
+        margin-top: 1px;
+        max-width: 95vw !important;
+        max-height: 65vw !important; 
+    }
+    .source-link-button { display: none; }
+}
+</style>
+</head>
+<body>
+
+    <div class="header-container">
+        <h1>月別肉用子牛取引状況（黒毛和種） 可視化ツール</h1>
+        <a href="https://www.alic.go.jp/operation/livestock/calf-report.html" 
+           target="_blank" 
+           class="source-link-button">
+            肉用子牛取引情報サイトへ
+        </a>
+    </div>
+
+    <div class="container">
+        <div class="input-area">
+            <h2>1. データ入力</h2>
+            <p>エクセルシートの表をコピーして上書きしてください。</p>
+            <textarea id="dataInput" placeholder="Excelの全データを貼り付け..."></textarea>
+            <div id="autoProcessMessage" class="auto-process-indicator"></div>
+
+            <div id="marketSelectionContainer">
+                <div class="selection-header">
+                    <h2 style="margin-right: 10px;">2. 市場を選択</h2>
+                    <span id="selectionCount" class="selection-count">(0/7)</span>
+                </div>
+                <button onclick="deselectAllMarkets()" class="deselect-button">全解除</button>
+                <p style="font-size:0.85rem; margin-top:10px; margin-bottom:10px;">以下から比較したい市場を選んでください（最大7つ）</p>
+                
+                <div id="marketTableContainer">
+                    <table id="marketTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">☐</th>
+                                <th>都道府県</th>
+                                <th>市場名</th>
+                            </tr>
+                        </thead>
+                        <tbody id="marketTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="chart-area">
+            <div class="chart-header-wrapper">
+                <h2>3. グラフ表示（印刷：Ctrl＋P）</h2>
+                <button onclick="downloadChartImage()" class="download-btn">画像保存(PNG)</button>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label>表示項目 (Y軸):</label> <br>
+                    <label class="radio-label"><input type="radio" name="metric" value="count" onchange="updateChartAndTable()"> 取引頭数</label>
+                    <label class="radio-label"><input type="radio" name="metric" value="price" checked onchange="updateChartAndTable()"> 平均価格</label>
+                    <label class="radio-label"><input type="radio" name="metric" value="weight" onchange="updateChartAndTable()"> 平均体重</label>
+                    <label class="radio-label"><input type="radio" name="metric" value="age" onchange="updateChartAndTable()"> 平均日齢</label>
+                    <label class="radio-label"><input type="radio" name="metric" value="unitPrice" onchange="updateChartAndTable()"> １㎏単価</label>
+                </div>
+                <div class="control-group">
+                    <label>性別区分:</label> <br>
+                    <label class="radio-label"><input type="radio" name="gender" value="total" checked onchange="updateChartAndTable()"> 計 (平均)</label>
+                    <label class="radio-label"><input type="radio" name="gender" value="female" onchange="updateChartAndTable()"> 雌</label>
+                    <label class="radio-label"><input type="radio" name="gender" value="male" onchange="updateChartAndTable()"> 雄</label>
+                </div>
+            </div>
+
+            <canvas id="myChart"></canvas>
+        </div>
+    </div>
+
+<script>
+    let parsedAllMarkets = [];
+    let myChart = null;
+    let marketColorMap = {};
+    let marketPointStyleMap = {}; 
+    let extractedMonths = [];
+    
+    const standardLabels = ["11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月"];
+    let customLabels = null;
+    const FIXED_COLORS = [ 
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+        '#9966FF', '#FF9F40', '#333333', '#1f77b4', 
+        '#ff7f0e', '#2ca02c'
+    ];
+    const POINT_STYLES = [ 'circle', 'rect', 'triangle', 'cross', 'star', 'crossRot', 'rectRot' ];
+
+    let autoProcessTimeout = null;
+
+    function deselectAllMarkets() {
+        const checkboxes = document.querySelectorAll('input[name="marketSelect"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        handleSelectionChange(); 
+    }
+
+    function parseAndSetupUI() {
+        const text = document.getElementById('dataInput').value;
+        const lines = text.split('\n');
+        parsedAllMarkets = [];
+        extractedMonths = [];
+        
+        let currentMarket = null;
+        let currentMetric = null;
+        let currentPrefecture = "";
+
+        const keywords = {
+            "取引頭数": "count", "平均価格": "price", "平均体重": "weight", 
+            "平均日齢": "age", "１㎏単価": "unitPrice"
+        };
+
+        const prefectures = [
+            "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
+            "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",
+            "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県",
+            "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県",
+            "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県",
+            "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県",
+            "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"
+        ];
+
+        customLabels = null;
+        for (let j = 0; j < Math.min(10, lines.length); j++) {
+            const line = lines[j].trim();
+            if (line.includes("月") && !line.match(/^(\s*\d[\s\d]*){5,}/)) {
+                let parts = line.split(/\s+/).filter(part => part.includes("月"));
+                if (parts.length >= 12) {
+                    const totalIndex = parts.findIndex(p => p.includes("合計") || p.includes("平均") || p.includes("総計"));
+                    if (totalIndex !== -1) {
+                        customLabels = parts.slice(0, totalIndex); 
+                        extractedMonths = customLabels.slice();
+                    } else {
+                        customLabels = parts.slice(0, 12); 
+                        extractedMonths = customLabels.slice();
+                    }
+                    if (customLabels.length === 12) {
+                        customLabels.push(customLabels[0]);
+                    }
+                    if (customLabels.length === 13) {
+                        break;
+                    } else {
+                        customLabels = null;
+                    }
+                }
+            }
+        }
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            let cleanLine = line.replace(/,/g, '').replace(/\s+/g, ' ');
+
+            if (cleanLine.length === 0) continue;
+
+            const numberCount = (cleanLine.match(/\d+/g) || []).length;
+
+            // 都道府県の検出
+            for (const pref of prefectures) {
+                if (cleanLine.includes(pref)) {
+                    currentPrefecture = pref;
+                    break;
+                }
+            }
+
+            const isMarketHeader = (
+                (line.includes("北海道") || line.includes("市場") || line.includes("集散") || line.includes("合計") || line.includes("総計") || line.includes("県")) 
+                && numberCount < 3 
+                && !line.includes("月")
+            );
+
+            if (isMarketHeader) {
+                let marketName = cleanLine.split(' ')[0] + (cleanLine.split(' ')[1] || "");
+                marketName = marketName.replace(/＊|\*/g, "");
+
+                if (marketName.includes("品種") || marketName.includes("黒毛和種")) {
+                    currentMarket = null;
+                    continue;
+                }
+
+                if (marketName.includes("県計") || marketName.includes("県合計") || 
+                    marketName.includes("道計") || marketName.includes("道合計") || 
+                    marketName.includes("都計") || marketName.includes("府計")) {
+                    currentMarket = null;
+                    continue;
+                }
+
+                currentMarket = {
+                    name: marketName,
+                    prefecture: currentPrefecture,
+                    data: { count: {}, price: {}, weight: {}, age: {}, unitPrice: {} }
+                };
+                parsedAllMarkets.push(currentMarket);
+                currentMetric = null; 
+                continue;
+            }
+
+            if (!currentMarket) continue;
+
+            for (const [key, value] of Object.entries(keywords)) {
+                if (line.includes(key)) {
+                    currentMetric = value;
+                    break;
+                }
+            }
+
+            if (currentMetric) {
+                let gender = null;
+                if (cleanLine.includes("雌")) gender = "female";
+                else if (cleanLine.includes("雄")) gender = "male";
+                else if (cleanLine.includes("計") || cleanLine.includes("平均")) gender = "total";
+
+                if (gender) {
+                    let numbers = cleanLine.split(' ')
+                        .map(s => {
+                            const num = parseFloat(s);
+                            if (isNaN(num)) return undefined;
+                            return num === 0 ? null : num;
+                        })
+                        .filter(n => n !== undefined); 
+                    
+                    if (numbers.length > 0) {
+                        currentMarket.data[currentMetric][gender] = numbers;
+                    }
+                }
+            }
+        }
+
+        if (parsedAllMarkets.length === 0) {
+            document.getElementById('marketSelectionContainer').style.display = 'none';
+            return;
+        }
+
+        createMarketTable();
+    }
+
+    function createMarketTable() {
+        // ★ヘッダー修正：既存の3列を保持した上で月別ヘッダーを追加
+        const monthHeaderRow = document.querySelector('#marketTable thead tr');
+        const displayMonths = extractedMonths.length > 0 ? extractedMonths : standardLabels.slice(0, 12);
+        
+        // 既存の最初の3つのヘッダー（☐、都道府県、市場名）を保持
+        // その後ろの月別ヘッダーを削除
+        while (monthHeaderRow.children.length > 3) {
+            monthHeaderRow.removeChild(monthHeaderRow.lastChild);
+        }
+        
+        // 月別ヘッダーを追加
+        displayMonths.forEach(month => {
+            const th = document.createElement('th');
+            th.textContent = month;
+            monthHeaderRow.appendChild(th);
+        });
+
+        updateMarketTableBody();
+        document.getElementById('marketSelectionContainer').style.display = 'block';
+        handleSelectionChange(); 
+    }
+
+    function updateMarketTableBody() {
+        const tableBody = document.getElementById('marketTableBody');
+        tableBody.innerHTML = "";
+        
+        const metric = document.querySelector('input[name="metric"]:checked').value;
+        const gender = document.querySelector('input[name="gender"]:checked').value;
+        const displayMonths = extractedMonths.length > 0 ? extractedMonths : standardLabels.slice(0, 12);
+
+        const defaultTargets = ["島根中央家畜市場", "西部家畜市場", "総合計"];
+        let selectedCount = 0;
+
+        parsedAllMarkets.forEach((market, index) => {
+            const row = document.createElement('tr');
+            
+            // ☐ボタン列
+            const checkCell = document.createElement('td');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = index;
+            checkbox.name = 'marketSelect';
+            checkbox.onchange = handleSelectionChange;
+
+            const shouldCheck = defaultTargets.some(target => market.name.includes(target));
+            if (shouldCheck && selectedCount < 3) {
+                checkbox.checked = true;
+                selectedCount++;
+            }
+
+            checkCell.appendChild(checkbox);
+            row.appendChild(checkCell);
+
+            // 都道府県列
+            const prefCell = document.createElement('td');
+            prefCell.textContent = market.prefecture;
+            row.appendChild(prefCell);
+
+            // 市場名列
+            const nameCell = document.createElement('td');
+            nameCell.textContent = market.name;
+            row.appendChild(nameCell);
+
+            // ★月別データ列（選択した表示項目・性別区分に基づいて表示）
+            const metricData = market.data[metric]?.[gender] || [];
+
+            displayMonths.forEach((month, idx) => {
+                const dataCell = document.createElement('td');
+                const value = metricData[idx];
+                if (value !== null && value !== undefined) {
+                    // 表示項目に応じた数値フォーマット
+                    let formattedValue;
+                    if (metric === 'count') {
+                        formattedValue = new Intl.NumberFormat('ja-JP').format(Math.round(value));
+                    } else if (metric === 'price' || metric === 'unitPrice') {
+                        formattedValue = new Intl.NumberFormat('ja-JP').format(Math.round(value));
+                    } else if (metric === 'weight') {
+                        formattedValue = value.toFixed(1);
+                    } else if (metric === 'age') {
+                        formattedValue = Math.round(value);
+                    } else {
+                        formattedValue = new Intl.NumberFormat('ja-JP').format(Math.round(value));
+                    }
+                    dataCell.textContent = formattedValue;
+                } else {
+                    dataCell.textContent = '-';
+                }
+                row.appendChild(dataCell);
+            });
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    function handleSelectionChange() {
+        const checkedBoxes = document.querySelectorAll('input[name="marketSelect"]:checked');
+        document.getElementById('selectionCount').textContent = `(${checkedBoxes.length}/7)`;
+
+        if (checkedBoxes.length > 7 && this && this.checked) {
+            alert("比較できる市場は最大7つまでです。");
+            this.checked = false;
+            document.getElementById('selectionCount').textContent = `(${checkedBoxes.length - 1}/7)`;
+        }
+        updateChart();
+    }
+
+    // グラフ表示とテーブルを同時に更新
+    function updateChartAndTable() {
+        updateMarketTableBody();
+        updateChart();
+    }
+
+    function updateChart() {
+        const checkedIndices = Array.from(document.querySelectorAll('input[name="marketSelect"]:checked'))
+                                    .map(cb => parseInt(cb.value));
+        const targetIndices = checkedIndices.slice(0, 7);
+
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const metric = document.querySelector('input[name="metric"]:checked').value;
+        const gender = document.querySelector('input[name="gender"]:checked').value;
+        
+        const finalLabels = customLabels || standardLabels;
+
+        const LINE_THICKNESS = 4;
+        const POINT_RADIUS = 7;
+        const POINT_BORDER_WIDTH = 3;
+        const TITLE_FONT_SIZE = 20;
+        const AXIS_TITLE_FONT_SIZE = 16;
+        const AXIS_TICKS_FONT_SIZE = 20;
+        const LEGEND_FONT_SIZE = 18;
+
+        const datasets = [];
+        let nextColorIndex = Object.keys(marketColorMap).length; 
+
+        targetIndices.forEach((idx, i) => { 
+            const market = parsedAllMarkets[idx];
+            if (!market.data[metric] || !market.data[metric][gender]) return;
+
+            let marketColor;
+            if (marketColorMap[market.name]) {
+                marketColor = marketColorMap[market.name];
+            } else {
+                marketColor = FIXED_COLORS[nextColorIndex % FIXED_COLORS.length];
+                marketColorMap[market.name] = marketColor; 
+                nextColorIndex++; 
+            }
+            
+            let marketPointStyle;
+            if (marketPointStyleMap[market.name]) {
+                marketPointStyle = marketPointStyleMap[market.name];
+            } else {
+                const currentStyleIndex = Object.keys(marketPointStyleMap).length;
+                marketPointStyle = POINT_STYLES[currentStyleIndex % POINT_STYLES.length];
+                marketPointStyleMap[market.name] = marketPointStyle;
+            }
+
+            const marketPointBackgroundColor = 'white'; 
+
+            let dataValues = market.data[metric][gender];
+            if (dataValues.length > finalLabels.length) dataValues = dataValues.slice(0, finalLabels.length);
+
+            datasets.push({
+                label: market.name,
+                data: dataValues,
+                borderColor: marketColor,
+                backgroundColor: marketColor, 
+                borderWidth: LINE_THICKNESS,
+                spanGaps: true, 
+                tension: 0.1,
+                fill: false,
+                pointStyle: marketPointStyle,
+                pointRadius: POINT_RADIUS,          
+                pointBorderWidth: POINT_BORDER_WIDTH, 
+                pointBorderColor: marketColor,        
+                pointBackgroundColor: marketPointBackgroundColor 
+            });
+        });
+
+        if (myChart) myChart.destroy();
+
+        let yLabel = getUnitLabel(metric);
+
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: finalLabels, datasets: datasets },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    customCanvasBackgroundColor: {
+                        color: 'white',
+                    },
+                    title: { 
+                        display: true, 
+                        text: `${getMetricLabel(metric)} (${getGenderLabel(gender)}) 推移`,
+                        font: { size: TITLE_FONT_SIZE }
+                    },
+                    legend: {
+                        labels: {
+                            font: { size: LEGEND_FONT_SIZE },
+                            usePointStyle: true,
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                if (data.datasets.length) {
+                                    return data.datasets.map((dataset, i) => {
+                                        return {
+                                            text: dataset.label,
+                                            pointStyle: dataset.pointStyle, 
+                                            fillStyle: dataset.pointBackgroundColor || dataset.backgroundColor, 
+                                            strokeStyle: dataset.pointBorderColor || dataset.borderColor,    
+                                            lineWidth: dataset.pointBorderWidth || 1,                        
+                                            hidden: !chart.isDatasetVisible(i),
+                                            index: i
+                                        };
+                                    });
+                                }
+                                return [];
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.parsed.y !== null) label += new Intl.NumberFormat('ja-JP').format(context.parsed.y) + yLabel;
+                                else label += 'データなし (NA)';
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        title: { 
+                            display: true, 
+                            text: "",
+                            font: { size: AXIS_TITLE_FONT_SIZE }
+                        },
+                        ticks: {
+                            font: { size: AXIS_TICKS_FONT_SIZE }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: { size: AXIS_TICKS_FONT_SIZE }
+                        }
+                    }
+                }
+            },
+            plugins: [{
+                id: 'customCanvasBackgroundColor',
+                beforeDraw: (chart, args, options) => {
+                    const {ctx} = chart;
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'destination-over';
+                    ctx.fillStyle = options.color || '#99ffff';
+                    ctx.fillRect(0, 0, chart.width, chart.height);
+                    ctx.restore();
+                }
+            }]
+        });
+    }
+    
+    function getMetricLabel(m) {
+        const labels = { 
+            count: "取引頭数", 
+            price: "平均価格(円)", 
+            weight: "平均体重（kg）", 
+            age: "平均日齢", 
+            unitPrice: "１㎏単価（円）" 
+        };
+        return labels[m] || m;
+    }
+
+    function getGenderLabel(g) {
+        const labels = { total: "計・平均", female: "雌", male: "雄" };
+        return labels[g] || g;
+    }
+
+    function getUnitLabel(m) {
+        if (m === 'count') return "頭数";
+        if (m === 'price' || m === 'unitPrice') return "円";
+        if (m === 'weight') return "kg";
+        if (m === 'age') return "日";
+        return "";
+    }
+
+    function downloadChartImage() {
+        if (!myChart) {
+            alert("グラフが表示されていません");
+            return;
+        }
+        const link = document.createElement('a');
+        link.href = myChart.toBase64Image();
+        let title = myChart.options.plugins.title.text || 'chart';
+        link.download = title + '.png';
+        link.click();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const textarea = document.getElementById('dataInput');
+        
+        textarea.addEventListener('paste', function() {
+            clearTimeout(autoProcessTimeout);
+            document.getElementById('autoProcessMessage').textContent = '処理中...';
+            
+            autoProcessTimeout = setTimeout(function() {
+                parseAndSetupUI();
+                document.getElementById('autoProcessMessage').textContent = '✓ 自動で処理されました';
+                setTimeout(() => {
+                    document.getElementById('autoProcessMessage').textContent = '';
+                }, 3000);
+            }, 500);
+        });
+
+        textarea.addEventListener('input', function() {
+            clearTimeout(autoProcessTimeout);
+            
+            autoProcessTimeout = setTimeout(function() {
+                if (textarea.value.trim().length > 10) {
+                    parseAndSetupUI();
+                    document.getElementById('autoProcessMessage').textContent = '✓ 自動で処理されました';
+                    setTimeout(() => {
+                        document.getElementById('autoProcessMessage').textContent = '';
+                    }, 3000);
+                }
+            }, 500);
+        });
+    });
+
+    window.onload = function() {
+        const sampleData = `品種：黒毛和種（例示）
+都道府県 市場名 11月 12月 1月 2月 3月 4月 5月 6月 7月 8月 9月 10月 11月 合計・平均
+北海道 ホクレン南北海道家畜市場（サンプル）
+取引頭数 雌 632 785 563 676 625 688 718 690 681 597 604 585 601
+取引頭数 雄 512 665 463 576 525 588 618 590 581 497 504 485 501
+取引頭数 計 1144 1450 1026 1252 1150 1276 1336 1280 1262 1094 1108 1070 1102
+平均価格 雌 582387 563803 622386 645206 679744 771438 718412 702838 737826 749645 713877 723967 764596
+平均価格 雄 542387 523803 582386 605206 639744 731438 678412 662838 697826 709645 673877 683967 724596
+平均価格 計 562387 543803 602386 625206 659744 751438 698412 682838 717826 729645 693877 703967 744596
+平均体重 雌 412.5 418.2 415.1 420.3 425.6 430.2 428.1 425.4 423.7 421.5 419.8 418.3 420.1
+平均体重 雄 392.5 398.2 395.1 400.3 405.6 410.2 408.1 405.4 403.7 401.5 399.8 398.3 400.1
+平均体重 計 402.5 408.2 405.1 410.3 415.6 420.2 418.1 415.4 413.7 411.5 409.8 408.3 410.1
+平均日齢 雌 212 215 218 220 222 225 228 230 228 225 220 215 220
+平均日齢 雄 210 213 216 218 220 223 226 228 226 223 218 213 218
+平均日齢 計 211 214 217 219 221 224 227 229 227 224 219 214 219
+１㎏単価 雌 1412 1349 1501 1537 1595 1793 1676 1651 1741 1775 1691 1736 1821
+１㎏単価 雄 1382 1315 1495 1512 1577 1779 1662 1637 1727 1761 1677 1722 1807
+１㎏単価 計 1397 1332 1498 1525 1586 1786 1669 1644 1734 1768 1684 1729 1814
+北海道 ホクレン十勝地区家畜市場（サンプル）
+取引頭数 計 0 2582 2088 1898 0 2214 2340 2128 3602 536 2850 1588 0
+平均価格 計 522762 560005 555309 595924 633246 671250 666809 648889 646597 662736 667062 670482 717425
+全国 合計（サンプル）
+取引頭数 計 0 2582 2088 1898 0 2214 2340 2128 3602 536 2850 1588 0
+平均価格 計 522762 560005 555309 595924 633246 671250 666809 648889 646597 662736 667062 670482 717425`;
+
+        document.getElementById('dataInput').value = sampleData;
+        parseAndSetupUI();
+    };
+</script>
+
+</body>
+</html>
