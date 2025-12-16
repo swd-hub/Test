@@ -69,7 +69,6 @@ textarea {
     font-size: 12px; 
     border: 1px solid #ccc; 
     padding: 5px; 
-    /* ★最終修正点: 縦横両方のリサイズを可能にする */
     resize: both;
     box-sizing: border-box; 
 }
@@ -83,7 +82,6 @@ textarea {
     .main-button { margin-top: 10px; }
     
     h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #ddd; padding-bottom: 5px; }
-    #errorMessage { color: red; font-weight: bold; margin-top: 10px; font-size: 0.9rem; }
 
     .chart-header-wrapper {
         display: flex;
@@ -118,6 +116,13 @@ textarea {
     .selection-header { display: flex; align-items: center; justify-content: space-between; }
     .deselect-button { padding: 5px 10px; font-size: 0.85rem; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
     .selection-count { font-size: 0.85rem; color: #666; margin-left: auto; padding-left: 10px; }
+    
+    .auto-process-indicator { 
+        color: #28a745; 
+        font-size: 0.85rem; 
+        font-weight: bold; 
+        margin-top: 5px;
+    }
     
 @media print {
     .header-container h1 { display: none; }
@@ -163,8 +168,7 @@ textarea {
             <h2>1. データ入力</h2>
             <p>エクセルシートの表をコピーして上書きしてください。</p>
             <textarea id="dataInput" placeholder="Excelの全データを貼り付け..."></textarea>
-            <button onclick="parseAndSetupUI()" class="main-button">データを読込・市場リスト作成</button>
-            <div id="errorMessage"></div>
+            <div id="autoProcessMessage" class="auto-process-indicator"></div>
 
             <div id="marketSelectionContainer">
                 <div class="selection-header">
@@ -208,7 +212,6 @@ textarea {
     let parsedAllMarkets = [];
     let myChart = null;
     let marketColorMap = {};
-    // ★修正・追加：市場名とポイント形状の対応マップ
     let marketPointStyleMap = {}; 
     
     const standardLabels = ["11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月"];
@@ -218,8 +221,9 @@ textarea {
         '#9966FF', '#FF9F40', '#333333', '#1f77b4', 
         '#ff7f0e', '#2ca02c'
     ];
-    // 使用できるポイント形状のリスト
     const POINT_STYLES = [ 'circle', 'rect', 'triangle', 'cross', 'star', 'crossRot', 'rectRot' ];
+
+    let autoProcessTimeout = null;
 
     function deselectAllMarkets() {
         const checkboxes = document.querySelectorAll('input[name="marketSelect"]');
@@ -233,7 +237,6 @@ textarea {
         const text = document.getElementById('dataInput').value;
         const lines = text.split('\n');
         parsedAllMarkets = [];
-        document.getElementById('errorMessage').textContent = "";
         
         let currentMarket = null;
         let currentMetric = null;
@@ -338,7 +341,6 @@ textarea {
         }
 
         if (parsedAllMarkets.length === 0) {
-            document.getElementById('errorMessage').textContent = "有効なデータが見つかりませんでした。";
             document.getElementById('marketSelectionContainer').style.display = 'none';
             return;
         }
@@ -346,46 +348,39 @@ textarea {
         createMarketCheckboxes();
     }
 
-    function createMarketCheckboxes() {
-        const container = document.getElementById('marketSelectionArea');
-        container.innerHTML = "";
+function createMarketCheckboxes() {
+    const container = document.getElementById('marketSelectionArea');
+    container.innerHTML = "";
+    
+    // ★修正：デフォルト選択を正確な市場名に設定
+    const defaultTargets = ["島根中央家畜市場", "西部家畜市場", "総合計"];
+    let selectedCount = 0;
+
+    parsedAllMarkets.forEach((market, index) => {
+        const label = document.createElement('label');
+        label.className = 'market-checkbox-item';
         
-        // チェック対象の優先キーワード
-        const defaultTargets = ["島根中央", "西部", "総合計"];
-        let hasPriorityMatch = false;
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = index;
+        checkbox.name = 'marketSelect';
+        checkbox.onchange = handleSelectionChange;
 
-        parsedAllMarkets.forEach((market, index) => {
-            const label = document.createElement('label');
-            label.className = 'market-checkbox-item';
-            
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = index;
-            checkbox.name = 'marketSelect';
-            checkbox.onchange = handleSelectionChange;
-
-            // キーワードを含む市場があればチェックを入れる
-            if (defaultTargets.some(target => market.name.includes(target))) {
-                checkbox.checked = true;
-                hasPriorityMatch = true;
-            }
-
-            label.appendChild(checkbox);
-            label.appendChild(document.createTextNode(market.name));
-            container.appendChild(label);
-        });
-
-        // 追加ロジック：もし優先キーワード(島根など)が一つも見つからなかった場合
-        if (!hasPriorityMatch) {
-            const checkboxes = container.querySelectorAll('input[name="marketSelect"]');
-            for(let i = 0; i < Math.min(checkboxes.length, 3); i++) {
-                checkboxes[i].checked = true;
-            }
+        // キーワードを含む市場があればチェックを入れる
+        const shouldCheck = defaultTargets.some(target => market.name.includes(target));
+        if (shouldCheck && selectedCount < 3) {
+            checkbox.checked = true;
+            selectedCount++;
         }
 
-        document.getElementById('marketSelectionContainer').style.display = 'block';
-        handleSelectionChange(); 
-    }
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(market.name));
+        container.appendChild(label);
+    });
+
+    document.getElementById('marketSelectionContainer').style.display = 'block';
+    handleSelectionChange(); 
+}
 
     function handleSelectionChange() {
         const checkedBoxes = document.querySelectorAll('input[name="marketSelect"]:checked');
@@ -425,7 +420,6 @@ textarea {
             const market = parsedAllMarkets[idx];
             if (!market.data[metric] || !market.data[metric][gender]) return;
 
-            // 1. 色の固定ロジック（維持）
             let marketColor;
             if (marketColorMap[market.name]) {
                 marketColor = marketColorMap[market.name];
@@ -435,12 +429,10 @@ textarea {
                 nextColorIndex++; 
             }
             
-            // 2. ★ポイント形状の固定ロジック（新規追加）
             let marketPointStyle;
             if (marketPointStyleMap[market.name]) {
                 marketPointStyle = marketPointStyleMap[market.name];
             } else {
-                // まだ割り当てられていない場合は、現在のマップサイズをインデックスとして形状を割り当てる
                 const currentStyleIndex = Object.keys(marketPointStyleMap).length;
                 marketPointStyle = POINT_STYLES[currentStyleIndex % POINT_STYLES.length];
                 marketPointStyleMap[market.name] = marketPointStyle;
@@ -460,7 +452,7 @@ textarea {
                 spanGaps: true, 
                 tension: 0.1,
                 fill: false,
-                pointStyle: marketPointStyle,        // ★固定された形状
+                pointStyle: marketPointStyle,
                 pointRadius: POINT_RADIUS,          
                 pointBorderWidth: POINT_BORDER_WIDTH, 
                 pointBorderColor: marketColor,        
@@ -497,7 +489,6 @@ textarea {
                                     return data.datasets.map((dataset, i) => {
                                         return {
                                             text: dataset.label,
-                                            // ポイントの見た目を正しく反映させるために、pointStyleを渡す
                                             pointStyle: dataset.pointStyle, 
                                             fillStyle: dataset.pointBackgroundColor || dataset.backgroundColor, 
                                             strokeStyle: dataset.pointBorderColor || dataset.borderColor,    
@@ -584,9 +575,40 @@ textarea {
         link.click();
     }
 
+    // テキストエリアの変更を検出して自動処理
+    document.addEventListener('DOMContentLoaded', function() {
+        const textarea = document.getElementById('dataInput');
+        
+        textarea.addEventListener('paste', function() {
+            clearTimeout(autoProcessTimeout);
+            document.getElementById('autoProcessMessage').textContent = '処理中...';
+            
+            autoProcessTimeout = setTimeout(function() {
+                parseAndSetupUI();
+                document.getElementById('autoProcessMessage').textContent = '✓ 自動で処理されました';
+                setTimeout(() => {
+                    document.getElementById('autoProcessMessage').textContent = '';
+                }, 3000);
+            }, 500);
+        });
+
+        textarea.addEventListener('input', function() {
+            clearTimeout(autoProcessTimeout);
+            
+            autoProcessTimeout = setTimeout(function() {
+                if (textarea.value.trim().length > 10) {
+                    parseAndSetupUI();
+                    document.getElementById('autoProcessMessage').textContent = '✓ 自動で処理されました';
+                    setTimeout(() => {
+                        document.getElementById('autoProcessMessage').textContent = '';
+                    }, 3000);
+                }
+            }, 500);
+        });
+    });
+
     // 起動時の処理
     window.onload = function() {
-        // ユーザーが以前に指定したサンプルデータを使用
         const sampleData = `品種：黒毛和種（例示）
 都道府県 市場名 11月 12月 1月 2月 3月 4月 5月 6月 7月 8月 9月 10月 11月 合計・平均
 北海道 ホクレン南北海道家畜市場（サンプル）
