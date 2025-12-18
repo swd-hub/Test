@@ -33,7 +33,6 @@
         background-color: #5a6268;
     }
 
-    /* ★リサイザブルコンテナ */
     .resizable-container {
         display: flex;
         height: calc(100vh - 200px);
@@ -116,16 +115,41 @@
         padding-bottom: 0;
         margin-top: 0;
     }
-    .download-btn {
+    
+    .button-group {
+        display: flex;
+        gap: 10px;
         width: auto;
+    }
+    
+    .download-btn {
         padding: 5px 15px;
         font-size: 14px;
         background-color: #28a745;
         color: white;
         border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        width: auto;
     }
     .download-btn:hover {
         background-color: #218838;
+    }
+    
+    .print-btn {
+        padding: 5px 15px;
+        font-size: 14px;
+        background-color: #6c757d;
+        color: white;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        width: auto;
+    }
+    .print-btn:hover {
+        background-color: #5a6268;
     }
 
     /* 市場選択テーブル用スタイル */
@@ -226,10 +250,6 @@
         margin-top: 5px;
     }
 
- /*   #myChart {
-        max-height: 500px;
-    } */
-    
 @media print {
 
     .header-container h1,
@@ -267,8 +287,6 @@
         margin: 0;
     }
 }
-
-
 </style>
 </head>
 <body>
@@ -282,9 +300,7 @@
         </a>
     </div>
 
-    <!-- ★リサイザブルコンテナ -->
     <div class="resizable-container">
-        <!-- 左パネル：1. データ入力 + 2. 市場を選択 -->
         <div class="left-panel" id="leftPanel">
             <h2>1. データ入力</h2>
             <p>エクセルシートの表をコピーして上書きしてください。</p>
@@ -315,22 +331,16 @@
             </div>
         </div>
 
-        <!-- ★リサイザー -->
         <div class="resizer" id="resizer"></div>
 
-        <!-- 右パネル：3. グラフ表示 -->
         <div class="right-panel" id="rightPanel">
-		<div class="chart-header-wrapper">
-		    <h2>3. グラフ表示（印刷：Ctrl＋P）</h2>
-		    <div>
-		        <button onclick="printChartOnly()" class="download-btn" style="background:#17a2b8;">
-		            グラフ印刷
-		        </button>
-		        <button onclick="downloadChartImage()" class="download-btn">
-		            画像保存(PNG)
-		        </button>
-		    </div>
-		</div>
+            <div class="chart-header-wrapper">
+                <h2>3. グラフ表示（印刷：Ctrl＋P）</h2>
+                <div class="button-group">
+                    <button onclick="downloadChartImage()" class="download-btn">画像保存(PNG)</button>
+                    <button onclick="printChart()" class="print-btn">グラフ印刷</button>
+                </div>
+            </div>
             
             <div class="controls">
                 <div class="control-group">
@@ -353,6 +363,12 @@
         </div>
     </div>
 
+    <!-- ★印刷用隠し要素 -->
+    <div id="printContainer" style="display: none;">
+        <div id="printTitle"></div>
+        <canvas id="printCanvas"></canvas>
+    </div>
+
 <script>
     let parsedAllMarkets = [];
     let myChart = null;
@@ -372,7 +388,6 @@
 
     let autoProcessTimeout = null;
 
-    // ★リサイザーの実装
     function setupResizer() {
         const resizer = document.getElementById('resizer');
         const leftPanel = document.getElementById('leftPanel');
@@ -382,7 +397,7 @@
         let startX = 0;
         let startLeftWidth = 0;
 
-        resizer.addEventListener('mousedown', (e) => {
+        resizer.addEventListener('mousedown', function(e) {
             isResizing = true;
             startX = e.clientX;
             startLeftWidth = leftPanel.offsetWidth;
@@ -390,7 +405,7 @@
             document.body.style.userSelect = 'none';
         });
 
-        document.addEventListener('mousemove', (e) => {
+        document.addEventListener('mousemove', function(e) {
             if (!isResizing) return;
 
             const diff = e.clientX - startX;
@@ -398,24 +413,22 @@
             const containerWidth = container.offsetWidth;
             const resizerWidth = resizer.offsetWidth;
 
-            // 最小幅と最大幅を設定
             const minWidth = 250;
             const maxWidth = containerWidth - resizerWidth - 300;
 
             if (newLeftWidth >= minWidth && newLeftWidth <= maxWidth) {
-                leftPanel.style.flex = `0 0 ${newLeftWidth}px`;
-                rightPanel.style.flex = `1`;
+                leftPanel.style.flex = '0 0 ' + newLeftWidth + 'px';
+                rightPanel.style.flex = '1';
 
-                // グラフの再描画
                 if (myChart) {
-                    setTimeout(() => {
+                    setTimeout(function() {
                         myChart.resize();
                     }, 50);
                 }
             }
         });
 
-        document.addEventListener('mouseup', () => {
+        document.addEventListener('mouseup', function() {
             isResizing = false;
             document.body.style.cursor = 'auto';
             document.body.style.userSelect = 'auto';
@@ -424,7 +437,7 @@
 
     function deselectAllMarkets() {
         const checkboxes = document.querySelectorAll('input[name="marketSelect"]');
-        checkboxes.forEach(checkbox => {
+        checkboxes.forEach(function(checkbox) {
             checkbox.checked = false;
         });
         updateSelectionCount();
@@ -460,9 +473,13 @@
         for (let j = 0; j < Math.min(10, lines.length); j++) {
             const line = lines[j].trim();
             if (line.includes("月") && !line.match(/^(\s*\d[\s\d]*){5,}/)) {
-                let parts = line.split(/\s+/).filter(part => part.includes("月"));
+                let parts = line.split(/\s+/).filter(function(part) {
+                    return part.includes("月");
+                });
                 if (parts.length >= 12) {
-                    const totalIndex = parts.findIndex(p => p.includes("合計") || p.includes("平均") || p.includes("総計"));
+                    const totalIndex = parts.findIndex(function(p) {
+                        return p.includes("合計") || p.includes("平均") || p.includes("総計");
+                    });
                     if (totalIndex !== -1) {
                         customLabels = parts.slice(0, totalIndex); 
                         extractedMonths = customLabels.slice();
@@ -490,16 +507,21 @@
 
             const numberCount = (cleanLine.match(/\d+/g) || []).length;
 
-            // 都道府県の検出
-            for (const pref of prefectures) {
-                if (cleanLine.includes(pref)) {
-                    currentPrefecture = pref;
-                    break;
+            let isNationalMarker = false;
+            if (cleanLine.includes("全国") || cleanLine.includes("合計") || cleanLine.includes("総計")) {
+                isNationalMarker = true;
+                currentPrefecture = "";
+            } else {
+                for (let p = 0; p < prefectures.length; p++) {
+                    if (cleanLine.includes(prefectures[p])) {
+                        currentPrefecture = prefectures[p];
+                        break;
+                    }
                 }
             }
 
             const isMarketHeader = (
-                (line.includes("北海道") || line.includes("市場") || line.includes("集散") || line.includes("合計") || line.includes("総計") || line.includes("県")) 
+                (line.includes("北海道") || line.includes("市場") || line.includes("集散") || line.includes("合計") || line.includes("総計") || line.includes("県") || line.includes("全国")) 
                 && numberCount < 3 
                 && !line.includes("月")
             );
@@ -532,9 +554,9 @@
 
             if (!currentMarket) continue;
 
-            for (const [key, value] of Object.entries(keywords)) {
+            for (const key in keywords) {
                 if (line.includes(key)) {
-                    currentMetric = value;
+                    currentMetric = keywords[key];
                     break;
                 }
             }
@@ -547,12 +569,14 @@
 
                 if (gender) {
                     let numbers = cleanLine.split(' ')
-                        .map(s => {
+                        .map(function(s) {
                             const num = parseFloat(s);
                             if (isNaN(num)) return undefined;
                             return num === 0 ? null : num;
                         })
-                        .filter(n => n !== undefined); 
+                        .filter(function(n) {
+                            return n !== undefined;
+                        });
                     
                     if (numbers.length > 0) {
                         currentMarket.data[currentMetric][gender] = numbers;
@@ -577,7 +601,7 @@
             monthHeaderRow.removeChild(monthHeaderRow.lastChild);
         }
         
-        displayMonths.forEach(month => {
+        displayMonths.forEach(function(month) {
             const th = document.createElement('th');
             th.textContent = month;
             monthHeaderRow.appendChild(th);
@@ -585,22 +609,21 @@
 
         updateMarketTableBody();
         document.getElementById('marketSelectionContainer').style.display = 'block';
-        
-        // ★データ読み込み直後に自動チェック
         setDefaultCheckboxes();
     }
 
-    // ★新規関数：デフォルトチェックボックスを設定
     function setDefaultCheckboxes() {
         const defaultTargets = ["島根中央家畜市場", "西部家畜市場", "総合計"];
         const checkboxes = document.querySelectorAll('input[name="marketSelect"]');
         
         let checkedCount = 0;
-        checkboxes.forEach((checkbox) => {
+        checkboxes.forEach(function(checkbox) {
             const marketIndex = parseInt(checkbox.value);
             const market = parsedAllMarkets[marketIndex];
             
-            const shouldCheck = defaultTargets.some(target => market.name.includes(target));
+            const shouldCheck = defaultTargets.some(function(target) {
+                return market.name.includes(target);
+            });
             if (shouldCheck && checkedCount < 3) {
                 checkbox.checked = true;
                 checkedCount++;
@@ -610,7 +633,6 @@
         });
 
         updateSelectionCount();
-        // ★自動チェック後にグラフを表示
         updateChart();
     }
 
@@ -622,7 +644,7 @@
         const gender = document.querySelector('input[name="gender"]:checked').value;
         const displayMonths = extractedMonths.length > 0 ? extractedMonths : standardLabels.slice(0, 12);
 
-        parsedAllMarkets.forEach((market, index) => {
+        parsedAllMarkets.forEach(function(market, index) {
             const row = document.createElement('tr');
             
             const checkCell = document.createElement('td');
@@ -630,8 +652,7 @@
             checkbox.type = 'checkbox';
             checkbox.value = index;
             checkbox.name = 'marketSelect';
-            // ★修正：チェック変更時のイベント
-            checkbox.onchange = (e) => {
+            checkbox.onchange = function(e) {
                 handleCheckboxChange(e);
             };
 
@@ -639,16 +660,16 @@
             row.appendChild(checkCell);
 
             const prefCell = document.createElement('td');
-            prefCell.textContent = market.prefecture;
+            prefCell.textContent = market.prefecture || "全国";
             row.appendChild(prefCell);
 
             const nameCell = document.createElement('td');
             nameCell.textContent = market.name;
             row.appendChild(nameCell);
 
-            const metricData = market.data[metric]?.[gender] || [];
+            const metricData = market.data[metric] && market.data[metric][gender] ? market.data[metric][gender] : [];
 
-            displayMonths.forEach((month, idx) => {
+            displayMonths.forEach(function(month, idx) {
                 const dataCell = document.createElement('td');
                 const value = metricData[idx];
                 if (value !== null && value !== undefined) {
@@ -675,7 +696,6 @@
         });
     }
 
-    // ★新規関数：チェックボックス変更時の処理
     function handleCheckboxChange(e) {
         const checkedBoxes = document.querySelectorAll('input[name="marketSelect"]:checked');
         
@@ -688,21 +708,20 @@
         updateChart();
     }
 
-    // ★新規関数：選択数を更新
     function updateSelectionCount() {
         const checkedBoxes = document.querySelectorAll('input[name="marketSelect"]:checked');
-        document.getElementById('selectionCount').textContent = `(${checkedBoxes.length}/7)`;
+        document.getElementById('selectionCount').textContent = '(' + checkedBoxes.length + '/7)';
     }
 
-    // ★新規関数：グラフのみ更新（表示項目・性別区分変更時）
     function updateChartOnly() {
         updateChart();
     }
 
-    // ★修正関数：表示項目・性別区分変更時にテーブルデータのみ更新
     function updateChart() {
         const checkedIndices = Array.from(document.querySelectorAll('input[name="marketSelect"]:checked'))
-                                    .map(cb => parseInt(cb.value));
+                                    .map(function(cb) {
+                                        return parseInt(cb.value);
+                                    });
         const targetIndices = checkedIndices.slice(0, 7);
 
         const ctx = document.getElementById('myChart').getContext('2d');
@@ -720,9 +739,9 @@
         const LEGEND_FONT_SIZE = 18;
 
         const datasets = [];
-        let nextColorIndex = Object.keys(marketColorMap).length; 
+        let nextColorIndex = Object.keys(marketColorMap).length;
 
-        targetIndices.forEach((idx, i) => { 
+        targetIndices.forEach(function(idx, i) {
             const market = parsedAllMarkets[idx];
             if (!market.data[metric] || !market.data[metric][gender]) return;
 
@@ -744,7 +763,7 @@
                 marketPointStyleMap[market.name] = marketPointStyle;
             }
 
-            const marketPointBackgroundColor = 'white'; 
+            const marketPointBackgroundColor = 'white';
 
             let dataValues = market.data[metric][gender];
             if (dataValues.length > finalLabels.length) dataValues = dataValues.slice(0, finalLabels.length);
@@ -779,11 +798,11 @@
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     customCanvasBackgroundColor: {
-                        color: 'white',
+                        color: 'white'
                     },
                     title: { 
                         display: true, 
-                        text: `${getMetricLabel(metric)} (${getGenderLabel(gender)}) 推移`,
+                        text: getMetricLabel(metric) + ' (' + getGenderLabel(gender) + ') 推移',
                         font: { size: TITLE_FONT_SIZE }
                     },
                     legend: {
@@ -793,7 +812,7 @@
                             generateLabels: function(chart) {
                                 const data = chart.data;
                                 if (data.datasets.length) {
-                                    return data.datasets.map((dataset, i) => {
+                                    return data.datasets.map(function(dataset, i) {
                                         return {
                                             text: dataset.label,
                                             pointStyle: dataset.pointStyle, 
@@ -842,8 +861,8 @@
             },
             plugins: [{
                 id: 'customCanvasBackgroundColor',
-                beforeDraw: (chart, args, options) => {
-                    const {ctx} = chart;
+                beforeDraw: function(chart, args, options) {
+                    const ctx = chart.ctx;
                     ctx.save();
                     ctx.globalCompositeOperation = 'destination-over';
                     ctx.fillStyle = options.color || '#99ffff';
@@ -853,27 +872,24 @@
             }]
         });
 
-        // ★表示項目・性別区分変更時のみテーブルを更新
-        // ただしチェック状態は保持
         if (event && (event.target.name === 'metric' || event.target.name === 'gender')) {
             updateMarketTableDataOnly();
         }
     }
 
-    // ★新規関数：テーブルのデータのみ更新（チェック状態は保持）
     function updateMarketTableDataOnly() {
         const metric = document.querySelector('input[name="metric"]:checked').value;
         const gender = document.querySelector('input[name="gender"]:checked').value;
         const displayMonths = extractedMonths.length > 0 ? extractedMonths : standardLabels.slice(0, 12);
         const tableRows = document.querySelectorAll('#marketTableBody tr');
 
-        tableRows.forEach((row, marketIndex) => {
-            const metricData = parsedAllMarkets[marketIndex].data[metric]?.[gender] || [];
+        tableRows.forEach(function(row, marketIndex) {
+            const market = parsedAllMarkets[marketIndex];
+            const metricData = market.data[metric] && market.data[metric][gender] ? market.data[metric][gender] : [];
             
-            // 最初の3セル（☐、都道府県、市場名）をスキップ
             const cells = row.querySelectorAll('td');
-            displayMonths.forEach((month, dataIdx) => {
-                const cellIndex = dataIdx + 3; // ☐、都道府県、市場名の3列分をオフセット
+            displayMonths.forEach(function(month, dataIdx) {
+                const cellIndex = dataIdx + 3;
                 if (cells[cellIndex]) {
                     const value = metricData[dataIdx];
                     if (value !== null && value !== undefined) {
@@ -934,10 +950,40 @@
         link.click();
     }
 
+    // ★新規関数：A4横にグラフのみ印刷
+    function printChart() {
+        if (!myChart) {
+            alert("グラフが表示されていません");
+            return;
+        }
+
+        const metric = document.querySelector('input[name="metric"]:checked').value;
+        const gender = document.querySelector('input[name="gender"]:checked').value;
+        const title = getMetricLabel(metric) + ' (' + getGenderLabel(gender) + ') 推移';
+
+        // 印刷用のキャンバスを作成
+        const printTitle = document.getElementById('printTitle');
+        const printCanvas = document.getElementById('printCanvas');
+        const printContainer = document.getElementById('printContainer');
+
+        printTitle.textContent = title;
+
+        // グラフをコピー
+        const originalCanvas = document.getElementById('myChart');
+        printCanvas.width = originalCanvas.width;
+        printCanvas.height = originalCanvas.height;
+        const printCtx = printCanvas.getContext('2d');
+        printCtx.drawImage(originalCanvas, 0, 0);
+
+        // 印刷ダイアログを開く
+        setTimeout(function() {
+            window.print();
+        }, 100);
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const textarea = document.getElementById('dataInput');
         
-        // ★リサイザーのセットアップ
         setupResizer();
         
         textarea.addEventListener('paste', function() {
@@ -947,7 +993,7 @@
             autoProcessTimeout = setTimeout(function() {
                 parseAndSetupUI();
                 document.getElementById('autoProcessMessage').textContent = '✓ 自動で処理されました';
-                setTimeout(() => {
+                setTimeout(function() {
                     document.getElementById('autoProcessMessage').textContent = '';
                 }, 3000);
             }, 500);
@@ -960,7 +1006,7 @@
                 if (textarea.value.trim().length > 10) {
                     parseAndSetupUI();
                     document.getElementById('autoProcessMessage').textContent = '✓ 自動で処理されました';
-                    setTimeout(() => {
+                    setTimeout(function() {
                         document.getElementById('autoProcessMessage').textContent = '';
                     }, 3000);
                 }
@@ -968,19 +1014,9 @@
         });
     });
 
-function printChartOnly() {
-    if (!myChart) {
-        alert("グラフが表示されていません");
-        return;
-    }
-    window.print();
-}
-
-
-    // ★ウィンドウリサイズ時のグラフ再描画
-    window.addEventListener('resize', () => {
+    window.addEventListener('resize', function() {
         if (myChart && !isResizing) {
-            setTimeout(() => {
+            setTimeout(function() {
                 myChart.resize();
             }, 50);
         }
@@ -990,8 +1026,21 @@ function printChartOnly() {
         const sampleData = `品種：黒毛和種（例示）
 都道府県 市場名 11月 12月 1月 2月 3月 4月 5月 6月 7月 8月 9月 10月 11月 合計・平均
 北海道 ホクレン南北海道家畜市場（サンプル）
+取引頭数 雌 632 785 563 676 625 688 718 690 681 597 604 585 601
+取引頭数 雄 512 665 463 576 525 588 618 590 581 497 504 485 501
+取引頭数 計 1144 1450 1026 1252 1150 1276 1336 1280 1262 1094 1108 1070 1102
+平均価格 雌 582387 563803 622386 645206 679744 771438 718412 702838 737826 749645 713877 723967 764596
+平均価格 雄 542387 523803 582386 605206 639744 731438 678412 662838 697826 709645 673877 683967 724596
+平均価格 計 562387 543803 602386 625206 659744 751438 698412 682838 717826 729645 693877 703967 744596
+平均体重 雌 412.5 418.2 415.1 420.3 425.6 430.2 428.1 425.4 423.7 421.5 419.8 418.3 420.1
+平均体重 雄 392.5 398.2 395.1 400.3 405.6 410.2 408.1 405.4 403.7 401.5 399.8 398.3 400.1
+平均体重 計 402.5 408.2 405.1 410.3 415.6 420.2 418.1 415.4 413.7 411.5 409.8 408.3 410.1
+平均日齢 雌 212 215 218 220 222 225 228 230 228 225 220 215 220
+平均日齢 雄 210 213 216 218 220 223 226 228 226 223 218 213 218
 平均日齢 計 211 214 217 219 221 224 227 229 227 224 219 214 219
 １㎏単価 雌 1412 1349 1501 1537 1595 1793 1676 1651 1741 1775 1691 1736 1821
+１㎏単価 雄 1382 1315 1495 1512 1577 1779 1662 1637 1727 1761 1677 1722 1807
+１㎏単価 計 1397 1332 1498 1525 1586 1786 1669 1644 1734 1768 1684 1729 1814
 島根県 島根中央家畜市場（サンプル）
 取引頭数 計 1144 1450 1026 1252 1150 1276 1336 1280 1262 1094 1108 1070 1102
 平均価格 計 562387 543803 602386 625206 659744 751438 698412 682838 717826 729645 693877 703967 744596
