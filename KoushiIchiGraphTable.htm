@@ -319,7 +319,7 @@
                     <table id="marketTable">
                         <thead>
                             <tr>
-                                <th style="width: 40px;">☐</th>
+                                <th style="width: 35px;">☐</th>
                                 <th>都道府県</th>
                                 <th>市場名</th>
                             </tr>
@@ -363,7 +363,7 @@
         </div>
     </div>
 
-    <!-- ★印刷用隠し要素 -->
+    <!-- 印刷用隠し要素 -->
     <div id="printContainer" style="display: none;">
         <div id="printTitle"></div>
         <canvas id="printCanvas"></canvas>
@@ -377,6 +377,7 @@
     let extractedMonths = [];
     let isResizing = false;
     
+    // ★修正：13ヶ月を標準とする
     const standardLabels = ["11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月"];
     let customLabels = null;
     const FIXED_COLORS = [ 
@@ -470,31 +471,26 @@
         ];
 
         customLabels = null;
+        // ★修正：13ヶ月を抽出
         for (let j = 0; j < Math.min(10, lines.length); j++) {
             const line = lines[j].trim();
             if (line.includes("月") && !line.match(/^(\s*\d[\s\d]*){5,}/)) {
                 let parts = line.split(/\s+/).filter(function(part) {
                     return part.includes("月");
                 });
-                if (parts.length >= 12) {
+                if (parts.length >= 13) {
                     const totalIndex = parts.findIndex(function(p) {
                         return p.includes("合計") || p.includes("平均") || p.includes("総計");
                     });
                     if (totalIndex !== -1) {
-                        customLabels = parts.slice(0, totalIndex); 
+                        // 合計の前までを抽出（13ヶ月）
+                        customLabels = parts.slice(0, totalIndex);
                         extractedMonths = customLabels.slice();
                     } else {
-                        customLabels = parts.slice(0, 12); 
+                        customLabels = parts.slice(0, 13); 
                         extractedMonths = customLabels.slice();
                     }
-                    if (customLabels.length === 12) {
-                        customLabels.push(customLabels[0]);
-                    }
-                    if (customLabels.length === 13) {
-                        break;
-                    } else {
-                        customLabels = null;
-                    }
+                    break;
                 }
             }
         }
@@ -595,7 +591,8 @@
 
     function createMarketTable() {
         const monthHeaderRow = document.querySelector('#marketTable thead tr');
-        const displayMonths = extractedMonths.length > 0 ? extractedMonths : standardLabels.slice(0, 12);
+        // ★修正：13ヶ月を表示
+        const displayMonths = extractedMonths.length > 0 ? extractedMonths : standardLabels;
         
         while (monthHeaderRow.children.length > 3) {
             monthHeaderRow.removeChild(monthHeaderRow.lastChild);
@@ -642,7 +639,8 @@
         
         const metric = document.querySelector('input[name="metric"]:checked').value;
         const gender = document.querySelector('input[name="gender"]:checked').value;
-        const displayMonths = extractedMonths.length > 0 ? extractedMonths : standardLabels.slice(0, 12);
+        // ★修正：13ヶ月を表示
+        const displayMonths = extractedMonths.length > 0 ? extractedMonths : standardLabels;
 
         parsedAllMarkets.forEach(function(market, index) {
             const row = document.createElement('tr');
@@ -728,6 +726,7 @@
         const metric = document.querySelector('input[name="metric"]:checked').value;
         const gender = document.querySelector('input[name="gender"]:checked').value;
         
+        // ★修正：13ヶ月を表示
         const finalLabels = customLabels || standardLabels;
 
         const LINE_THICKNESS = 4;
@@ -880,7 +879,8 @@
     function updateMarketTableDataOnly() {
         const metric = document.querySelector('input[name="metric"]:checked').value;
         const gender = document.querySelector('input[name="gender"]:checked').value;
-        const displayMonths = extractedMonths.length > 0 ? extractedMonths : standardLabels.slice(0, 12);
+        // ★修正：13ヶ月を表示
+        const displayMonths = extractedMonths.length > 0 ? extractedMonths : standardLabels;
         const tableRows = document.querySelectorAll('#marketTableBody tr');
 
         tableRows.forEach(function(row, marketIndex) {
@@ -950,7 +950,6 @@
         link.click();
     }
 
-    // ★新規関数：A4横にグラフのみ印刷
     function printChart() {
         if (!myChart) {
             alert("グラフが表示されていません");
@@ -961,21 +960,17 @@
         const gender = document.querySelector('input[name="gender"]:checked').value;
         const title = getMetricLabel(metric) + ' (' + getGenderLabel(gender) + ') 推移';
 
-        // 印刷用のキャンバスを作成
         const printTitle = document.getElementById('printTitle');
         const printCanvas = document.getElementById('printCanvas');
-        const printContainer = document.getElementById('printContainer');
 
         printTitle.textContent = title;
 
-        // グラフをコピー
         const originalCanvas = document.getElementById('myChart');
         printCanvas.width = originalCanvas.width;
         printCanvas.height = originalCanvas.height;
         const printCtx = printCanvas.getContext('2d');
         printCtx.drawImage(originalCanvas, 0, 0);
 
-        // 印刷ダイアログを開く
         setTimeout(function() {
             window.print();
         }, 100);
@@ -1026,30 +1021,21 @@
         const sampleData = `品種：黒毛和種（例示）
 都道府県 市場名 11月 12月 1月 2月 3月 4月 5月 6月 7月 8月 9月 10月 11月 合計・平均
 北海道 ホクレン南北海道家畜市場（サンプル）
-取引頭数 雌 632 785 563 676 625 688 718 690 681 597 604 585 601
-取引頭数 雄 512 665 463 576 525 588 618 590 581 497 504 485 501
-取引頭数 計 1144 1450 1026 1252 1150 1276 1336 1280 1262 1094 1108 1070 1102
-平均価格 雌 582387 563803 622386 645206 679744 771438 718412 702838 737826 749645 713877 723967 764596
-平均価格 雄 542387 523803 582386 605206 639744 731438 678412 662838 697826 709645 673877 683967 724596
-平均価格 計 562387 543803 602386 625206 659744 751438 698412 682838 717826 729645 693877 703967 744596
-平均体重 雌 412.5 418.2 415.1 420.3 425.6 430.2 428.1 425.4 423.7 421.5 419.8 418.3 420.1
-平均体重 雄 392.5 398.2 395.1 400.3 405.6 410.2 408.1 405.4 403.7 401.5 399.8 398.3 400.1
-平均体重 計 402.5 408.2 405.1 410.3 415.6 420.2 418.1 415.4 413.7 411.5 409.8 408.3 410.1
-平均日齢 雌 212 215 218 220 222 225 228 230 228 225 220 215 220
-平均日齢 雄 210 213 216 218 220 223 226 228 226 223 218 213 218
-平均日齢 計 211 214 217 219 221 224 227 229 227 224 219 214 219
-１㎏単価 雌 1412 1349 1501 1537 1595 1793 1676 1651 1741 1775 1691 1736 1821
-１㎏単価 雄 1382 1315 1495 1512 1577 1779 1662 1637 1727 1761 1677 1722 1807
-１㎏単価 計 1397 1332 1498 1525 1586 1786 1669 1644 1734 1768 1684 1729 1814
+取引頭数 雌 632 785 563 676 625 688 718 690 681 597 604 585 601 7652
+取引頭数 雄 512 665 463 576 525 588 618 590 581 497 504 485 501 6504
+取引頭数 計 1144 1450 1026 1252 1150 1276 1336 1280 1262 1094 1108 1070 1102 14156
+平均価格 雌 582387 563803 622386 645206 679744 771438 718412 702838 737826 749645 713877 723967 764596 689367
+平均価格 雄 542387 523803 582386 605206 639744 731438 678412 662838 697826 709645 673877 683967 724596 649317
+平均価格 計 562387 543803 602386 625206 659744 751438 698412 682838 717826 729645 693877 703967 744596 669342
 島根県 島根中央家畜市場（サンプル）
-取引頭数 計 1144 1450 1026 1252 1150 1276 1336 1280 1262 1094 1108 1070 1102
-平均価格 計 562387 543803 602386 625206 659744 751438 698412 682838 717826 729645 693877 703967 744596
+取引頭数 計 1144 1450 1026 1252 1150 1276 1336 1280 1262 1094 1108 1070 1102 14156
+平均価格 計 562387 543803 602386 625206 659744 751438 698412 682838 717826 729645 693877 703967 744596 669342
 島根県 西部家畜市場（サンプル）
-取引頭数 計 500 600 450 550 520 580 620 580 580 480 500 450 500
-平均価格 計 545000 525000 585000 610000 645000 735000 680000 665000 700000 710000 675000 685000 730000
+取引頭数 計 500 600 450 550 520 580 620 580 580 480 500 450 500 6410
+平均価格 計 545000 525000 585000 610000 645000 735000 680000 665000 700000 710000 675000 685000 730000 650417
 全国 合計（サンプル）
-取引頭数 計 0 2582 2088 1898 0 2214 2340 2128 3602 536 2850 1588 0
-平均価格 計 522762 560005 555309 595924 633246 671250 666809 648889 646597 662736 667062 670482 717425`;
+取引頭数 計 1644 2050 1476 1802 1670 1856 1956 1860 1842 1574 1608 1520 1622 20458
+平均価格 計 553687 534403 593886 617706 652372 743438 689212 673838 708826 720145 684377 694967 737596 660379`;
 
         document.getElementById('dataInput').value = sampleData;
         parseAndSetupUI();
