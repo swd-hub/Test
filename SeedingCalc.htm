@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>播種配置シミュレーター</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 10px auto; padding: 15px; background-color: #f4f7f6; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .diagram-outer { width: 100%; height: 260px; background: #fff; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 5px; overflow: hidden; }
+        .field-rect { background: #e0eadd; border: 2px solid #555; position: relative; }
+        .effective-rect { position: absolute; border: 1px dashed #4caf50; background: rgba(255,255,255,0.4); display: flex; flex-direction: column; justify-content: space-between; }
+        .row-line { width: 100%; display: flex; justify-content: space-between; align-items: center; height: 1px; }
+        .seed-dot { width: 3px; height: 3px; background: #2e7d32; border-radius: 50%; }
+        .diag-label { position: absolute; font-size: 11px; font-weight: bold; white-space: nowrap; }
+        .label-S { left: -50px; top: 50%; transform: rotate(-90deg) translateY(-50%); }
+        .label-L { top: -20px; left: 50%; transform: translateX(-50%); }
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .input-group { display: flex; flex-direction: column; }
+        label { margin-bottom: 4px; font-weight: bold; font-size: 0.85em; color: #444; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+        select { padding: 7px; border-radius: 4px; background: #eee; border: 1px solid #ccc; }
+        .result { padding: 15px; background: #e8f5e9; border-left: 5px solid #4caf50; border-radius: 4px; }
+        #total-n { font-size: 1.8em; font-weight: bold; color: #1b5e20; }
+        .vis-info { font-size: 0.75em; color: #666; text-align: right; font-style: italic; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h3 style="margin:0 0 15px 0; text-align:center;">播種配置シミュレーター</h3>
+
+    <div class="diagram-outer">
+        <div id="field-box" class="field-rect">
+            <div id="label-L" class="diag-label label-L">L</div>
+            <div id="label-S" class="diag-label label-S">S</div>
+            <div id="eff-box" class="effective-rect"></div>
+        </div>
+    </div>
+    <div id="vis-pct" class="vis-info"></div>
+
+    <div class="input-grid">
+        <div class="input-group">
+            <label>短辺長 S (幅)</label>
+            <div style="display:flex; gap:2px;">
+                <input type="number" id="S" value="5" oninput="calc()">
+                <select id="uS" onchange="calc()"><option value="100">m</option><option value="1">cm</option></select>
+            </div>
+        </div>
+        <div class="input-group">
+            <label>長辺長 L (長さ)</label>
+            <div style="display:flex; gap:2px;">
+                <input type="number" id="L" value="10" oninput="calc()">
+                <select id="uL" onchange="calc()"><option value="100">m</option><option value="1">cm</option></select>
+            </div>
+        </div>
+        <div class="input-group">
+            <label>旋回幅 w</label>
+            <div style="display:flex; gap:2px;">
+                <input type="number" id="w" value="0.8" oninput="calc()">
+                <select id="uw" onchange="calc()"><option value="100">m</option><option value="1">cm</option></select>
+            </div>
+        </div>
+        <div class="input-group">
+            <label>1箇所の粒数 n</label>
+            <input type="number" id="n" value="3" oninput="calc()">
+        </div>
+        <div class="input-group">
+            <label>条間 J (cm)</label>
+            <input type="number" id="J" value="60" oninput="calc()">
+        </div>
+        <div class="input-group">
+            <label>株間 K (cm)</label>
+            <input type="number" id="K" value="40" oninput="calc()">
+        </div>
+    </div>
+
+    <div class="result">
+        <div>総播種数: <span id="total-n">0</span> 粒</div>
+        <div id="details" style="font-size: 0.85em; color: #555; margin-top:5px;"></div>
+    </div>
+</div>
+
+<script>
+function calc() {
+    const val = (id) => parseFloat(document.getElementById(id).value) || 0;
+    const unit = (id) => parseFloat(document.getElementById(id).value);
+    
+    const S_cm = val('S') * unit('uS'), L_cm = val('L') * unit('uL'), w_cm = val('w') * unit('uw');
+    const J_cm = val('J'), K_cm = val('K'), n = val('n');
+
+    const fieldBox = document.getElementById('field-box');
+    const effBox = document.getElementById('eff-box');
+    const ratio = 220 / Math.max(S_cm, L_cm);
+    
+    fieldBox.style.width = (L_cm * ratio) + "px";
+    fieldBox.style.height = (S_cm * ratio) + "px";
+    const wPx = w_cm * ratio;
+    effBox.style.top = effBox.style.bottom = effBox.style.left = effBox.style.right = wPx + "px";
+
+    document.getElementById('label-L').innerText = `L: ${(L_cm/100).toFixed(1)}m`;
+    document.getElementById('label-S').innerText = `S: ${(S_cm/100).toFixed(1)}m`;
+
+    const eS = S_cm - (2 * w_cm), eL = L_cm - (2 * w_cm);
+    if (eS <= 0 || eL <= 0 || J_cm <= 0 || K_cm <= 0) {
+        effBox.innerHTML = "";
+        document.getElementById('total-n').innerText = "0";
+        return;
+    }
+
+    const rows = Math.floor(eS / J_cm) + 1;
+    const plants = Math.floor(eL / K_cm) + 1;
+
+    effBox.innerHTML = "";
+    const maxDraw = 20; 
+    const dRows = Math.min(rows, maxDraw);
+    const dPlants = Math.min(plants, maxDraw);
+
+    for (let i = 0; i < dRows; i++) {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'row-line';
+        for (let j = 0; j < dPlants; j++) {
+            const dot = document.createElement('div');
+            dot.className = 'seed-dot';
+            rowDiv.appendChild(dot);
+        }
+        effBox.appendChild(rowDiv);
+    }
+
+    const visPct = ((dRows * dPlants) / (rows * plants) * 100).toFixed(1);
+    document.getElementById('total-n').innerText = (rows * plants * n).toLocaleString();
+    document.getElementById('vis-pct').innerText = `※図の条数は ${dRows}/${rows}本、地点数は実際の約 ${visPct}% を表示中`;
+    document.getElementById('details').innerHTML = `計算：${rows}条 × ${plants}株 × ${n}粒 / 有効範囲：縦${(eS/100).toFixed(2)}m × 横${(eL/100).toFixed(2)}m`;
+}
+window.onload = calc;
+</script>
+</body>
+</html>
