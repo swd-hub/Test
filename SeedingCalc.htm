@@ -3,79 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>播種配置シミュレーター（回転対応版）</title>
+    <title>播種シミュレーター（面積計算付き）</title>
     <style>
-        body { font-family: sans-serif; max-width: 650px; margin: 10px auto; padding: 15px; background-color: #f4f7f6; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        body { font-family: "Helvetica Neue", Arial, sans-serif; max-width: 650px; margin: 10px auto; padding: 15px; background-color: #f0f2f5; color: #333; }
+        .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h3 { text-align: center; color: #2c3e50; margin-top: 0; }
         
-        /* 回転操作エリア */
         .diagram-outer {
-            width: 100%; height: 350px; background: #fff; border: 1px solid #ddd;
+            width: 100%; height: 320px; background: #fff; border: 1px solid #e1e4e8; border-radius: 8px;
             display: flex; align-items: center; justify-content: center;
-            position: relative; margin-bottom: 5px; overflow: hidden;
-            cursor: grab; /* 掴めるようなカーソル */
-            touch-action: none; /* スマホでのスクロール干渉防止 */
+            position: relative; margin-bottom: 10px; overflow: hidden;
+            cursor: grab; touch-action: none;
+            background-image: radial-gradient(#e1e4e8 1px, transparent 1px);
+            background-size: 20px 20px;
         }
         .diagram-outer:active { cursor: grabbing; }
 
-        /* コンパス（方位磁石） */
         .compass {
-            position: absolute; top: 10px; right: 10px; width: 40px; height: 40px;
-            border: 2px solid #333; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 12px; pointer-events: none;
+            position: absolute; top: 15px; right: 15px; width: 44px; height: 44px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #bdc3c7; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 11px; color: #555; pointer-events: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 10;
         }
         .compass-needle {
-            position: absolute; width: 2px; height: 30px; background: red;
-            transition: transform 0.1s;
+            position: absolute; width: 4px; height: 26px; background: #e74c3c;
+            border-radius: 2px; transition: transform 0.1s;
+        }
+        .compass-needle::after {
+            content: ''; position: absolute; top: -4px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 6px solid #e74c3c;
         }
 
-        .field-rect { background: #e0eadd; border: 2px solid #555; position: relative; transition: width 0.3s, height 0.3s; }
+        .field-rect { 
+            background: #dcedc8; border: 2px solid #558b2f; 
+            position: relative; transition: width 0.3s, height 0.3s; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
         .effective-rect {
-            position: absolute; border: 1px dashed #4caf50; background: rgba(255,255,255,0.4);
-            display: flex; flex-direction: column; justify-content: space-between;
+            position: absolute; border: 1px dashed #2e7d32; background: rgba(255,255,255,0.3);
+            display: flex; flex-direction: column; justify-content: space-evenly;
+            overflow: hidden;
         }
-        .row-line { width: 100%; display: flex; justify-content: space-between; align-items: center; height: 1px; }
-        .seed-dot { width: 3px; height: 3px; background: #2e7d32; border-radius: 50%; }
+        .row-line { width: 100%; display: flex; justify-content: space-evenly; align-items: center; height: 0; }
+        /* ドットを少し小さく(3px)して重なりを防止 */
+        .seed-dot { width: 3px; height: 3px; background: #1b5e20; border-radius: 50%; flex-shrink: 0; }
 
-        /* 入力フォーム */
-        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
         .input-group { display: flex; flex-direction: column; }
-        label { margin-bottom: 4px; font-weight: bold; font-size: 0.85em; }
-        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-        .result { padding: 15px; background: #e8f5e9; border-left: 5px solid #4caf50; border-radius: 4px; }
-        #total-n { font-size: 1.8em; font-weight: bold; color: #1b5e20; }
-        .vis-info { font-size: 0.75em; color: #666; text-align: center; margin-bottom: 5px; }
+        label { margin-bottom: 6px; font-weight: bold; font-size: 0.85em; color: #555; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; transition: border-color 0.2s; }
+        input:focus { border-color: #4caf50; outline: none; }
+
+        .result-container { background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 8px; padding: 15px; }
+        .area-info { display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #a5d6a7; font-size: 0.95em; }
+        .area-box { text-align: center; width: 48%; }
+        .area-val { display: block; font-weight: bold; font-size: 1.2em; color: #2e7d32; margin-top: 4px; }
+        
+        .seed-result { text-align: center; }
+        #total-n { font-size: 2.2em; font-weight: bold; color: #1b5e20; display: block; line-height: 1.1; }
+        .unit { font-size: 0.5em; color: #555; font-weight: normal; margin-left: 2px; }
+        #details { font-size: 0.85em; color: #666; margin-top: 8px; }
+
+        .vis-info { font-size: 0.75em; color: #888; text-align: center; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h3 style="margin:0 0 10px 0; text-align:center;">播種配置・方位シミュレーター</h3>
-    <p style="font-size: 0.8em; color: #888; text-align: center; margin-bottom: 5px;">図をマウスでドラッグ（スマホはスワイプ）して回転</p>
-
+    <h3>播種シミュレーター</h3>
     <div class="diagram-outer" id="rotation-area">
-        <div class="compass">
-            北
-            <div id="needle" class="compass-needle"></div>
-        </div>
+        <div class="compass">N<div id="needle" class="compass-needle"></div></div>
         <div id="field-box" class="field-rect">
             <div id="eff-box" class="effective-rect"></div>
         </div>
     </div>
-    <div id="vis-pct" class="vis-info"></div>
+    <div id="vis-angle" class="vis-info">角度: 0° (ドラッグで回転)　播種地点はイメージ</div>
 
     <div class="input-grid">
-        <div class="input-group"><label>短辺 S(m)</label><input type="number" id="S" value="5" oninput="calc()"></div>
-        <div class="input-group"><label>長辺 L(m)</label><input type="number" id="L" value="10" oninput="calc()"></div>
-        <div class="input-group"><label>旋回幅 w(m)</label><input type="number" id="w" value="0.5" oninput="calc()"></div>
-        <div class="input-group"><label>1箇所の粒数 n</label><input type="number" id="n" value="3" oninput="calc()"></div>
-        <div class="input-group"><label>条間 J(cm)</label><input type="number" id="J" value="60" oninput="calc()"></div>
-        <div class="input-group"><label>株間 K(cm)</label><input type="number" id="K" value="40" oninput="calc()"></div>
+        <div class="input-group"><label>長辺（作業辺） L (m)</label><input type="number" id="L" value="40" oninput="calc()"></div>
+        <div class="input-group"><label>短辺 S (m)</label><input type="number" id="S" value="25" oninput="calc()"></div>
+        <div class="input-group"><label>旋回幅 w (m)</label><input type="number" id="w" value="3" oninput="calc()"></div>
+        <div class="input-group"><label>１カ所の粒数</label><input type="number" id="n" value="1" oninput="calc()"></div>
+        <div class="input-group"><label>条間 J (cm)</label><input type="number" id="J" value="70" oninput="calc()"></div>
+        <div class="input-group"><label>株間 K (cm)</label><input type="number" id="K" value="19" oninput="calc()"></div>
     </div>
 
-    <div class="result">
-        <div>総播種数: <span id="total-n">0</span> 粒</div>
-        <div id="details" style="font-size: 0.85em; color: #555; margin-top:5px;"></div>
+    <div class="result-container">
+        <div class="area-info">
+            <div class="area-box">
+                <span>ほ場面積</span>
+                <span class="area-val"><span id="area-field">0</span><span class="unit">㎡</span></span>
+            </div>
+            <div class="area-box">
+                <span>栽培面積</span>
+                <span class="area-val"><span id="area-cultivation">0</span><span class="unit">㎡</span></span>
+            </div>
+        </div>
+
+        <div class="seed-result">
+            <span>総播種数</span>
+            <span id="total-n">0<span class="unit">粒</span></span>
+            <div id="details"></div>
+        </div>
     </div>
 </div>
 
@@ -92,14 +124,26 @@ function calc() {
     const K_cm = parseFloat(document.getElementById('K').value) || 0;
     const n = parseFloat(document.getElementById('n').value) || 0;
 
-    const S_cm = S_m * 100, L_cm = L_m * 100, w_cm = w_m * 100;
-    const eS = S_cm - (2 * w_cm), eL = L_cm - (2 * w_cm);
+    const S_cm = S_m * 100;
+    const L_cm = L_m * 100;
+    const w_cm = w_m * 100;
 
+    const eS_cm = S_cm - (2 * w_cm);
+    const eL_cm = L_cm - (2 * w_cm);
+
+    // 面積表示
+    const areaField = S_m * L_m;
+    const areaCultivation = Math.max(0, S_m - (2 * w_m)) * Math.max(0, L_m - (2 * w_m));
+    document.getElementById('area-field').innerText = areaField.toLocaleString(undefined, {maximumFractionDigits: 1});
+    document.getElementById('area-cultivation').innerText = areaCultivation.toLocaleString(undefined, {maximumFractionDigits: 1});
+
+    // 図形描画
     const fieldBox = document.getElementById('field-box');
     const effBox = document.getElementById('eff-box');
-    
-    // スケール調整
-    const ratio = 220 / Math.max(S_cm, L_cm);
+    const containerSize = 260; 
+    const maxSide = Math.max(S_cm, L_cm, 1);
+    const ratio = containerSize / maxSide;
+
     fieldBox.style.width = (L_cm * ratio) + "px";
     fieldBox.style.height = (S_cm * ratio) + "px";
     fieldBox.style.transform = `rotate(${currentAngle}deg)`;
@@ -108,16 +152,25 @@ function calc() {
     const wPx = w_cm * ratio;
     effBox.style.top = effBox.style.bottom = effBox.style.left = effBox.style.right = wPx + "px";
 
-    if (eS <= 0 || eL <= 0 || J_cm <= 0 || K_cm <= 0) return;
+    if (eS_cm <= 0 || eL_cm <= 0 || J_cm <= 0 || K_cm <= 0) {
+        document.getElementById('total-n').innerText = "0";
+        document.getElementById('details').innerText = "有効範囲なし";
+        effBox.innerHTML = "";
+        return;
+    }
 
-    const rows = Math.floor(eS / J_cm) + 1;
-    const plants = Math.floor(eL / K_cm) + 1;
+    const rows = Math.floor(eS_cm / J_cm) + 1;
+    const plants = Math.floor(eL_cm / K_cm) + 1;
+
+    // --- 改修ポイント: 模式図の密度調整 ---
+    // 短辺（条）は15、長辺（株）は最大40程度まで描画して、縦横の違いを表現
+    const maxDrawRows = 15;
+    const maxDrawPlants = 40; 
+    
+    const dRows = Math.min(rows, maxDrawRows);
+    const dPlants = Math.min(plants, maxDrawPlants);
 
     effBox.innerHTML = "";
-    const maxDraw = 20;
-    const dRows = Math.min(rows, maxDraw);
-    const dPlants = Math.min(plants, maxDraw);
-
     for (let i = 0; i < dRows; i++) {
         const rowDiv = document.createElement('div');
         rowDiv.className = 'row-line';
@@ -131,39 +184,32 @@ function calc() {
 
     const total = rows * plants * n;
     document.getElementById('total-n').innerText = total.toLocaleString();
-    document.getElementById('vis-pct').innerText = `角度: ${currentAngle % 360}° / 図の条数: ${dRows}本`;
-    document.getElementById('details').innerHTML = `計算: ${rows}条 × ${plants}株 × ${n}粒`;
+    document.getElementById('details').innerText = `計算式: ${rows}条 × ${plants}株 × ${n}粒 (条間${J_cm}cm / 株間${K_cm}cm)`;
 }
 
-// 回転操作のイベント
+// 回転ロジック
 const rotArea = document.getElementById('rotation-area');
-
-function startDrag(e) {
-    isDragging = true;
-    startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-}
-
+function startDrag(e) { isDragging = true; startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX; }
 function handleDrag(e) {
     if (!isDragging) return;
     const x = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     const deltaX = x - startX;
-    currentAngle += deltaX * 0.5; // 回転感度の調整
+    currentAngle += deltaX * 0.5;
     startX = x;
+    const deg = Math.round(currentAngle % 360);
+    const displayDeg = deg < 0 ? 360 + deg : deg;
     document.getElementById('field-box').style.transform = `rotate(${currentAngle}deg)`;
     document.getElementById('needle').style.transform = `rotate(${-currentAngle}deg)`;
-    document.getElementById('vis-pct').innerText = `角度: ${Math.round(currentAngle % 360)}° / 表示地点数は約${Math.min(100, (400/(parseFloat(document.getElementById('J').value)*parseFloat(document.getElementById('K').value))*1000)).toFixed(1)}%`;
+    document.getElementById('vis-angle').innerText = `角度: ${displayDeg}°`;
 }
-
 function stopDrag() { isDragging = false; }
 
 rotArea.addEventListener('mousedown', startDrag);
 window.addEventListener('mousemove', handleDrag);
 window.addEventListener('mouseup', stopDrag);
-
 rotArea.addEventListener('touchstart', startDrag);
 window.addEventListener('touchmove', handleDrag);
 window.addEventListener('touchend', stopDrag);
-
 window.onload = calc;
 </script>
 </body>
