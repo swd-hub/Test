@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>播種シミュレーター（面積計算付き）</title>
+    <title>播種シミュレーター（旋回幅パターン対応版）</title>
     <style>
         body { font-family: "Helvetica Neue", Arial, sans-serif; max-width: 650px; margin: 10px auto; padding: 15px; background-color: #f0f2f5; color: #333; }
         .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
@@ -46,16 +46,21 @@
             position: absolute; border: 1px dashed #2e7d32; background: rgba(255,255,255,0.3);
             display: flex; flex-direction: column; justify-content: space-evenly;
             overflow: hidden;
+            /* トランジション追加で切り替えをスムーズに */
+            transition: top 0.3s, bottom 0.3s, left 0.3s, right 0.3s;
         }
         .row-line { width: 100%; display: flex; justify-content: space-evenly; align-items: center; height: 0; }
-        /* ドットを少し小さく(3px)して重なりを防止 */
         .seed-dot { width: 3px; height: 3px; background: #1b5e20; border-radius: 50%; flex-shrink: 0; }
 
         .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
         .input-group { display: flex; flex-direction: column; }
+        
+        /* 選択プルダウンを全幅にするスタイル */
+        .full-width { grid-column: 1 / -1; }
+        
         label { margin-bottom: 6px; font-weight: bold; font-size: 0.85em; color: #555; }
-        input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; transition: border-color 0.2s; }
-        input:focus { border-color: #4caf50; outline: none; }
+        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; transition: border-color 0.2s; background: #fff; }
+        input:focus, select:focus { border-color: #4caf50; outline: none; }
 
         .result-container { background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 8px; padding: 15px; }
         .area-info { display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #a5d6a7; font-size: 0.95em; }
@@ -80,9 +85,23 @@
             <div id="eff-box" class="effective-rect"></div>
         </div>
     </div>
-    <div id="vis-angle" class="vis-info">角度: 0° (ドラッグで回転)　播種地点はイメージ</div>
+    <div id="vis-angle" class="vis-info">角度: 0° (ドラッグで回転)　点線: 有効栽培範囲</div>
 
     <div class="input-grid">
+        <div class="input-group full-width">
+            <label>旋回幅（枕地）の配置パターン</label>
+            <select id="pattern" onchange="calc()">
+                <option value="8">8. 外周すべて（デフォルト）</option>
+                <option value="1">1. 短辺１つのみ</option>
+                <option value="2">2. 短辺２つ（平行）</option>
+                <option value="3">3. 長辺１つのみ</option>
+                <option value="4">4. 長辺２つ（平行）</option>
+                <option value="5">5. Ｌ字（短辺１＋長辺１）</option>
+                <option value="6">6. コの字（短辺１＋長辺２）</option>
+                <option value="7">7. コの字（短辺２＋長辺１）</option>
+            </select>
+        </div>
+
         <div class="input-group"><label>長辺 L (m)</label><input type="number" id="L" value="40" oninput="calc()"></div>
         <div class="input-group"><label>短辺 S (m)</label><input type="number" id="S" value="25" oninput="calc()"></div>
         <div class="input-group"><label>旋回幅 w (m)</label><input type="number" id="w" value="3" oninput="calc()"></div>
@@ -123,17 +142,55 @@ function calc() {
     const J_cm = parseFloat(document.getElementById('J').value) || 0;
     const K_cm = parseFloat(document.getElementById('K').value) || 0;
     const n = parseFloat(document.getElementById('n').value) || 0;
+    const pattern = parseInt(document.getElementById('pattern').value);
 
+    // センチメートル換算
     const S_cm = S_m * 100;
     const L_cm = L_m * 100;
     const w_cm = w_m * 100;
 
-    const eS_cm = S_cm - (2 * w_cm);
-    const eL_cm = L_cm - (2 * w_cm);
+    // パターンに応じた余白（マージン）の設定
+    // Lは横方向(Left/Right)、Sは縦方向(Top/Bottom)として計算
+    // 短辺に沿う＝Lの長さを削る（Left/Rightのマージン）
+    // 長辺に沿う＝Sの長さを削る（Top/Bottomのマージン）
+    
+    let mt = 0, mr = 0, mb = 0, ml = 0; // Margin: Top, Right, Bottom, Left (cm)
+
+    switch(pattern) {
+        case 1: // 短辺1
+            ml = w_cm; 
+            break;
+        case 2: // 短辺2
+            ml = w_cm; mr = w_cm; 
+            break;
+        case 3: // 長辺1
+            mt = w_cm; 
+            break;
+        case 4: // 長辺2
+            mt = w_cm; mb = w_cm; 
+            break;
+        case 5: // L字（短辺1＋長辺1）
+            ml = w_cm; mt = w_cm; 
+            break;
+        case 6: // コの字（短辺1＋長辺2）
+            ml = w_cm; mt = w_cm; mb = w_cm; 
+            break;
+        case 7: // コの字（短辺2＋長辺1）
+            ml = w_cm; mr = w_cm; mt = w_cm; 
+            break;
+        case 8: // 外周すべて
+            mt = w_cm; mr = w_cm; mb = w_cm; ml = w_cm; 
+            break;
+    }
+
+    // 有効寸法の計算
+    const eS_cm = Math.max(0, S_cm - (mt + mb));
+    const eL_cm = Math.max(0, L_cm - (ml + mr));
 
     // 面積表示
     const areaField = S_m * L_m;
-    const areaCultivation = Math.max(0, S_m - (2 * w_m)) * Math.max(0, L_m - (2 * w_m));
+    const areaCultivation = (eS_cm / 100) * (eL_cm / 100);
+    
     document.getElementById('area-field').innerText = areaField.toLocaleString(undefined, {maximumFractionDigits: 1});
     document.getElementById('area-cultivation').innerText = areaCultivation.toLocaleString(undefined, {maximumFractionDigits: 1});
 
@@ -149,8 +206,11 @@ function calc() {
     fieldBox.style.transform = `rotate(${currentAngle}deg)`;
     document.getElementById('needle').style.transform = `rotate(${-currentAngle}deg)`;
 
-    const wPx = w_cm * ratio;
-    effBox.style.top = effBox.style.bottom = effBox.style.left = effBox.style.right = wPx + "px";
+    // 有効範囲（点線枠）の位置調整
+    effBox.style.top = (mt * ratio) + "px";
+    effBox.style.bottom = (mb * ratio) + "px";
+    effBox.style.left = (ml * ratio) + "px";
+    effBox.style.right = (mr * ratio) + "px";
 
     if (eS_cm <= 0 || eL_cm <= 0 || J_cm <= 0 || K_cm <= 0) {
         document.getElementById('total-n').innerText = "0";
@@ -159,11 +219,12 @@ function calc() {
         return;
     }
 
+    // 条数・株数の計算
+    // S方向が条間(Row Space)、L方向が株間(Plant Space)と仮定
     const rows = Math.floor(eS_cm / J_cm) + 1;
     const plants = Math.floor(eL_cm / K_cm) + 1;
 
-    // --- 改修ポイント: 模式図の密度調整 ---
-    // 短辺（条）は15、長辺（株）は最大40程度まで描画して、縦横の違いを表現
+    // 模式図の密度調整
     const maxDrawRows = 15;
     const maxDrawPlants = 40; 
     
@@ -200,7 +261,7 @@ function handleDrag(e) {
     const displayDeg = deg < 0 ? 360 + deg : deg;
     document.getElementById('field-box').style.transform = `rotate(${currentAngle}deg)`;
     document.getElementById('needle').style.transform = `rotate(${-currentAngle}deg)`;
-    document.getElementById('vis-angle').innerText = `角度: ${displayDeg}°`;
+    document.getElementById('vis-angle').innerText = `角度: ${displayDeg}° (ドラッグで回転)　点線: 有効栽培範囲`;
 }
 function stopDrag() { isDragging = false; }
 
