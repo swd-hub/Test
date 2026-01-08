@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV検索システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .section h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .download-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .download-banner-text {
+            flex: 1;
+        }
+
+        .download-banner-text h3 {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .download-banner-text p {
+            font-size: 13px;
+            opacity: 0.95;
+        }
+
+        .download-btn {
+            background: white;
+            color: #667eea;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            white-space: nowrap;
+            margin-left: 15px;
+        }
+
+        .download-btn:hover {
+            background: #f0f4ff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .download-btn:active {
+            transform: translateY(0);
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+        }
+        
+        .file-input-wrapper label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .dropzone {
+            padding: 40px;
+            border: 3px dashed #ddd;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 150px;
+        }
+        
+        .dropzone:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .dropzone.dragover {
+            border-color: #667eea;
+            background: #e7f0ff;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+        }
+        
+        .dropzone-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+        
+        .dropzone-text {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        
+        .dropzone-subtext {
+            font-size: 13px;
+            color: #999;
+        }
+        
+        .file-list {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #e7f3ff;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            font-size: 13px;
+            color: #0066cc;
+        }
+        
+        .file-item .file-name {
+            flex: 1;
+        }
+        
+        .file-item .remove-btn {
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+        
+        .file-item .remove-btn:hover {
+            background: #cc0000;
+        }
+        
+        .file-count {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+        }
+        
+        .file-input-wrapper input[type="file"] {
+            display: none;
+        }
+        
+        button {
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.3s, transform 0.1s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button.search-btn {
+            margin-top: 24px;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #f5c6cb;
+            display: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #c3e6cb;
+            display: none;
+        }
+        
+        .search-controls {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        
+        .checkbox-group {
+            flex: 0 0 220px;
+        }
+        
+        .checkbox-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .checkbox-controls {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 8px;
+        }
+        
+        .checkbox-controls button {
+            flex: 1;
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        
+        .checkbox-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .checkbox-options label {
+            display: flex;
+            align-items: center;
+            margin: 0;
+            font-weight: normal;
+            cursor: pointer;
+            padding: 5px;
+            font-size: 14px;
+            word-break: break-word;
+        }
+        
+        .checkbox-options input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        
+        .search-keywords-group {
+            flex: 1;
+            min-width: 400px;
+        }
+        
+        .search-keywords-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .keywords-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .keyword-item {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .keyword-item.inactive {
+            opacity: 0.5;
+        }
+        
+        .keyword-item label {
+            display: block;
+            font-size: 12px;
+            color: #555;
+            margin: 0 0 4px 0;
+            font-weight: 600;
+        }
+        
+        .keyword-item input[type="text"] {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .keyword-help {
+            font-size: 12px;
+            color: #999;
+            margin-top: 8px;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+        
+        .results {
+            margin-top: 20px;
+        }
+        
+        .result-count {
+            color: #666;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filter-input-wrapper {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .filter-input-wrapper label {
+            font-size: 12px;
+            color: #666;
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .filter-input-wrapper input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .filter-input-wrapper input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        }
+
+        .clear-filters-btn {
+            background: #6c757d;
+            padding: 8px 16px;
+            font-size: 13px;
+            align-self: flex-end;
+            height: fit-content;
+        }
+
+        .clear-filters-btn:hover {
+            background: #5a6268;
+        }
+        
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 5px;
+            overflow: hidden;
+            font-size: 13px;
+        }
+        
+        .results-table thead {
+            background: #667eea;
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+
+        .results-table th {
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+            word-break: break-word;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+
+        .results-table th:hover {
+            background: #5568d3;
+        }
+
+        .filter-icon {
+            display: inline-block;
+            margin-left: 5px;
+            font-size: 12px;
+        }
+        
+        .results-table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .results-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .results-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .highlight {
+            background: #fffacd;
+            font-weight: 600;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        .no-results {
+            text-align: center;
+            color: #999;
+            padding: 30px;
+            font-size: 16px;
+        }
+        
+        .status {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .selected-headers {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e7f3ff;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #0066cc;
+        }
+
+        .loading {
+            display: inline-block;
+            text-align: center;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .download-banner {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .download-btn {
+                margin-left: 0;
+                margin-top: 15px;
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌾 農薬検索システム</h1>
+        <p class="subtitle">複数のCSVファイルをマージして農薬情報を検索</p>
+        
+        <!-- ダウンロードバナー -->
+        <div class="download-banner">
+            <div class="download-banner-text">
+                <h3>📥 農薬登録情報ダウンロード</h3>
+                <p>FAMIC（農林水産消費安全技術センター）の農薬登録情報データベースからダウンロード</p>
+            </div>
+            <a href="http://www.acis.famic.go.jp/ddownload/" target="_blank" class="download-btn">
+                ➜ ダウンロードサイトへ
+            </a>
+        </div>
+        
+        <!-- ファイル読み込みセクション -->
+        <div class="section">
+            <h2>📁 ステップ1：CSVファイルを読み込む</h2>
+            <div class="file-input-wrapper">
+                <label for="csvFiles">CSVファイルを選択（複数可）</label>
+                <div class="dropzone" id="dropzone">
+                    <div class="dropzone-icon">📄</div>
+                    <div class="dropzone-text">複数のCSVファイルをドラッグ＆ドロップ</div>
+                    <div class="dropzone-subtext">またはクリックして選択</div>
+                </div>
+                <input type="file" id="csvFiles" accept=".csv" multiple>
+                <div class="file-list" id="fileList"></div>
+                <div class="file-count" id="fileCount"></div>
+            </div>
+            <div id="loadError" class="error-message"></div>
+            <div id="loadSuccess" class="success-message"></div>
+            <div class="status" id="loadStatus"></div>
+        </div>
+        
+        <!-- 検索セクション -->
+        <div class="section">
+            <h2>🔍 ステップ2：検索条件を設定</h2>
+            <div class="search-controls">
+                <div class="control-group">
+                    <div class="checkbox-group">
+                        <label>検索対象のヘッダーを選択</label>
+                        <div class="checkbox-controls">
+                            <button onclick="checkAllHeaders()" style="padding: 6px 10px; font-size: 12px;">✓ すべて</button>
+                            <button onclick="uncheckAllHeaders()" style="padding: 6px 10px; font-size: 12px;">✗ なし</button>
+                        </div>
+                        <div class="checkbox-options" id="headerCheckboxes"></div>
+                        <div class="selected-headers" id="selectedHeadersList" style="display: none;">
+                            <strong>選択中:</strong> <span id="selectedHeadersText"></span>
+                        </div>
+                    </div>
+                    <div class="search-keywords-group">
+                        <label>ヘッダーごとの検索キーワード</label>
+                        <div class="keywords-container" id="keywordsContainer"></div>
+                        <div class="keyword-help">
+                            💡 空白 = すべての値にマッチ（ワイルドカード）<br>
+                            🔢 カタカナ・数字は内部で自動変換
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; width: 100%;">
+                    <button onclick="performSearch()" class="search-btn">検索</button>
+                </div>
+            </div>
+            <div id="searchError" class="error-message"></div>
+        </div>
+        
+        <!-- 結果表示セクション -->
+        <div class="section">
+            <h2>📊 検索結果</h2>
+            <div id="filterSection" style="display: none;">
+                <div class="filter-row" id="filterRow"></div>
+            </div>
+            <div id="resultsContainer">
+                <p class="no-results">ファイルを読み込んで検索してください</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let mergedData = null;
+        let headers = [];
+        let keywordInputs = {};
+        let selectedFiles = [];
+        let currentResults = [];
+        let selectedHeaders = [];
+        let columnFilters = {};
+        
+        // デフォルトでチェックするヘッダー
+        const DEFAULT_CHECKED_HEADERS = [
+            '農薬の名称',
+            '作物名',
+            '適用病害虫雑草名',
+            '希釈倍数使用量',
+            '使用時期'
+        ];
+        
+        // 全角カタカナ・数字を半角に変換する関数（改良版）
+        function toHankaku(str) {
+            if (!str) return '';
+            
+            // 全角数字を半角に変換
+            const fullToHalf = (text) => {
+                return text.replace(/[０-９]/g, (s) => {
+                    return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+                });
+            };
+            
+            // 全角カタカナを半角カタカナに変換
+            const katakanaFullToHalf = (text) => {
+                const kanaMap = {
+                    'ガ': 'ｶﾞ', 'ギ': 'ｷﾞ', 'グ': 'ｸﾞ', 'ゲ': 'ｹﾞ', 'ゴ': 'ｺﾞ',
+                    'ザ': 'ｻﾞ', 'ジ': 'ｼﾞ', 'ズ': 'ｽﾞ', 'ゼ': 'ｾﾞ', 'ゾ': 'ｿﾞ',
+                    'ダ': 'ﾀﾞ', 'ヂ': 'ﾁﾞ', 'ヅ': 'ﾂﾞ', 'デ': 'ﾃﾞ', 'ド': 'ﾄﾞ',
+                    'バ': 'ﾊﾞ', 'ビ': 'ﾋﾞ', 'ブ': 'ﾌﾞ', 'ベ': 'ﾍﾞ', 'ボ': 'ﾎﾞ',
+                    'パ': 'ﾊﾟ', 'ピ': 'ﾋﾟ', 'プ': 'ﾌﾟ', 'ペ': 'ﾍﾟ', 'ポ': 'ﾎﾟ',
+                    'ァ': 'ｧ', 'ィ': 'ｨ', 'ゥ': 'ｩ', 'ェ': 'ｪ', 'ォ': 'ｫ',
+                    'カ': 'ｶ', 'キ': 'ｷ', 'ク': 'ｸ', 'ケ': 'ｹ', 'コ': 'ｺ',
+                    'サ': 'ｻ', 'シ': 'ｼ', 'ス': 'ｽ', 'セ': 'ｾ', 'ソ': 'ｿ',
+                    'タ': 'ﾀ', 'チ': 'ﾁ', 'ツ': 'ﾂ', 'テ': 'ﾃ', 'ト': 'ﾄ',
+                    'ナ': 'ﾅ', 'ニ': 'ﾆ', 'ヌ': 'ﾇ', 'ネ': 'ﾈ', 'ノ': 'ﾉ',
+                    'ハ': 'ﾊ', 'ヒ': 'ﾋ', 'フ': 'ﾌ', 'ヘ': 'ﾍ', 'ホ': 'ﾎ',
+                    'マ': 'ﾏ', 'ミ': 'ﾐ', 'ム': 'ﾑ', 'メ': 'ﾒ', 'モ': 'ﾓ',
+                    'ヤ': 'ﾔ', 'ユ': 'ﾕ', 'ヨ': 'ﾖ',
+                    'ラ': 'ﾗ', 'リ': 'ﾘ', 'ル': 'ﾙ', 'レ': 'ﾚ', 'ロ': 'ﾛ',
+                    'ワ': 'ﾜ', 'ヲ': 'ｦ', 'ン': 'ﾝ',
+                    'ッ': 'ﾂ', 'ー': 'ｰ',
+                    '。': '｡', '、': '､', '「': '｢', '」': '｣'
+                };
+                
+                let result = '';
+                for (let char of text) {
+                    result += kanaMap[char] || char;
+                }
+                return result;
+            };
+            
+            // 全角小数点を半角に
+            const dotMap = (text) => {
+                return text.replace(/．/g, '.');
+            };
+            
+            // 順序：数字 → カタカナ → 小数点
+            let result = str;
+            result = fullToHalf(result);
+            result = katakanaFullToHalf(result);
+            result = dotMap(result);
+            
+            return result;
+        }
+        
+        // ドラッグ&ドロップの初期化
+        function initDragDrop() {
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('csvFiles');
+            
+            dropzone.addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                selectedFiles = Array.from(e.target.files);
+                updateFileList();
+                if (selectedFiles.length > 0) {
+                    setTimeout(() => {
+                        loadAndMergeCSV();
+                    }, 100);
+                }
+            });
+            
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            });
+            
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('dragover');
+            });
+            
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                const csvFiles = Array.from(files).filter(file => file.name.endsWith('.csv'));
+                
+                if (csvFiles.length !== files.length) {
+                    alert('⚠️ CSVファイルのみアップロード可能です');
+                }
+                
+                if (csvFiles.length > 0) {
+                    selectedFiles = csvFiles;
+                    updateFileList();
+                    setTimeout(() => {
+                        loadAndMergeCSV();
+                    }, 100);
+                }
+            });
+        }
+        
+        // ファイルリスト表示を更新
+        function updateFileList() {
+            const fileList = document.getElementById('fileList');
+            const fileCount = document.getElementById('fileCount');
+            
+            fileList.innerHTML = '';
+            
+            selectedFiles.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerHTML = `
+                    <span class="file-name">✅ ${file.name}</span>
+                    <button class="remove-btn" onclick="removeFile(${index})">削除</button>
+                `;
+                fileList.appendChild(item);
+            });
+            
+            if (selectedFiles.length > 0) {
+                fileCount.textContent = `📊 ${selectedFiles.length}個のファイルを選択`;
+            } else {
+                fileCount.textContent = '';
+            }
+        }
+        
+        // ファイルを削除
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+            mergedData = null;
+            headers = [];
+            document.getElementById('headerCheckboxes').innerHTML = '';
+            document.getElementById('keywordsContainer').innerHTML = '';
+            document.getElementById('resultsContainer').innerHTML = '<p class="no-results">ファイルを読み込んで検索してください</p>';
+        }
+        
+        // ファイルをArrayBufferとして読み込む
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = () => reject(new Error(`ファイル読み込みエラー: ${file.name}`));
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        
+        // Shift-JISまたはUTF-8から文字列にデコード
+        async function decodeFile(arrayBuffer) {
+            try {
+                const decoder = new TextDecoder('utf-8', { fatal: true });
+                const text = decoder.decode(arrayBuffer);
+                
+                if (text.charCodeAt(0) === 0xFEFF) {
+                    return text.slice(1);
+                }
+                return text;
+            } catch (e) {
+                try {
+                    const decoder = new TextDecoder('shift-jis', { fatal: true });
+                    const text = decoder.decode(arrayBuffer);
+                    return text;
+                } catch (e2) {
+                    throw new Error('ファイルをデコードできません。UTF-8またはShift-JISで保存されたファイルを使用してください。');
+                }
+            }
+        }
+        
+        // CSVを解析する関数
+        function parseCSV(text) {
+            const lines = text.trim().split('\n');
+            if (lines.length === 0) {
+                throw new Error('CSVファイルが空です');
+            }
+            
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const values = lines[i].split(',').map(v => v.trim());
+                const row = {};
+                for (let j = 0; j < headers.length; j++) {
+                    row[headers[j]] = values[j] || '';
+                }
+                data.push(row);
+            }
+            
+            return { headers, data };
+        }
+        
+        // すべてチェック
+        function checkAllHeaders() {
+            document.querySelectorAll('input[name="header"]').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            updateSelectedHeaders();
+        }
+        
+        // すべてチェック外す
+        function uncheckAllHeaders() {
+            document.querySelectorAll('input[name="header"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            updateSelectedHeaders();
+        }
+        
+        // 選択済みヘッダーを表示＋キーワード入力欄を更新
+        function updateSelectedHeaders() {
+            const checkboxes = document.querySelectorAll('input[name="header"]:checked');
+            const selectedList = document.getElementById('selectedHeadersList');
+            const selectedText = document.getElementById('selectedHeadersText');
+            const keywordsContainer = document.getElementById('keywordsContainer');
+            
+            if (checkboxes.length > 0) {
+                const selected = Array.from(checkboxes).map(cb => cb.value).join(', ');
+                selectedText.textContent = selected;
+                selectedList.style.display = 'block';
+            } else {
+                selectedList.style.display = 'none';
+            }
+            
+            keywordsContainer.innerHTML = '';
+            keywordInputs = {};
+            
+            headers.forEach(header => {
+                const checkbox = document.querySelector(`input[name="header"][value="${header}"]`);
+                const isChecked = checkbox && checkbox.checked;
+                
+                const item = document.createElement('div');
+                item.className = `keyword-item ${isChecked ? '' : 'inactive'}`;
+                
+                const label = document.createElement('label');
+                label.textContent = header;
+                
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = 'キーワードを入力（空白でワイルドカード）';
+                input.disabled = !isChecked;
+                // ユーザーが見ているテキストはそのままで、内部で変換
+                input.dataset.convertedValue = '';
+                
+                // 入力時は表示を変えないで、内部で変換値を保持
+                input.addEventListener('input', (e) => {
+                    const displayValue = e.target.value;
+                    const convertedValue = toHankaku(displayValue);
+                    input.dataset.convertedValue = convertedValue;
+                });
+                
+                keywordInputs[header] = input;
+                
+                item.appendChild(label);
+                item.appendChild(input);
+                keywordsContainer.appendChild(item);
+            });
+        }
+        
+        // CSVを読み込んでマージする関数
+        async function loadAndMergeCSV() {
+            const errorDiv = document.getElementById('loadError');
+            const successDiv = document.getElementById('loadSuccess');
+            const statusDiv = document.getElementById('loadStatus');
+            
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            statusDiv.innerHTML = '<div class="loading"><span class="spinner"></span>ファイルを処理中...</div>';
+            
+            if (selectedFiles.length === 0) {
+                errorDiv.textContent = '❌ 少なくとも1つのファイルを選択してください';
+                errorDiv.style.display = 'block';
+                statusDiv.textContent = '';
+                return;
+            }
+            
+            try {
+                let firstHeaders = null;
+                let allData = [];
+                
+                for (const file of selectedFiles) {
+                    const buffer = await readFileAsArrayBuffer(file);
+                    const text = await decodeFile(buffer);
+                    const result = parseCSV(text);
+                    
+                    if (firstHeaders === null) {
+                        firstHeaders = result.headers;
+                    } else if (JSON.stringify(firstHeaders) !== JSON.stringify(result.headers)) {
+                        errorDiv.textContent = `❌ エラー：ファイル「${file.name}」のヘッダーが他のファイルと異なります。\n\n` +
+                            `期待: ${firstHeaders.join(', ')}\n\n` +
+                            `実際: ${result.headers.join(', ')}`;
+                        errorDiv.style.display = 'block';
+                        statusDiv.textContent = '';
+                        return;
+                    }
+                    
+                    allData = allData.concat(result.data);
+                }
+                
+                headers = firstHeaders;
+                mergedData = allData;
+                
+                const checkboxContainer = document.getElementById('headerCheckboxes');
+                checkboxContainer.innerHTML = '';
+                headers.forEach((header) => {
+                    const label = document.createElement('label');
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.name = 'header';
+                    checkbox.value = header;
+                    
+                    if (DEFAULT_CHECKED_HEADERS.includes(header)) {
+                        checkbox.checked = true;
+                    }
+                    
+                    checkbox.addEventListener('change', updateSelectedHeaders);
+                    
+                    label.appendChild(checkbox);
+                    label.appendChild(document.createTextNode(header));
+                    checkboxContainer.appendChild(label);
+                });
+                
+                updateSelectedHeaders();
+                
+                successDiv.textContent = `✅ マージ完了！${selectedFiles.length}個のファイルを読み込みました。合計: ${mergedData.length}行`;
+                successDiv.style.display = 'block';
+                statusDiv.textContent = `ヘッダー数: ${headers.length}個、総データ行数: ${mergedData.length}行`;
+                
+            } catch (error) {
+                errorDiv.textContent = '❌ エラー: ' + error.message;
+                errorDiv.style.display = 'block';
+                statusDiv.textContent = '';
+            }
+        }
+
+        // フィルター行を作成
+        function createFilterRow() {
+            const filterRow = document.getElementById('filterRow');
+            const filterSection = document.getElementById('filterSection');
+            filterRow.innerHTML = '';
+            columnFilters = {};
+            
+            selectedHeaders.forEach(header => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'filter-input-wrapper';
+                
+                const label = document.createElement('label');
+                label.textContent = `🔍 ${header}`;
+                
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = `${header}で絞り込み...`;
+                input.dataset.header = header;
+                input.dataset.convertedValue = '';
+                
+                // 表示値は変えないで、内部で変換値を保持して検索に使用
+                input.addEventListener('input', (e) => {
+                    const displayValue = e.target.value;
+                    const convertedValue = toHankaku(displayValue).toLowerCase();
+                    input.dataset.convertedValue = convertedValue;
+                    columnFilters[header] = convertedValue;
+                    updateResultsWithFilter();
+                });
+                
+                columnFilters[header] = '';
+                
+                wrapper.appendChild(label);
+                wrapper.appendChild(input);
+                filterRow.appendChild(wrapper);
+            });
+            
+            // クリアボタン
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'clear-filters-btn';
+            clearBtn.textContent = '🗑️ フィルタークリア';
+            clearBtn.onclick = () => {
+                document.querySelectorAll('.filter-input-wrapper input').forEach(input => {
+                    input.value = '';
+                    input.dataset.convertedValue = '';
+                });
+                columnFilters = {};
+                selectedHeaders.forEach(h => columnFilters[h] = '');
+                updateResultsWithFilter();
+            };
+            
+            filterRow.appendChild(clearBtn);
+            filterSection.style.display = 'block';
+        }
+
+        // フィルターを適用して結果を更新
+        function updateResultsWithFilter() {
+            const filteredResults = currentResults.filter(row => {
+                return selectedHeaders.every(header => {
+                    const cellValue = toHankaku(row[header] || '').toLowerCase();
+                    const filterValue = columnFilters[header] || '';
+                    
+                    if (!filterValue) {
+                        return true;
+                    }
+                    
+                    return cellValue.includes(filterValue);
+                });
+            });
+            
+            displayResults(filteredResults);
+        }
+
+        // 結果を表示
+        function displayResults(results) {
+            const resultsContainer = document.getElementById('resultsContainer');
+            
+            if (results.length === 0) {
+                resultsContainer.innerHTML = `<p class="no-results">フィルター条件に該当する結果がありません</p>`;
+                return;
+            }
+            
+            let html = `<p class="result-count">🎯 表示件数: <strong>${results.length}件</strong> / 検索結果: <strong>${currentResults.length}件</strong></p>`;
+            html += '<table class="results-table"><thead><tr>';
+            
+            selectedHeaders.forEach(h => {
+                html += `<th>${h}<span class="filter-icon">🔽</span></th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            results.forEach(row => {
+                html += '<tr>';
+                selectedHeaders.forEach(h => {
+                    let cellValue = row[h] || '';
+                    const hankakuValue = toHankaku(cellValue);
+                    
+                    // 検索キーワードがあればハイライト
+                    const selectedCheckboxes = document.querySelectorAll('input[name="header"]:checked');
+                    selectedCheckboxes.forEach(checkbox => {
+                        const header = checkbox.value;
+                        if (h === header) {
+                            // 内部の変換値を使って検索ハイライト
+                            const convertedKeyword = keywordInputs[header].dataset.convertedValue;
+                            if (convertedKeyword) {
+                                const regex = new RegExp(`(${convertedKeyword})`, 'gi');
+                                cellValue = hankakuValue.replace(regex, '<span class="highlight">$1</span>');
+                            } else {
+                                cellValue = hankakuValue;
+                            }
+                        }
+                    });
+                    
+                    html += `<td>${cellValue}</td>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            resultsContainer.innerHTML = html;
+        }
+        
+        // 検索を実行する関数
+        function performSearch() {
+            const errorDiv = document.getElementById('searchError');
+            const resultsContainer = document.getElementById('resultsContainer');
+            
+            errorDiv.style.display = 'none';
+            
+            if (!mergedData) {
+                errorDiv.textContent = '❌ ファイルを先に読み込んでください';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            const selectedCheckboxes = document.querySelectorAll('input[name="header"]:checked');
+            if (selectedCheckboxes.length === 0) {
+                errorDiv.textContent = '❌ 検索対象のヘッダーを選択してください';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            selectedHeaders = Array.from(selectedCheckboxes).map(cb => cb.value);
+            const searchConditions = {};
+            let hasAnyKeyword = false;
+            
+            selectedCheckboxes.forEach(checkbox => {
+                const header = checkbox.value;
+                // 内部の変換値を使って検索
+                const convertedKeyword = keywordInputs[header].dataset.convertedValue;
+                searchConditions[header] = convertedKeyword;
+                if (convertedKeyword) {
+                    hasAnyKeyword = true;
+                }
+            });
+            
+            if (!hasAnyKeyword) {
+                errorDiv.textContent = '❌ 少なくとも1つのキーワードを入力してください（空白はワイルドカードとして機能します）';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            currentResults = mergedData.filter(row => {
+                return Object.entries(searchConditions).every(([header, keyword]) => {
+                    const cellValue = toHankaku(row[header] || '').toLowerCase();
+                    
+                    if (!keyword) {
+                        return true;
+                    }
+                    
+                    return cellValue.includes(keyword);
+                });
+            });
+            
+            if (currentResults.length === 0) {
+                resultsContainer.innerHTML = `<p class="no-results">検索条件に該当する結果がありません</p>`;
+                document.getElementById('filterSection').style.display = 'none';
+                return;
+            }
+            
+            createFilterRow();
+            displayResults(currentResults);
+        }
+        
+        // ページ読み込み時の初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            initDragDrop();
+            
+            document.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && e.target.matches('input[type="text"][placeholder*="キーワード"]')) {
+                    performSearch();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
