@@ -4,551 +4,794 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CSV検索システム</title>
-    <style>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+    }
+    
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        padding: 30px;
+    }
+    
+    h1 {
+        color: #333;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+    
+    .subtitle {
+        text-align: center;
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 14px;
+    }
+    
+    .section {
+        margin-bottom: 30px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+    
+    .section h2 {
+        font-size: 18px;
+        color: #333;
+        margin-bottom: 15px;
+    }
+
+    .download-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .download-banner-text {
+        flex: 1;
+    }
+
+    .download-banner-text h3 {
+        font-size: 16px;
+        margin-bottom: 5px;
+    }
+
+    .download-banner-text p {
+        font-size: 13px;
+        opacity: 0.95;
+    }
+
+    .download-btn {
+        background: white;
+        color: #667eea;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 14px;
+        white-space: nowrap;
+        margin-left: 15px;
+    }
+
+    .download-btn:hover {
+        background: #f0f4ff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .download-btn:active {
+        transform: translateY(0);
+    }
+    
+    .file-input-wrapper {
+        position: relative;
+    }
+    
+    .file-input-wrapper label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #555;
+    }
+    
+    .dropzone {
+        padding: 40px;
+        border: 3px dashed #ddd;
+        border-radius: 8px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 150px;
+    }
+    
+    .dropzone:hover {
+        border-color: #667eea;
+        background: #f0f4ff;
+    }
+    
+    .dropzone.dragover {
+        border-color: #667eea;
+        background: #e7f0ff;
+        box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+    }
+    
+    .dropzone-icon {
+        font-size: 40px;
+        margin-bottom: 10px;
+    }
+    
+    .dropzone-text {
+        font-size: 16px;
+        color: #333;
+        margin-bottom: 4px;
+        font-weight: 600;
+    }
+    
+    .dropzone-subtext {
+        font-size: 13px;
+        color: #999;
+    }
+    
+    .file-list {
+        margin-top: 15px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    .file-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background: #e7f3ff;
+        border-radius: 4px;
+        margin-bottom: 5px;
+        font-size: 13px;
+        color: #0066cc;
+    }
+    
+    .file-item .file-name {
+        flex: 1;
+    }
+    
+    .file-item .remove-btn {
+        background: #ff4444;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 11px;
+        margin-left: 8px;
+    }
+    
+    .file-item .remove-btn:hover {
+        background: #cc0000;
+    }
+    
+    .file-count {
+        font-size: 12px;
+        color: #666;
+        margin-top: 10px;
+    }
+    
+    .file-input-wrapper input[type="file"] {
+        display: none;
+    }
+    
+    button {
+        padding: 12px 30px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: background 0.3s, transform 0.1s;
+    }
+    
+    button:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+    }
+    
+    button:active {
+        transform: translateY(0);
+    }
+    
+    button.search-btn {
+        margin-top: 24px;
+    }
+    
+    .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 10px 0;
+        border-left: 4px solid #f5c6cb;
+        display: none;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    
+    .success-message {
+        background: #d4edda;
+        color: #155724;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 10px 0;
+        border-left: 4px solid #c3e6cb;
+        display: none;
+    }
+    
+    .search-controls {
+        display: grid;
+        gap: 15px;
+    }
+    
+    .control-group {
+        display: flex;
+        gap: 15px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+    
+    .checkbox-group {
+        flex: 0 0 220px;
+    }
+    
+    .checkbox-group label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 600;
+        color: #555;
+    }
+    
+    .checkbox-controls {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 8px;
+    }
+    
+    .checkbox-controls button {
+        flex: 1;
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+    
+    .checkbox-options {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 250px;
+        overflow-y: auto;
+        padding: 10px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+    
+    .checkbox-options label {
+        display: flex;
+        align-items: center;
+        margin: 0;
+        font-weight: normal;
+        cursor: pointer;
+        padding: 5px;
+        font-size: 14px;
+        word-break: break-word;
+    }
+    
+    .checkbox-options input[type="checkbox"] {
+        margin-right: 8px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    
+    .search-keywords-group {
+        flex: 1;
+        min-width: 400px;
+    }
+    
+    .search-keywords-group label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 600;
+        color: #555;
+    }
+    
+    .keywords-container {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 250px;
+        overflow-y: auto;
+        padding: 10px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+    
+    .keyword-item {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 8px;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .keyword-item.inactive {
+        opacity: 0.5;
+    }
+    
+    .keyword-item label {
+        display: block;
+        font-size: 12px;
+        color: #555;
+        margin: 0 0 4px 0;
+        font-weight: 600;
+    }
+    
+    .keyword-item input[type="text"] {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 13px;
+    }
+    
+    .keyword-help {
+        font-size: 12px;
+        color: #999;
+        margin-top: 8px;
+        padding: 8px;
+        background: #f0f0f0;
+        border-radius: 4px;
+    }
+    
+    .results {
+        margin-top: 20px;
+    }
+    
+    .result-count {
+        color: #666;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+
+    .filter-input-wrapper {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .filter-input-wrapper label {
+        font-size: 12px;
+        color: #666;
+        display: block;
+        margin-bottom: 4px;
+        font-weight: 600;
+    }
+
+    .filter-input-wrapper input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 13px;
+    }
+
+    .filter-input-wrapper input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+    }
+
+    .button-group {
+        display: flex;
+        gap: 10px;
+    }
+
+    .clear-filters-btn {
+        background: #6c757d;
+        padding: 8px 16px;
+        font-size: 13px;
+        height: fit-content;
+        white-space: nowrap;
+    }
+
+    .clear-filters-btn:hover {
+        background: #5a6268;
+    }
+
+    .print-btn {
+        background: #28a745;
+        padding: 8px 16px;
+        font-size: 13px;
+        height: fit-content;
+        white-space: nowrap;
+    }
+
+    .print-btn:hover {
+        background: #218838;
+    }
+    
+    .results-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 5px;
+        overflow: hidden;
+        font-size: 13px;
+    }
+    
+    .results-table thead {
+        background: #667eea;
+        color: white;
+        position: sticky;
+        top: 0;
+    }
+
+    .results-table th {
+        padding: 10px;
+        text-align: left;
+        font-weight: 600;
+        word-break: break-word;
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+    }
+
+    .results-table th:hover {
+        background: #5568d3;
+    }
+
+    .filter-icon {
+        display: inline-block;
+        margin-left: 5px;
+        font-size: 12px;
+    }
+    
+    .results-table td {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+        word-break: break-word;
+    }
+    
+    .results-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .results-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .highlight {
+        background: #fffacd;
+        font-weight: 600;
+        padding: 2px 4px;
+        border-radius: 3px;
+    }
+    
+    .no-results {
+        text-align: center;
+        color: #999;
+        padding: 30px;
+        font-size: 16px;
+    }
+    
+    .status {
+        font-size: 14px;
+        color: #666;
+        margin-top: 10px;
+    }
+
+    .selected-headers {
+        margin-top: 10px;
+        padding: 10px;
+        background: #e7f3ff;
+        border-radius: 5px;
+        font-size: 13px;
+        color: #0066cc;
+    }
+
+    .loading {
+        display: inline-block;
+        text-align: center;
+    }
+
+    .spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* プレビューモーダル */
+    .preview-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 10000;
+        overflow: hidden;
+    }
+
+    .preview-modal.show {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .preview-header {
+        background: #333;
+        color: white;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .preview-header h2 {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .preview-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .preview-controls button {
+        padding: 8px 16px;
+        font-size: 13px;
+        margin: 0;
+    }
+
+    .preview-controls span {
+        color: white;
+        font-size: 14px;
+        margin: 0 10px;
+    }
+
+    .preview-container {
+        flex: 1;
+        background: #e0e0e0;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .preview-page {
+        background: white;
+        width: 297mm;
+        height: 210mm;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        padding: 15mm;
+        box-sizing: border-box;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .preview-page > * {
+        flex-shrink: 0;
+    }
+
+    .preview-page:last-child {
+        margin-bottom: 20px;
+    }
+
+    .close-preview-btn {
+        background: #dc3545;
+        padding: 8px 20px;
+        font-size: 13px;
+        margin: 0;
+    }
+
+    .close-preview-btn:hover {
+        background: #c82333;
+    }
+
+    /* 隠し印刷コンテナ */
+    #printContainer {
+        display: none;
+    }
+
+    /* 印刷用スタイル */
+    @media print {
         * {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
-        
+
+        @page {
+            size: A4 landscape;
+            margin: 8mm;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            padding: 30px;
-        }
-        
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-        
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-        
-        .section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-        }
-        
-        .section h2 {
-            font-size: 18px;
-            color: #333;
-            margin-bottom: 15px;
-        }
-
-        .download-banner {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .download-banner-text {
-            flex: 1;
-        }
-
-        .download-banner-text h3 {
-            font-size: 16px;
-            margin-bottom: 5px;
-        }
-
-        .download-banner-text p {
-            font-size: 13px;
-            opacity: 0.95;
-        }
-
-        .download-btn {
-            background: white;
-            color: #667eea;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 5px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 14px;
-            white-space: nowrap;
-            margin-left: 15px;
-        }
-
-        .download-btn:hover {
-            background: #f0f4ff;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-
-        .download-btn:active {
-            transform: translateY(0);
-        }
-        
-        .file-input-wrapper {
-            position: relative;
-        }
-        
-        .file-input-wrapper label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #555;
-        }
-        
-        .dropzone {
-            padding: 40px;
-            border: 3px dashed #ddd;
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 150px;
-        }
-        
-        .dropzone:hover {
-            border-color: #667eea;
-            background: #f0f4ff;
-        }
-        
-        .dropzone.dragover {
-            border-color: #667eea;
-            background: #e7f0ff;
-            box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
-        }
-        
-        .dropzone-icon {
-            font-size: 40px;
-            margin-bottom: 10px;
-        }
-        
-        .dropzone-text {
-            font-size: 16px;
-            color: #333;
-            margin-bottom: 4px;
-            font-weight: 600;
-        }
-        
-        .dropzone-subtext {
-            font-size: 13px;
-            color: #999;
-        }
-        
-        .file-list {
-            margin-top: 15px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        
-        .file-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            background: #e7f3ff;
-            border-radius: 4px;
-            margin-bottom: 5px;
-            font-size: 13px;
-            color: #0066cc;
-        }
-        
-        .file-item .file-name {
-            flex: 1;
-        }
-        
-        .file-item .remove-btn {
-            background: #ff4444;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            padding: 4px 8px;
-            cursor: pointer;
-            font-size: 11px;
-            margin-left: 8px;
-        }
-        
-        .file-item .remove-btn:hover {
-            background: #cc0000;
-        }
-        
-        .file-count {
-            font-size: 12px;
-            color: #666;
-            margin-top: 10px;
-        }
-        
-        .file-input-wrapper input[type="file"] {
-            display: none;
-        }
-        
-        button {
-            padding: 12px 30px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            transition: background 0.3s, transform 0.1s;
-        }
-        
-        button:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-        }
-        
-        button:active {
-            transform: translateY(0);
-        }
-        
-        button.search-btn {
-            margin-top: 24px;
-        }
-        
-        .error-message {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 10px 0;
-            border-left: 4px solid #f5c6cb;
-            display: none;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        
-        .success-message {
-            background: #d4edda;
-            color: #155724;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 10px 0;
-            border-left: 4px solid #c3e6cb;
-            display: none;
-        }
-        
-        .search-controls {
-            display: grid;
-            gap: 15px;
-        }
-        
-        .control-group {
-            display: flex;
-            gap: 15px;
-            align-items: flex-start;
-            flex-wrap: wrap;
-        }
-        
-        .checkbox-group {
-            flex: 0 0 220px;
-        }
-        
-        .checkbox-group label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: 600;
-            color: #555;
-        }
-        
-        .checkbox-controls {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 8px;
-        }
-        
-        .checkbox-controls button {
-            flex: 1;
-            padding: 6px 10px;
-            font-size: 12px;
-        }
-        
-        .checkbox-options {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            max-height: 250px;
-            overflow-y: auto;
-            padding: 10px;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        
-        .checkbox-options label {
-            display: flex;
-            align-items: center;
             margin: 0;
-            font-weight: normal;
-            cursor: pointer;
-            padding: 5px;
-            font-size: 14px;
-            word-break: break-word;
+            padding: 0;
+            background: white;
+            font-size: 10px;
         }
-        
-        .checkbox-options input[type="checkbox"] {
-            margin-right: 8px;
-            cursor: pointer;
+
+        .container,
+        .section,
+        .download-banner,
+        #filterSection,
+        .preview-modal,
+        #resultsContainer {
+            display: none !important;
+        }
+
+        #printContainer {
+            display: block !important;
+            margin: 0;
+            padding: 0;
+        }
+
+        .print-page {
+            page-break-after: always;
+            width: 100%;
+            padding: 0;
+            margin: 0;
+            break-inside: avoid;
+            overflow: visible;
+        }
+
+        .print-page:last-child {
+            page-break-after: avoid;
+        }
+
+        .print-header {
+            margin-bottom: 8px;
             flex-shrink: 0;
         }
-        
-        .search-keywords-group {
-            flex: 1;
-            min-width: 400px;
-        }
-        
-        .search-keywords-group label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: 600;
-            color: #555;
-        }
-        
-        .keywords-container {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            max-height: 250px;
-            overflow-y: auto;
-            padding: 10px;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        
-        .keyword-item {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            padding: 8px;
-            background: #f8f9fa;
-            border-radius: 5px;
-        }
-        
-        .keyword-item.inactive {
-            opacity: 0.5;
-        }
-        
-        .keyword-item label {
-            display: block;
-            font-size: 12px;
-            color: #555;
-            margin: 0 0 4px 0;
-            font-weight: 600;
-        }
-        
-        .keyword-item input[type="text"] {
-            flex: 1;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+
+        .print-header h1 {
             font-size: 13px;
-        }
-        
-        .keyword-help {
-            font-size: 12px;
-            color: #999;
-            margin-top: 8px;
-            padding: 8px;
-            background: #f0f0f0;
-            border-radius: 4px;
-        }
-        
-        .results {
-            margin-top: 20px;
-        }
-        
-        .result-count {
-            color: #666;
-            margin-bottom: 15px;
-            font-weight: 600;
+            margin: 0 0 2px 0;
+            color: #000;
         }
 
-        .filter-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
+        .print-header p {
+            font-size: 8px;
+            margin: 0;
+            color: #000;
         }
 
-        .filter-input-wrapper {
-            flex: 1;
-            min-width: 150px;
+        .print-info {
+            font-size: 8px;
+            margin: 5px 0 8px 0;
+            color: #000;
+            flex-shrink: 0;
         }
 
-        .filter-input-wrapper label {
-            font-size: 12px;
-            color: #666;
-            display: block;
-            margin-bottom: 4px;
-            font-weight: 600;
-        }
-
-        .filter-input-wrapper input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 13px;
-        }
-
-        .filter-input-wrapper input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-        }
-
-        .clear-filters-btn {
-            background: #6c757d;
-            padding: 8px 16px;
-            font-size: 13px;
-            align-self: flex-end;
-            height: fit-content;
-        }
-
-        .clear-filters-btn:hover {
-            background: #5a6268;
-        }
-        
         .results-table {
             width: 100%;
             border-collapse: collapse;
-            background: white;
-            border-radius: 5px;
-            overflow: hidden;
-            font-size: 13px;
+            font-size: 8px;
+            margin: 0;
+            border: 1px solid #000;
         }
-        
+
         .results-table thead {
-            background: #667eea;
-            color: white;
-            position: sticky;
-            top: 0;
+            background: #999;
+            color: #fff;
+            display: table-header-group;
         }
 
         .results-table th {
-            padding: 10px;
+            border: 1px solid #000;
+            padding: 3px;
+            font-weight: bold;
             text-align: left;
-            font-weight: 600;
-            word-break: break-word;
-            cursor: pointer;
-            user-select: none;
-            position: relative;
+            background: #999 !important;
+            color: #fff !important;
         }
 
-        .results-table th:hover {
-            background: #5568d3;
-        }
-
-        .filter-icon {
-            display: inline-block;
-            margin-left: 5px;
-            font-size: 12px;
-        }
-        
         .results-table td {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
+            border: 1px solid #000;
+            padding: 3px;
+            background: #fff !important;
+            color: #000 !important;
         }
-        
-        .results-table tbody tr:hover {
-            background: #f8f9fa;
+
+        .results-table tbody {
+            display: table-row-group;
         }
-        
+
         .results-table tbody tr:last-child td {
-            border-bottom: none;
+            border-bottom: 1px solid #000;
         }
-        
+
+        .results-table tbody tr {
+            page-break-inside: avoid;
+        }
+
         .highlight {
-            background: #fffacd;
-            font-weight: 600;
-            padding: 2px 4px;
-            border-radius: 3px;
+            background: transparent !important;
+            font-weight: normal;
+            padding: 0;
         }
-        
-        .no-results {
-            text-align: center;
-            color: #999;
-            padding: 30px;
-            font-size: 16px;
-        }
-        
-        .status {
-            font-size: 14px;
-            color: #666;
-            margin-top: 10px;
+    }
+
+    @media (max-width: 768px) {
+        .download-banner {
+            flex-direction: column;
+            align-items: flex-start;
         }
 
-        .selected-headers {
-            margin-top: 10px;
-            padding: 10px;
-            background: #e7f3ff;
-            border-radius: 5px;
-            font-size: 13px;
-            color: #0066cc;
-        }
-
-        .loading {
-            display: inline-block;
+        .download-btn {
+            margin-left: 0;
+            margin-top: 15px;
+            width: 100%;
             text-align: center;
         }
 
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 8px;
-            vertical-align: middle;
+        .preview-page {
+            width: 100%;
+            height: auto;
         }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 768px) {
-            .download-banner {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .download-btn {
-                margin-left: 0;
-                margin-top: 15px;
-                width: 100%;
-                text-align: center;
-            }
-        }
-    </style>
+    }
+</style>
 </head>
 <body>
     <div class="container">
@@ -606,7 +849,7 @@
                         <div class="keywords-container" id="keywordsContainer"></div>
                         <div class="keyword-help">
                             💡 空白 = すべての値にマッチ（ワイルドカード）<br>
-                            🔢 カタカナ・数字は内部で自動変換
+                            🔢 全角カタカナ・数字・文字は自動変換
                         </div>
                     </div>
                 </div>
@@ -628,6 +871,24 @@
             </div>
         </div>
     </div>
+
+    <!-- 印刷用コンテナ（隠し） -->
+    <div id="printContainer"></div>
+
+    <!-- プレビューモーダル -->
+    <div id="previewModal" class="preview-modal">
+        <div class="preview-header">
+            <h2>📄 印刷プレビュー</h2>
+            <div class="preview-controls">
+                <span id="pageInfo">ページ 1/1</span>
+                <button onclick="previousPage()">◀ 前へ</button>
+                <button onclick="nextPage()">次へ ▶</button>
+                <button onclick="printNow()" style="background: #007bff;">🖨️ 印刷</button>
+                <button class="close-preview-btn" onclick="closePreview()">× 閉じる</button>
+            </div>
+        </div>
+        <div class="preview-container" id="previewContainer"></div>
+    </div>
     
     <script>
         let mergedData = null;
@@ -637,6 +898,9 @@
         let currentResults = [];
         let selectedHeaders = [];
         let columnFilters = {};
+        let previewPages = [];
+        let printPages = [];
+        let currentPage = 0;
         
         // デフォルトでチェックするヘッダー
         const DEFAULT_CHECKED_HEADERS = [
@@ -647,58 +911,57 @@
             '使用時期'
         ];
         
-        // 全角カタカナ・数字を半角に変換する関数（改良版）
+        /**
+         * 全角をハンカクに変換（完全版）
+         */
         function toHankaku(str) {
             if (!str) return '';
             
-            // 全角数字を半角に変換
-            const fullToHalf = (text) => {
-                return text.replace(/[０-９]/g, (s) => {
-                    return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
-                });
+            let result = str.replace(/[０-９]/g, (s) => {
+                return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+            });
+            
+            result = result.replace(/[Ａ-Ｚ]/g, (s) => {
+                return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+            });
+            
+            result = result.replace(/[ａ-ｚ]/g, (s) => {
+                return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+            });
+            
+            const kanaMap = {
+                'ガ': 'ｶﾞ', 'ギ': 'ｷﾞ', 'グ': 'ｸﾞ', 'ゲ': 'ｹﾞ', 'ゴ': 'ｺﾞ',
+                'ザ': 'ｻﾞ', 'ジ': 'ｼﾞ', 'ズ': 'ｽﾞ', 'ゼ': 'ｾﾞ', 'ゾ': 'ｿﾞ',
+                'ダ': 'ﾀﾞ', 'ヂ': 'ﾁﾞ', 'ヅ': 'ﾂﾞ', 'デ': 'ﾃﾞ', 'ド': 'ﾄﾞ',
+                'バ': 'ﾊﾞ', 'ビ': 'ﾋﾞ', 'ブ': 'ﾌﾞ', 'ベ': 'ﾍﾞ', 'ボ': 'ﾎﾞ',
+                'パ': 'ﾊﾟ', 'ピ': 'ﾋﾟ', 'プ': 'ﾌﾟ', 'ペ': 'ﾍﾟ', 'ポ': 'ﾎﾟ',
+                'ァ': 'ｧ', 'ィ': 'ｨ', 'ゥ': 'ｩ', 'ェ': 'ｪ', 'ォ': 'ｫ',
+                'ャ': 'ｬ', 'ュ': 'ｭ', 'ョ': 'ｮ',
+                'ッ': 'ﾂ', 'ー': 'ｰ',
+                'ア': 'ｱ', 'イ': 'ｲ', 'ウ': 'ｳ', 'エ': 'ｴ', 'オ': 'ｵ',
+                'カ': 'ｶ', 'キ': 'ｷ', 'ク': 'ｸ', 'ケ': 'ｹ', 'コ': 'ｺ',
+                'サ': 'ｻ', 'シ': 'ｼ', 'ス': 'ｽ', 'セ': 'ｾ', 'ソ': 'ｿ',
+                'タ': 'ﾀ', 'チ': 'ﾁ', 'ツ': 'ﾂ', 'テ': 'ﾃ', 'ト': 'ﾄ',
+                'ナ': 'ﾅ', 'ニ': 'ﾆ', 'ヌ': 'ﾇ', 'ネ': 'ﾈ', 'ノ': 'ﾉ',
+                'ハ': 'ﾊ', 'ヒ': 'ﾋ', 'フ': 'ﾌ', 'ヘ': 'ﾍ', 'ホ': 'ﾎ',
+                'マ': 'ﾏ', 'ミ': 'ﾐ', 'ム': 'ﾑ', 'メ': 'ﾒ', 'モ': 'ﾓ',
+                'ヤ': 'ﾔ', 'ユ': 'ﾕ', 'ヨ': 'ﾖ',
+                'ラ': 'ﾗ', 'リ': 'ﾘ', 'ル': 'ﾙ', 'レ': 'ﾚ', 'ロ': 'ﾛ',
+                'ワ': 'ﾜ', 'ヲ': 'ｦ', 'ン': 'ﾝ',
+                '。': '｡', '、': '､', '「': '｢', '」': '｣'
             };
             
-            // 全角カタカナを半角カタカナに変換
-            const katakanaFullToHalf = (text) => {
-                const kanaMap = {
-                    'ガ': 'ｶﾞ', 'ギ': 'ｷﾞ', 'グ': 'ｸﾞ', 'ゲ': 'ｹﾞ', 'ゴ': 'ｺﾞ',
-                    'ザ': 'ｻﾞ', 'ジ': 'ｼﾞ', 'ズ': 'ｽﾞ', 'ゼ': 'ｾﾞ', 'ゾ': 'ｿﾞ',
-                    'ダ': 'ﾀﾞ', 'ヂ': 'ﾁﾞ', 'ヅ': 'ﾂﾞ', 'デ': 'ﾃﾞ', 'ド': 'ﾄﾞ',
-                    'バ': 'ﾊﾞ', 'ビ': 'ﾋﾞ', 'ブ': 'ﾌﾞ', 'ベ': 'ﾍﾞ', 'ボ': 'ﾎﾞ',
-                    'パ': 'ﾊﾟ', 'ピ': 'ﾋﾟ', 'プ': 'ﾌﾟ', 'ペ': 'ﾍﾟ', 'ポ': 'ﾎﾟ',
-                    'ァ': 'ｧ', 'ィ': 'ｨ', 'ゥ': 'ｩ', 'ェ': 'ｪ', 'ォ': 'ｫ',
-                    'カ': 'ｶ', 'キ': 'ｷ', 'ク': 'ｸ', 'ケ': 'ｹ', 'コ': 'ｺ',
-                    'サ': 'ｻ', 'シ': 'ｼ', 'ス': 'ｽ', 'セ': 'ｾ', 'ソ': 'ｿ',
-                    'タ': 'ﾀ', 'チ': 'ﾁ', 'ツ': 'ﾂ', 'テ': 'ﾃ', 'ト': 'ﾄ',
-                    'ナ': 'ﾅ', 'ニ': 'ﾆ', 'ヌ': 'ﾇ', 'ネ': 'ﾈ', 'ノ': 'ﾉ',
-                    'ハ': 'ﾊ', 'ヒ': 'ﾋ', 'フ': 'ﾌ', 'ヘ': 'ﾍ', 'ホ': 'ﾎ',
-                    'マ': 'ﾏ', 'ミ': 'ﾐ', 'ム': 'ﾑ', 'メ': 'ﾒ', 'モ': 'ﾓ',
-                    'ヤ': 'ﾔ', 'ユ': 'ﾕ', 'ヨ': 'ﾖ',
-                    'ラ': 'ﾗ', 'リ': 'ﾘ', 'ル': 'ﾙ', 'レ': 'ﾚ', 'ロ': 'ﾛ',
-                    'ワ': 'ﾜ', 'ヲ': 'ｦ', 'ン': 'ﾝ',
-                    'ッ': 'ﾂ', 'ー': 'ｰ',
-                    '。': '｡', '、': '､', '「': '｢', '」': '｣'
-                };
-                
-                let result = '';
-                for (let char of text) {
-                    result += kanaMap[char] || char;
-                }
-                return result;
-            };
+            let katakanaConverted = '';
+            for (let char of result) {
+                katakanaConverted += kanaMap[char] || char;
+            }
             
-            // 全角小数点を半角に
-            const dotMap = (text) => {
-                return text.replace(/．/g, '.');
-            };
+            katakanaConverted = katakanaConverted.replace(/．/g, '.');
+            katakanaConverted = katakanaConverted.replace(/！/g, '!');
+            katakanaConverted = katakanaConverted.replace(/？/g, '?');
+            katakanaConverted = katakanaConverted.replace(/　/g, ' ');
             
-            // 順序：数字 → カタカナ → 小数点
-            let result = str;
-            result = fullToHalf(result);
-            result = katakanaFullToHalf(result);
-            result = dotMap(result);
-            
-            return result;
+            return katakanaConverted;
         }
         
         // ドラッグ&ドロップの初期化
@@ -885,12 +1148,10 @@
                 
                 const input = document.createElement('input');
                 input.type = 'text';
-                input.placeholder = 'キーワードを入力（空白でワイルドカード）';
+                input.placeholder = 'キーワードを入力';
                 input.disabled = !isChecked;
-                // ユーザーが見ているテキストはそのままで、内部で変換
                 input.dataset.convertedValue = '';
                 
-                // 入力時は表示を変えないで、内部で変換値を保持
                 input.addEventListener('input', (e) => {
                     const displayValue = e.target.value;
                     const convertedValue = toHankaku(displayValue);
@@ -1001,7 +1262,6 @@
                 input.dataset.header = header;
                 input.dataset.convertedValue = '';
                 
-                // 表示値は変えないで、内部で変換値を保持して検索に使用
                 input.addEventListener('input', (e) => {
                     const displayValue = e.target.value;
                     const convertedValue = toHankaku(displayValue).toLowerCase();
@@ -1017,11 +1277,14 @@
                 filterRow.appendChild(wrapper);
             });
             
-            // クリアボタン
+            const buttonGroup = document.createElement('div');
+            buttonGroup.className = 'button-group';
+            
             const clearBtn = document.createElement('button');
             clearBtn.className = 'clear-filters-btn';
             clearBtn.textContent = '🗑️ フィルタークリア';
-            clearBtn.onclick = () => {
+            clearBtn.onclick = (e) => {
+                e.preventDefault();
                 document.querySelectorAll('.filter-input-wrapper input').forEach(input => {
                     input.value = '';
                     input.dataset.convertedValue = '';
@@ -1031,7 +1294,17 @@
                 updateResultsWithFilter();
             };
             
-            filterRow.appendChild(clearBtn);
+            const printBtn = document.createElement('button');
+            printBtn.className = 'print-btn';
+            printBtn.textContent = '🖨️ A4横で印刷';
+            printBtn.onclick = (e) => {
+                e.preventDefault();
+                showPrintPreview();
+            };
+            
+            buttonGroup.appendChild(clearBtn);
+            buttonGroup.appendChild(printBtn);
+            filterRow.appendChild(buttonGroup);
             filterSection.style.display = 'block';
         }
 
@@ -1076,12 +1349,10 @@
                     let cellValue = row[h] || '';
                     const hankakuValue = toHankaku(cellValue);
                     
-                    // 検索キーワードがあればハイライト
                     const selectedCheckboxes = document.querySelectorAll('input[name="header"]:checked');
                     selectedCheckboxes.forEach(checkbox => {
                         const header = checkbox.value;
                         if (h === header) {
-                            // 内部の変換値を使って検索ハイライト
                             const convertedKeyword = keywordInputs[header].dataset.convertedValue;
                             if (convertedKeyword) {
                                 const regex = new RegExp(`(${convertedKeyword})`, 'gi');
@@ -1127,7 +1398,6 @@
             
             selectedCheckboxes.forEach(checkbox => {
                 const header = checkbox.value;
-                // 内部の変換値を使って検索
                 const convertedKeyword = keywordInputs[header].dataset.convertedValue;
                 searchConditions[header] = convertedKeyword;
                 if (convertedKeyword) {
@@ -1162,6 +1432,137 @@
             createFilterRow();
             displayResults(currentResults);
         }
+
+        // ページHTMLを生成（プレビュー＋印刷で共通）
+        function generatePageHTML(pageResults, pageNum, totalPages, filteredCount) {
+            let html = `
+                <div class="print-header">
+                    <h1>🌾 農薬検索結果</h1>
+                    <p>検索実行日：${new Date().toLocaleDateString('ja-JP')}</p>
+                </div>
+                <div class="print-info">
+                    <strong>ページ ${pageNum} / ${totalPages}</strong><br>
+                    表示件数：${pageResults.length}件 / 検索結果：${currentResults.length}件
+                </div>
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            ${selectedHeaders.map(h => `<th>${h}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${pageResults.map(row => `
+                            <tr>
+                                ${selectedHeaders.map(h => `<td>${toHankaku(row[h] || '')}</td>`).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            return html;
+        }
+
+        // 印刷プレビューを表示
+        function showPrintPreview() {
+            if (currentResults.length === 0) {
+                alert('⚠️ 表示する結果がありません');
+                return;
+            }
+
+            // 現在フィルターされている結果を取得
+            const filteredResults = currentResults.filter(row => {
+                return selectedHeaders.every(header => {
+                    const cellValue = toHankaku(row[header] || '').toLowerCase();
+                    const filterValue = columnFilters[header] || '';
+                    
+                    if (!filterValue) {
+                        return true;
+                    }
+                    
+                    return cellValue.includes(filterValue);
+                });
+            });
+
+            if (filteredResults.length === 0) {
+                alert('⚠️ 表示する結果がありません');
+                return;
+            }
+
+            // ページ分割（1ページ30行）
+            const rowsPerPage = 30;
+            previewPages = [];
+            printPages = [];
+
+            for (let i = 0; i < filteredResults.length; i += rowsPerPage) {
+                const pageResults = filteredResults.slice(i, i + rowsPerPage);
+                const pageNum = Math.floor(i / rowsPerPage) + 1;
+                const totalPages = Math.ceil(filteredResults.length / rowsPerPage);
+
+                // プレビュー用
+                let previewHTML = `<div class="preview-page">
+                    ${generatePageHTML(pageResults, pageNum, totalPages, filteredResults.length)}
+                </div>`;
+                previewPages.push(previewHTML);
+
+                // 印刷用
+                let printHTML = `<div class="print-page">
+                    ${generatePageHTML(pageResults, pageNum, totalPages, filteredResults.length)}
+                </div>`;
+                printPages.push(printHTML);
+            }
+
+            // 印刷用コンテナに追加
+            const printContainer = document.getElementById('printContainer');
+            printContainer.innerHTML = printPages.join('');
+
+            // プレビューを表示
+            currentPage = 0;
+            showPreviewPage();
+            document.getElementById('previewModal').classList.add('show');
+        }
+
+        // プレビューページを表示
+        function showPreviewPage() {
+            const previewContainer = document.getElementById('previewContainer');
+            const pageInfo = document.getElementById('pageInfo');
+
+            previewContainer.innerHTML = previewPages[currentPage];
+            pageInfo.textContent = `ページ ${currentPage + 1}/${previewPages.length}`;
+        }
+
+        // 前のページ
+        function previousPage() {
+            if (currentPage > 0) {
+                currentPage--;
+                showPreviewPage();
+            }
+        }
+
+        // 次のページ
+        function nextPage() {
+            if (currentPage < previewPages.length - 1) {
+                currentPage++;
+                showPreviewPage();
+            }
+        }
+
+        // プレビューを閉じる
+        function closePreview() {
+            document.getElementById('previewModal').classList.remove('show');
+        }
+
+        // 印刷を実行
+        function printNow() {
+            window.print();
+        }
+
+        // ページ外をクリックで閉じる
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('previewModal');
+            if (e.target === modal) {
+                closePreview();
+            }
+        });
         
         // ページ読み込み時の初期化
         document.addEventListener('DOMContentLoaded', () => {
