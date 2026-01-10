@@ -791,6 +791,19 @@
             height: auto;
         }
     }
+    
+    .results-table th {
+    cursor: pointer; /* マウスを乗せた時に指の形にする */
+    user-select: none; /* テキスト選択を防ぐ */
+    transition: background 0.2s;
+}
+
+.results-table th:hover {
+    background: #5568d3; /* ホバー時に少し色を変える */
+}
+
+/* ソート方向を示すアイコンを動かしたい場合（任意） */
+.sort-asc .filter-icon { transform: rotate(180deg); }
 </style>
 </head>
 <body>
@@ -1325,142 +1338,156 @@
             
             displayResults(filteredResults);
         }
-
-        // 結果を表示
-        function displayResults(results) {
-            const resultsContainer = document.getElementById('resultsContainer');
-            
-            if (results.length === 0) {
-                resultsContainer.innerHTML = `<p class="no-results">フィルター条件に該当する結果がありません</p>`;
-                return;
-            }
-            
-            let html = `<p class="result-count">🎯 表示件数: <strong>${results.length}件</strong> / 検索結果: <strong>${currentResults.length}件</strong></p>`;
-            html += '<table class="results-table"><thead><tr>';
-            
-            selectedHeaders.forEach(h => {
-                html += `<th>${h}<span class="filter-icon">🔽</span></th>`;
-            });
-            html += '</tr></thead><tbody>';
-            
-            results.forEach(row => {
-                html += '<tr>';
-                selectedHeaders.forEach(h => {
-                    let cellValue = row[h] || '';
-                    const hankakuValue = toHankaku(cellValue);
-                    
-                    const selectedCheckboxes = document.querySelectorAll('input[name="header"]:checked');
-                    selectedCheckboxes.forEach(checkbox => {
-                        const header = checkbox.value;
-                        if (h === header) {
-                            const convertedKeyword = keywordInputs[header].dataset.convertedValue;
-                            if (convertedKeyword) {
-                                const regex = new RegExp(`(${convertedKeyword})`, 'gi');
-                                cellValue = hankakuValue.replace(regex, '<span class="highlight">$1</span>');
-                            } else {
-                                cellValue = hankakuValue;
-                            }
-                        }
-                    });
-                    
-                    html += `<td>${cellValue}</td>`;
-                });
-                html += '</tr>';
-            });
-            
-            html += '</tbody></table>';
-            resultsContainer.innerHTML = html;
-        }
         
-        // 検索を実行する関数
-        function performSearch() {
-            const errorDiv = document.getElementById('searchError');
-            const resultsContainer = document.getElementById('resultsContainer');
+// ==========================================
+// 1. 変数の宣言（二重宣言エラー回避のためここだけに集約）
+// ==========================================
+let currentSortColumn = null;
+let sortDirection = 1; 
+
+// ==========================================
+// 2. 結果を表示する関数
+// ==========================================
+function displayResults(results) {
+    const resultsContainer = document.getElementById('resultsContainer');
+    if (!results || results.length === 0) {
+        resultsContainer.innerHTML = `<p class="no-results">検索条件に該当する結果がありません</p>`;
+        return;
+    }
+    
+    const getSortIcon = (h) => (currentSortColumn === h) ? (sortDirection === 1 ? '🔼' : '🔽') : '🔽';
+
+    let html = `<p class="result-count">🎯 表示件数: <strong>${results.length}件</strong> / 検索結果: <strong>${currentResults.length}件</strong></p>`;
+    html += '<table class="results-table"><thead><tr>';
+    
+    selectedHeaders.forEach(h => {
+        html += `<th onclick="handleSort('${h}')" style="cursor: pointer; user-select: none;">
+                    ${h} <span class="filter-icon">${getSortIcon(h)}</span>
+                 </th>`;
+    });
+    html += '</tr></thead><tbody>';
+    
+    results.forEach(row => {
+        html += '<tr>';
+        selectedHeaders.forEach(h => {
+            let cellValue = row[h] || '';
+            const hankakuValue = toHankaku(cellValue);
             
-            errorDiv.style.display = 'none';
-            
-            if (!mergedData) {
-                errorDiv.textContent = '❌ ファイルを先に読み込んでください';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
+            // ハイライト表示
             const selectedCheckboxes = document.querySelectorAll('input[name="header"]:checked');
-            if (selectedCheckboxes.length === 0) {
-                errorDiv.textContent = '❌ 検索対象のヘッダーを選択してください';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            selectedHeaders = Array.from(selectedCheckboxes).map(cb => cb.value);
-            const searchConditions = {};
-            let hasAnyKeyword = false;
-            
             selectedCheckboxes.forEach(checkbox => {
                 const header = checkbox.value;
-                const convertedKeyword = keywordInputs[header].dataset.convertedValue;
-                searchConditions[header] = convertedKeyword;
-                if (convertedKeyword) {
-                    hasAnyKeyword = true;
+                if (h === header) {
+                    const convertedKeyword = keywordInputs[header].dataset.convertedValue;
+                    if (convertedKeyword) {
+                        const regex = new RegExp(`(${convertedKeyword})`, 'gi');
+                        cellValue = hankakuValue.replace(regex, '<span class="highlight">$1</span>');
+                    } else {
+                        cellValue = hankakuValue;
+                    }
                 }
             });
-            
-            if (!hasAnyKeyword) {
-                errorDiv.textContent = '❌ 少なくとも1つのキーワードを入力してください（空白はワイルドカードとして機能します）';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            currentResults = mergedData.filter(row => {
-                return Object.entries(searchConditions).every(([header, keyword]) => {
-                    const cellValue = toHankaku(row[header] || '').toLowerCase();
-                    
-                    if (!keyword) {
-                        return true;
-                    }
-                    
-                    return cellValue.includes(keyword);
-                });
-            });
-            
-            if (currentResults.length === 0) {
-                resultsContainer.innerHTML = `<p class="no-results">検索条件に該当する結果がありません</p>`;
-                document.getElementById('filterSection').style.display = 'none';
-                return;
-            }
-            
-            createFilterRow();
-            displayResults(currentResults);
-        }
+            html += `<td>${cellValue}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    resultsContainer.innerHTML = html;
+}
 
-        // ページHTMLを生成（プレビュー＋印刷で共通）
-        function generatePageHTML(pageResults, pageNum, totalPages, filteredCount) {
-            let html = `
-                <div class="print-header">
-                    <h1>🌾 農薬検索結果</h1>
-                    <p>検索実行日：${new Date().toLocaleDateString('ja-JP')}</p>
-                </div>
-                <div class="print-info">
-                    <strong>ページ ${pageNum} / ${totalPages}</strong><br>
-                    表示件数：${pageResults.length}件 / 検索結果：${currentResults.length}件
-                </div>
-                <table class="results-table">
-                    <thead>
-                        <tr>
-                            ${selectedHeaders.map(h => `<th>${h}</th>`).join('')}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${pageResults.map(row => `
-                            <tr>
-                                ${selectedHeaders.map(h => `<td>${toHankaku(row[h] || '')}</td>`).join('')}
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-            return html;
+// ==========================================
+// 3. 並べ替え（ソート）関数
+// ==========================================
+function handleSort(columnName) {
+    if (currentSortColumn === columnName) {
+        sortDirection *= -1;
+    } else {
+        currentSortColumn = columnName;
+        sortDirection = 1;
+    }
+
+    currentResults.sort((a, b) => {
+        const valA = (a[columnName] || "").toString();
+        const valB = (b[columnName] || "").toString();
+        return valA.localeCompare(valB, 'ja', { numeric: true }) * sortDirection;
+    });
+
+    displayResults(currentResults);
+}
+
+// ==========================================
+// 4. 検索を実行する関数（復活版）
+// ==========================================
+function performSearch() {
+    const errorDiv = document.getElementById('searchError');
+    const resultsContainer = document.getElementById('resultsContainer');
+    
+    if (errorDiv) errorDiv.style.display = 'none';
+    
+    if (typeof mergedData === 'undefined' || !mergedData) {
+        if (errorDiv) {
+            errorDiv.textContent = '❌ ファイルを先に読み込んでください';
+            errorDiv.style.display = 'block';
         }
+        return;
+    }
+    
+    const selectedCheckboxes = document.querySelectorAll('input[name="header"]:checked');
+    if (selectedCheckboxes.length === 0) {
+        if (errorDiv) {
+            errorDiv.textContent = '❌ 検索対象のヘッダーを選択してください';
+            errorDiv.style.display = 'block';
+        }
+        return;
+    }
+    
+    selectedHeaders = Array.from(selectedCheckboxes).map(cb => cb.value);
+    const searchConditions = {};
+    let hasAnyKeyword = false;
+    
+    selectedCheckboxes.forEach(checkbox => {
+        const header = checkbox.value;
+        const convertedKeyword = keywordInputs[header].dataset.convertedValue;
+        searchConditions[header] = convertedKeyword;
+        if (convertedKeyword) hasAnyKeyword = true;
+    });
+    
+    if (!hasAnyKeyword) {
+        if (errorDiv) {
+            errorDiv.textContent = '❌ 少なくとも1つのキーワードを入力してください';
+            errorDiv.style.display = 'block';
+        }
+        return;
+    }
+    
+    currentResults = mergedData.filter(row => {
+        return Object.entries(searchConditions).every(([header, keyword]) => {
+            const cellValue = toHankaku(row[header] || '').toLowerCase();
+            if (!keyword) return true;
+            return cellValue.includes(keyword.toLowerCase());
+        });
+    });
+    
+    if (currentResults.length === 0) {
+        resultsContainer.innerHTML = `<p class="no-results">検索条件に該当する結果がありません</p>`;
+        return;
+    }
+    
+    if (typeof createFilterRow === 'function') createFilterRow();
+    displayResults(currentResults);
+}
+
+// ==========================================
+// 5. ページHTMLを生成（印刷用）
+// ==========================================
+function generatePageHTML(pageResults, pageNum, totalPages, filteredCount) {
+    return `
+        <div class="print-header"><h1>🌾 農薬検索結果</h1><p>検索日：${new Date().toLocaleDateString('ja-JP')}</p></div>
+        <div class="print-info"><strong>ページ ${pageNum} / ${totalPages}</strong><br>
+        表示件数：${pageResults.length}件 / 検索結果：${currentResults.length}件</div>
+        <table class="results-table"><thead><tr>${selectedHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${pageResults.map(row => `<tr>${selectedHeaders.map(h => `<td>${toHankaku(row[h] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
 
         // 印刷プレビューを表示
         function showPrintPreview() {
