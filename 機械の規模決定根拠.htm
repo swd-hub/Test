@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>作業能率計算ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Yu Gothic', 'MS PGothic', sans-serif;
+            background: #f5f5f5;
+            padding: 10px;
+        }
+		        
+		.container {
+		    max-width: 210mm;
+		    margin: 0 auto;
+		    background: white;
+		    padding: 15px;
+		    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+		    display: flex;
+		    flex-direction: column;
+		    gap: 5px;  /* 10px から 5px に変更 */
+		}
+        
+        h1 {
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 8px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 5px;
+        }
+        
+        h2 {
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            border-left: 4px solid #333;
+            padding-left: 5px;
+        }
+        
+        .input-section {
+            font-size: 10px;
+            padding: 8px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .input-group label {
+            font-weight: bold;
+            min-width: 85px;
+            font-size: 9px;
+        }
+        
+        .input-group input {
+            padding: 3px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 9px;
+        }
+        
+        .input-group input[type="number"] {
+            width: 45px;
+        }
+        
+        .input-group input[type="date"] {
+            width: 100px;
+        }
+        
+        .input-group input[type="radio"] {
+            margin-right: 3px;
+            cursor: pointer;
+        }
+        
+        .input-group span {
+            font-size: 9px;
+            color: #666;
+            min-width: 35px;
+        }
+        
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        
+        .radio-item label {
+            cursor: pointer;
+            font-weight: normal;
+            min-width: auto;
+            font-size: 9px;
+        }
+        
+        .period-info {
+            font-size: 9px;
+            background: #e8f4f8;
+            padding: 5px;
+            border-radius: 3px;
+            text-align: center;
+            font-weight: bold;
+            color: #333;
+            grid-column: 1 / -1;
+        }
+        
+        .suitable-section {
+            font-size: 9px;
+            background: #fff9e6;
+            padding: 6px;
+            border-radius: 4px;
+            grid-column: 1 / -1;
+            border: 1px solid #ddd;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+        }
+        
+        .suitable-section h3 {
+            grid-column: 1 / -1;
+            font-size: 9px;
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+        
+        .suitable-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+        }
+        
+        .suitable-item label {
+            font-weight: bold;
+            font-size: 8px;
+            text-align: center;
+        }
+        
+        .suitable-item input {
+            width: 100%;
+            padding: 2px;
+            border: 1px solid #ccc;
+            border-radius: 2px;
+            font-size: 8px;
+            text-align: center;
+        }
+        
+        .suitable-item span {
+            font-size: 8px;
+            background: white;
+            padding: 2px 5px;
+            border-radius: 2px;
+            border: 1px solid #ccc;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .daily-work-hours-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+        }
+        
+        .daily-work-hours-item label {
+            font-weight: bold;
+            font-size: 8px;
+            text-align: center;
+            line-height: 1.2;
+        }
+        
+        .daily-work-hours-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            width: 100%;
+        }
+        
+        .daily-work-hours-input-group input {
+            width: 100%;
+            padding: 2px;
+            border: 1px solid #ccc;
+            border-radius: 2px;
+            font-size: 8px;
+            text-align: center;
+        }
+        
+        .daily-work-hours-input-group input.alarm {
+            border: 2px solid #ff0000;
+            background-color: #ffe6e6;
+        }
+        
+        .daily-work-hours-input-group div {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            font-size: 7px;
+        }
+        
+        .daily-work-hours-input-group div span {
+            background: #e8f4f8;
+            padding: 2px 3px;
+            border-radius: 2px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+        
+        .month-avg-label {
+            font-weight: bold;
+            font-size: 7px;
+            color: #666;
+        }
+        
+        .month-avg-value {
+            font-weight: bold;
+            font-size: 8px;
+        }
+        
+        .alarm-message {
+            font-size: 7px;
+            color: #ff0000;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 1px;
+        }
+        
+        .calc-params {
+            font-size: 9px;
+            background: #f0f8ff;
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+        }
+        
+        .calc-param-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+        }
+        
+        .calc-param-item label {
+            font-weight: bold;
+            font-size: 8px;
+            text-align: center;
+            line-height: 1.2;
+        }
+        
+        .calc-param-item .value-container {
+            width: 100%;
+            background: white;
+            padding: 2px 3px;
+            border-radius: 2px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+        
+        .calc-param-item .value-main {
+            font-size: 8px;
+            font-weight: bold;
+        }
+        
+        .machine-name-section {
+            font-size: 9px;
+            background: #e8f4f8;
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .machine-name-section label {
+            font-weight: bold;
+            font-size: 9px;
+            min-width: 50px;
+        }
+        
+        .machine-name-section input {
+            flex: 1;
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 9px;
+        }
+        
+        .data-tables-section {
+            background: #f9f9f9;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .data-table-wrapper {
+            margin-bottom: 8px;
+            overflow-x: auto;
+        }
+        
+        .data-table-wrapper:last-child {
+            margin-bottom: 0;
+        }
+        
+        .data-table-wrapper h3 {
+            font-size: 9px;
+            font-weight: bold;
+            margin-bottom: 3px;
+            background: #e8f4f8;
+            padding: 3px 5px;
+            border-radius: 2px;
+        }
+        
+        .data-table-wrapper table {
+            font-size: 8px;
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        
+        .data-table-wrapper th {
+            background: #333;
+            color: white;
+            padding: 2px 4px;
+            text-align: center;
+            border: 1px solid #999;
+            font-weight: bold;
+        }
+        
+        .data-table-wrapper td {
+            border: 1px solid #ddd;
+            padding: 2px 4px;
+            text-align: center;
+        }
+        
+        .data-table-wrapper td:first-child {
+            text-align: left;
+            background: #f5f5f5;
+            font-weight: bold;
+        }
+        
+		.table-wrapper {
+		    max-height: 300px;
+		    overflow-y: auto;
+		    font-size: 9px;
+		    border: 1px solid #ddd;
+		    border-radius: 4px;
+		}
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #333;
+            color: white;
+            padding: 3px;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid #999;
+            font-size: 8px;
+            line-height: 1.3;
+        }
+        
+        th .formula {
+            display: block;
+            font-size: 7px;
+            font-weight: normal;
+            color: #ffff99;
+            margin-top: 1px;
+        }
+        
+        td {
+            border: 1px solid #ddd;
+            padding: 2px 4px;
+            text-align: center;
+            font-size: 9px;
+        }
+        
+        td.result {
+            background: #e8f4f8;
+            font-weight: bold;
+        }
+        
+        .footer {
+            font-size: 8px;
+            color: #666;
+            text-align: right;
+        }
+        
+        .page-break {
+            page-break-before: always;
+            margin-top: 20px;
+        }
+        
+	@media print {
+	    body {
+	        background: white;
+	        padding: 0;
+	    }
+	    .container {
+	        max-width: 100%;
+	        margin: 0;
+	        box-shadow: none;
+	        padding: 10mm;
+	        gap: 3mm;  /* ギャップを縮小 */
+	    }
+	    .table-wrapper {
+	        max-height: 120px;  /* 高さを制限 */
+	        margin-bottom: 2mm;  /* 下余白を縮小 */
+	    }
+	    .page-break {
+	        page-break-before: always;
+	        margin-top: 10mm;  /* 余白を縮小 */
+	    }
+	}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>機械農作業負担（農業経営指針対応）</h1>
+        
+        <div class="input-section">
+            <div class="input-group">
+                <label>①作業幅(m)</label>
+                <input type="number" id="widthMin" placeholder="下限" step="0.1" value="2.4">
+                <span>～</span>
+                <input type="number" id="widthMax" placeholder="上限" step="0.1" value="2.4">
+            </div>
+            
+            <div class="input-group">
+                <label>②作業速度(km/h)</label>
+                <input type="number" id="speedMin" placeholder="下限" step="0.1" value="3">
+                <span>～</span>
+                <input type="number" id="speedMax" placeholder="上限" step="0.1" value="3">
+            </div>
+            
+            <div class="input-group">
+                <label>④ほ場作業効率(%)</label>
+                <input type="number" id="fieldEfficiency" min="0" max="100" step="1" value="80">
+            </div>
+            
+            <div class="input-group">
+                <label>⑦実作業率(%)</label>
+                <input type="number" id="actualWorkRate" min="0" max="100" step="1" value="84">
+            </div>
+            
+            <div class="input-group">
+                <label>作業期間</label>
+                <input type="date" id="startDate" value="2026-04-15">
+                <span>～</span>
+                <input type="date" id="endDate" value="2026-05-15">
+            </div>
+            
+            <div class="input-group">
+                <label>地域選択</label>
+                <div class="radio-group">
+                    <div class="radio-item">
+                        <input type="radio" id="matsue" name="region" value="matsue" checked>
+                        <label for="matsue">松江</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="hamada" name="region" value="hamada">
+                        <label for="hamada">浜田</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="period-info" id="periodInfo">
+                作業期間: - | 作業可能日数率: -%
+            </div>
+            
+            <div class="suitable-section">
+                <h3>適期内作業日数及び作業計画</h3>
+                
+                <div class="suitable-item">
+                    <label>⑩適期内作業日数(日)</label>
+                    <input type="number" id="suitableDays" min="0" step="1" value="15">
+                </div>
+                
+                <div class="daily-work-hours-item">
+                    <label>⑥1日の作業時間(h)</label>
+                    <div class="daily-work-hours-input-group">
+                        <input type="number" id="dailyWorkTime" min="0" step="0.1" value="">
+                        <div id="alarmContainer"></div>
+                        <div>
+                            <span class="month-avg-label">月平均1日作業時間</span>
+                            <span class="month-avg-value" id="monthAvgDisplay">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="suitable-item">
+                    <label>⑬作業回数</label>
+                    <input type="number" id="workTimes" min="1" step="1" value="1">
+                </div>
+                
+                <div class="suitable-item">
+                    <label>⑭台数</label>
+                    <input type="number" id="machineCount" min="1" step="1" value="1">
+                </div>
+                
+                <div class="suitable-item">
+                    <label>⑯ピーク時計画面積(ha)</label>
+                    <input type="number" id="peakPlanArea" min="0" step="0.01" value="0.00">
+                </div>
+            </div>
+        </div>
+        
+        <div class="calc-params" id="calcParams">
+            <div class="calc-param-item">
+                <label>⑧1日実作業時間(h)<br>⑥×⑦/100</label>
+                <div class="value-container">
+                    <div class="value-main" id="actualWorkHoursDisplay">-</div>
+                </div>
+            </div>
+            <div class="calc-param-item">
+                <label>⑪作業可能<br>日数率(%)</label>
+                <div class="value-container">
+                    <div class="value-main" id="workableRateDisplay">-</div>
+                </div>
+            </div>
+            <div class="calc-param-item">
+                <label>⑫作業可能日数(日)<br>⑩×⑪/100</label>
+                <div class="value-container">
+                    <div class="value-main" id="workableDaysDisplay">-</div>
+                </div>
+            </div>
+            <div class="calc-param-item">
+                <label>⑨1日ほ場作業量<br>(ha/日)⑤×⑧</label>
+                <div class="value-container">
+                    <div class="value-main" id="dailyFieldCapacityDisplay">-</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="machine-name-section">
+            <label>機械名：</label>
+            <input type="text" id="machineName" placeholder="例）田植機、コンバイン等">
+        </div>
+        
+        <div class="table-wrapper">
+            <table id="resultTable">
+                <thead>
+                    <tr>
+                        <th>①作業幅<br>(m)</th>
+                        <th>②作業速度<br>(km/h)</th>
+                        <th>③理論作業量<br>(ha/h)<span class="formula">①×②/10</span></th>
+                        <th>⑤ほ場作業量<br>(ha/h)<span class="formula">③×④/100</span></th>
+                        <th>⑨1日ほ場<br>作業量<br>(ha/日)<span class="formula">⑤×⑧</span></th>
+                        <th>⑮機械の<br>負担面積<br>(ha)<span class="formula">⑨×⑫×⑭÷⑬</span></th>
+                        <th>⑰負担率<br>(%)<span class="formula">⑯÷⑮×100</span></th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="page-break"></div>
+        
+        <h2>（1）1日の作業時間（単位：時間）</h2>
+        <div class="data-tables-section">
+            <div class="data-table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>区分</th>
+                            <th>1月</th>
+                            <th>2月</th>
+                            <th>3月</th>
+                            <th>4月</th>
+                            <th>5月</th>
+                            <th>6月</th>
+                            <th>7月</th>
+                            <th>8月</th>
+                            <th>9月</th>
+                            <th>10月</th>
+                            <th>11月</th>
+                            <th>12月</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>月平均日長時間</td>
+                            <td>10.0</td>
+                            <td>10.9</td>
+                            <td>11.9</td>
+                            <td>13.1</td>
+                            <td>14.1</td>
+                            <td>14.6</td>
+                            <td>14.3</td>
+                            <td>13.5</td>
+                            <td>12.4</td>
+                            <td>11.3</td>
+                            <td>10.3</td>
+                            <td>9.8</td>
+                        </tr>
+                        <tr>
+                            <td>月平均1日の作業時間</td>
+                            <td>7.0</td>
+                            <td>7.9</td>
+                            <td>8.9</td>
+                            <td>10.1</td>
+                            <td>11.1</td>
+                            <td>11.6</td>
+                            <td>11.3</td>
+                            <td>10.5</td>
+                            <td>9.4</td>
+                            <td>8.3</td>
+                            <td>7.3</td>
+                            <td>6.8</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p style="font-size: 8px; margin-top: 3px; color: #666;">
+                ※1日の作業時間：日長時間から生活時間として3時間を差し引いた時間（前ページの⑥）<br>
+                ※日長時間は、2012年の松江市の日の出、日の入時刻（出典：国立天文台天文情報センター暦計算室HP）から求めた。
+            </p>
+        </div>
+        
+        <h2>（2）作業可能日数率（単位：％）</h2>
+        <div class="data-tables-section">
+            <div class="data-table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>区分</th>
+                            <th>1月</th>
+                            <th>2月</th>
+                            <th>3月</th>
+                            <th>4月</th>
+                            <th>5月</th>
+                            <th>6月</th>
+                            <th>7月</th>
+                            <th>8月</th>
+                            <th>9月</th>
+                            <th>10月</th>
+                            <th>11月</th>
+                            <th>12月</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>松江</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>56</td>
+                            <td>70</td>
+                            <td>76</td>
+                            <td>68</td>
+                            <td>65</td>
+                            <td>77</td>
+                            <td>77</td>
+                            <td>79</td>
+                            <td>73</td>
+                            <td>53</td>
+                        </tr>
+                        <tr>
+                            <td>浜田</td>
+                            <td>56</td>
+                            <td>63</td>
+                            <td>68</td>
+                            <td>77</td>
+                            <td>73</td>
+                            <td>65</td>
+                            <td>69</td>
+                            <td>85</td>
+                            <td>73</td>
+                            <td>81</td>
+                            <td>83</td>
+                            <td>71</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p style="font-size: 8px; margin-top: 3px; color: #666;">
+                ※作業可能日数率：適期内作業日数から降雨等気象の影響を受けない、実際に可能な作業日数（作業可能日数）を求めるための比率<br>
+                ※気象庁観測技術資料第11号「主として農業のための気候表」における屋外労働可能日数の階級区分にもとづいて、各地日降水量10mm以上の日数、6時および14時現在の快晴、晴、曇の月別合計日数、さらに冬期の積雪日数を考慮して月別機械作業可能日数を推定し、これを各月の日数で割って、月別機械作業可能日数率として％で表したものである。
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>※入力値を変更すると自動で計算されます　|　印刷用：Ctrl+P</p>
+        </div>
+    </div>
+
+    <script>
+        // 気象データによる月平均１日の作業時間
+        const dailyWorkHoursByMonth = {
+            1: 7.0, 2: 7.9, 3: 8.9, 4: 10.1, 5: 11.1, 6: 11.6, 7: 11.3, 8: 10.5, 9: 9.4, 10: 8.3, 11: 7.3, 12: 6.8
+        };
+        
+        const daysInMonth = {
+            1: 31, 2: 28, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31
+        };
+        
+        const workableRatesByRegion = {
+            matsue: {
+                1: 0, 2: 0, 3: 56, 4: 70, 5: 76, 6: 68, 7: 65, 8: 77, 9: 77, 10: 79, 11: 73, 12: 53
+            },
+            hamada: {
+                1: 56, 2: 63, 3: 68, 4: 77, 5: 73, 6: 65, 7: 69, 8: 85, 9: 73, 10: 81, 11: 83, 12: 71
+            }
+        };
+        
+        let currentWorkableRates = {...workableRatesByRegion.matsue};
+        
+        function isLeapYear(year) {
+            return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+        }
+        
+        function getDaysInMonth(year, month) {
+            if (month === 2 && isLeapYear(year)) {
+                return 29;
+            }
+            return daysInMonth[month];
+        }
+        
+        function updateWorkableRates(region) {
+            currentWorkableRates = {...workableRatesByRegion[region]};
+            updatePeriodInfo();
+            generateTable();
+        }
+        
+        function getAvgDailyWorkHours(startDateStr, endDateStr) {
+            if (!startDateStr || !endDateStr) return 0;
+            
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+            
+            if (startDate > endDate) return 0;
+            
+            let totalDailyWorkHours = 0;
+            let monthCount = 0;
+            let currentDate = new Date(startDate);
+            
+            while (currentDate <= endDate) {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth() + 1;
+                const daysInCurrentMonth = getDaysInMonth(year, month);
+                
+                const monthStart = new Date(year, month - 1, 1);
+                const monthEnd = new Date(year, month, 0);
+                
+                const periodStart = currentDate > monthStart ? currentDate : monthStart;
+                const periodEnd = endDate < monthEnd ? endDate : monthEnd;
+                
+                const daysInPeriod = Math.floor((periodEnd - periodStart) / (1000 * 60 * 60 * 24)) + 1;
+                
+                if (daysInPeriod > 0) {
+                    totalDailyWorkHours += dailyWorkHoursByMonth[month];
+                    monthCount++;
+                }
+                
+                currentDate = new Date(year, month, 1);
+            }
+            
+            return monthCount > 0 ? totalDailyWorkHours / monthCount : 0;
+        }
+        
+        function getAvgWorkableRate(startDateStr, endDateStr) {
+            if (!startDateStr || !endDateStr) return 0;
+            
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+            
+            if (startDate > endDate) return 0;
+            
+            let totalWorkableRate = 0;
+            let monthCount = 0;
+            let currentDate = new Date(startDate);
+            
+            while (currentDate <= endDate) {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth() + 1;
+                const daysInCurrentMonth = getDaysInMonth(year, month);
+                
+                const monthStart = new Date(year, month - 1, 1);
+                const monthEnd = new Date(year, month, 0);
+                
+                const periodStart = currentDate > monthStart ? currentDate : monthStart;
+                const periodEnd = endDate < monthEnd ? endDate : monthEnd;
+                
+                const daysInPeriod = Math.floor((periodEnd - periodStart) / (1000 * 60 * 60 * 24)) + 1;
+                
+                if (daysInPeriod > 0) {
+                    totalWorkableRate += (currentWorkableRates[month] || 0);
+                    monthCount++;
+                }
+                
+                currentDate = new Date(year, month, 1);
+            }
+            
+            return monthCount > 0 ? totalWorkableRate / monthCount : 0;
+        }
+        
+        function getTotalWorkableDays(startDateStr, endDateStr, suitableDays) {
+            if (!startDateStr || !endDateStr) return 0;
+            
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+            
+            if (startDate > endDate) return 0;
+            
+            let totalWorkableDays = 0;
+            let monthCount = 0;
+            let currentDate = new Date(startDate);
+            
+            while (currentDate <= endDate) {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth() + 1;
+                const daysInCurrentMonth = getDaysInMonth(year, month);
+                
+                const monthStart = new Date(year, month - 1, 1);
+                const monthEnd = new Date(year, month, 0);
+                
+                const periodStart = currentDate > monthStart ? currentDate : monthStart;
+                const periodEnd = endDate < monthEnd ? endDate : monthEnd;
+                
+                const daysInPeriod = Math.floor((periodEnd - periodStart) / (1000 * 60 * 60 * 24)) + 1;
+                const monthlyRate = daysInPeriod / daysInCurrentMonth;
+                
+                const workableRate = currentWorkableRates[month] || 0;
+                const workableDaysForMonth = (suitableDays * monthlyRate) * workableRate / 100;
+                
+                totalWorkableDays += workableDaysForMonth;
+                monthCount++;
+                
+                currentDate = new Date(year, month, 1);
+            }
+            
+            return totalWorkableDays;
+        }
+        
+        function checkAlarm() {
+            const dailyWorkTimeInput = document.getElementById('dailyWorkTime');
+            const avgDailyWorkHours = getAvgDailyWorkHours(
+                document.getElementById('startDate').value,
+                document.getElementById('endDate').value
+            );
+            const userInput = parseFloat(dailyWorkTimeInput.value);
+            const alarmContainer = document.getElementById('alarmContainer');
+            
+            alarmContainer.innerHTML = '';
+            
+            if (userInput && !isNaN(userInput)) {
+                if (userInput > avgDailyWorkHours) {
+                    dailyWorkTimeInput.classList.add('alarm');
+                    const alarmDiv = document.createElement('div');
+                    alarmDiv.className = 'alarm-message';
+                    alarmDiv.innerHTML = `⚠ 月平均を超えています`;
+                    alarmContainer.appendChild(alarmDiv);
+                } else {
+                    dailyWorkTimeInput.classList.remove('alarm');
+                }
+            } else {
+                dailyWorkTimeInput.classList.remove('alarm');
+            }
+        }
+        
+        function updatePeriodInfo() {
+            const startDateStr = document.getElementById('startDate').value;
+            const endDateStr = document.getElementById('endDate').value;
+            const suitableDays = parseFloat(document.getElementById('suitableDays').value) || 0;
+            
+            if (!startDateStr || !endDateStr) {
+                document.getElementById('periodInfo').textContent = 
+                    '作業期間: - | 作業可能日数率: -%';
+                return;
+            }
+            
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+            const avgDailyWorkHours = getAvgDailyWorkHours(startDateStr, endDateStr);
+            const avgWorkableRate = getAvgWorkableRate(startDateStr, endDateStr);
+            const totalWorkableDays = getTotalWorkableDays(startDateStr, endDateStr, suitableDays);
+            
+            const startMonthDay = `${startDate.getMonth() + 1}月${startDate.getDate()}日`;
+            const endMonthDay = `${endDate.getMonth() + 1}月${endDate.getDate()}日`;
+            
+            document.getElementById('periodInfo').textContent = 
+                `作業期間: ${startMonthDay}～${endMonthDay} | 作業可能日数率: ${Math.round(avgWorkableRate)}%`;
+            
+            document.getElementById('monthAvgDisplay').textContent = avgDailyWorkHours.toFixed(1);
+            
+            checkAlarm();
+            
+            let dailyWorkTime = parseFloat(document.getElementById('dailyWorkTime').value);
+            if (!dailyWorkTime || isNaN(dailyWorkTime)) {
+                dailyWorkTime = avgDailyWorkHours;
+            }
+            
+            const actualWorkRate = parseFloat(document.getElementById('actualWorkRate').value) || 85;
+            const dailyActualWorkHours = (dailyWorkTime * actualWorkRate / 100);
+            
+            const fieldEfficiency = parseFloat(document.getElementById('fieldEfficiency').value) || 75;
+            const widthMin = parseFloat(document.getElementById('widthMin').value) || 1;
+            const speedMin = parseFloat(document.getElementById('speedMin').value) || 4;
+            const theoreticalCapacity = (widthMin * speedMin / 10);
+            const fieldCapacity = (theoreticalCapacity * fieldEfficiency / 100);
+            const dailyFieldCapacity = (fieldCapacity * dailyActualWorkHours);
+            
+            document.getElementById('actualWorkHoursDisplay').textContent = dailyActualWorkHours.toFixed(2);
+            document.getElementById('workableRateDisplay').textContent = Math.round(avgWorkableRate);
+            document.getElementById('workableDaysDisplay').textContent = totalWorkableDays.toFixed(1);
+            document.getElementById('dailyFieldCapacityDisplay').textContent = dailyFieldCapacity.toFixed(2);
+            
+            generateTable();
+        }
+        
+        function generateTable() {
+            const widthMin = parseFloat(document.getElementById('widthMin').value) || 1;
+            const widthMax = parseFloat(document.getElementById('widthMax').value) || 3;
+            const speedMin = parseFloat(document.getElementById('speedMin').value) || 4;
+            const speedMax = parseFloat(document.getElementById('speedMax').value) || 8;
+            const fieldEfficiency = parseFloat(document.getElementById('fieldEfficiency').value) || 75;
+            const startDateStr = document.getElementById('startDate').value;
+            const endDateStr = document.getElementById('endDate').value;
+            const suitableDays = parseFloat(document.getElementById('suitableDays').value) || 0;
+            const workTimes = parseFloat(document.getElementById('workTimes').value) || 1;
+            const machineCount = parseFloat(document.getElementById('machineCount').value) || 1;
+            const peakPlanArea = parseFloat(document.getElementById('peakPlanArea').value) || 0;
+            
+            const totalWorkableDays = getTotalWorkableDays(startDateStr, endDateStr, suitableDays);
+            
+            let dailyWorkTime = parseFloat(document.getElementById('dailyWorkTime').value);
+            if (!dailyWorkTime || isNaN(dailyWorkTime)) {
+                const avgDailyWorkHours = getAvgDailyWorkHours(startDateStr, endDateStr);
+                dailyWorkTime = avgDailyWorkHours;
+            }
+            
+            const actualWorkRate = parseFloat(document.getElementById('actualWorkRate').value) || 85;
+            const dailyActualWorkHours = (dailyWorkTime * actualWorkRate / 100);
+            
+            const widthStep = (widthMax - widthMin) / 6;
+            const speedStep = (speedMax - speedMin) / 6;
+            
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            for (let i = 0; i <= 6; i++) {
+                const width = (widthMin + widthStep * i).toFixed(2);
+                const speed = (speedMin + speedStep * i).toFixed(2);
+                
+                const theoreticalCapacity = (width * speed / 10).toFixed(2);
+                const fieldCapacity = (theoreticalCapacity * fieldEfficiency / 100).toFixed(2);
+                const dayFieldCapacity = (fieldCapacity * dailyActualWorkHours).toFixed(2);
+                const machineCapacityArea = (dayFieldCapacity * totalWorkableDays * machineCount / workTimes).toFixed(2);
+                const loadRate = machineCapacityArea > 0 ? Math.round(peakPlanArea / machineCapacityArea * 100) : 0;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${width}</td>
+                    <td>${speed}</td>
+                    <td class="result">${theoreticalCapacity}</td>
+                    <td class="result">${fieldCapacity}</td>
+                    <td class="result">${dayFieldCapacity}</td>
+                    <td class="result">${machineCapacityArea}</td>
+                    <td class="result">${loadRate}</td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+        
+        document.getElementById('matsue').addEventListener('change', (e) => {
+            if (e.target.checked) updateWorkableRates('matsue');
+        });
+        
+        document.getElementById('hamada').addEventListener('change', (e) => {
+            if (e.target.checked) updateWorkableRates('hamada');
+        });
+        
+        ['widthMin', 'widthMax', 'speedMin', 'speedMax', 'fieldEfficiency', 
+         'actualWorkRate', 'startDate', 'endDate', 'suitableDays', 'workTimes', 'machineCount', 'peakPlanArea'].forEach(id => {
+            const elem = document.getElementById(id);
+            elem.addEventListener('change', () => { updatePeriodInfo(); generateTable(); });
+            elem.addEventListener('input', () => { updatePeriodInfo(); generateTable(); });
+        });
+        
+        document.getElementById('dailyWorkTime').addEventListener('change', () => {
+            checkAlarm(); updatePeriodInfo(); generateTable();
+        });
+        
+        document.getElementById('dailyWorkTime').addEventListener('input', () => {
+            checkAlarm(); updatePeriodInfo(); generateTable();
+        });
+        
+        updatePeriodInfo();
+        generateTable();
+    </script>
+</body>
+</html>
