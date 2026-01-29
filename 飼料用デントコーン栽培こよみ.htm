@@ -549,6 +549,23 @@
                 font-size: 0.85rem;
             }
         }
+        
+        .calc-link-button {
+    display: inline-block;
+    padding: 8px 15px;
+    background-color: #fff;
+    color: #2e7d32;
+    text-decoration: none;
+    border: 2px solid #2e7d32;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: 0.3s;
+}
+.calc-link-button:hover {
+    background-color: #2e7d32;
+    color: #fff;
+}
+        
     </style>
 </head>
 <body>
@@ -556,9 +573,6 @@
         <h1>🌾 飼料用トウモロコシ栽培こよみ</h1>
         <div class="subtitle">WCS（ホールクロップサイレージ）用</div>
         <div class="date-info">最終更新: 2026年1月26日</div>
-
-        <!-- 表示/非表示ボタン -->
-        <button class="toggle-button" onclick="toggleTable()">▼ 表を非表示にする</button>
 
         <!-- 生育ステージ表 -->
         <div class="table-content" id="tableContent">
@@ -762,7 +776,7 @@
             </div>
 
             <!-- 除草剤散布 詳細ボックス -->
-            <div class="detail-box" id="herbicideDetail">
+<div class="detail-box" id="herbicideDetail">
                 <h4>
                     <span>💧 除草剤散布</span>
                     <button class="back-button" onclick="backToTable()">← 戻る</button>
@@ -796,6 +810,11 @@
                         </table>
                     </li>
                 </ul>
+                <div style="margin-top: 15px; text-align: right;">
+                    <a href="除草剤希釈.htm" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 10px 20px; background-color: #fff; color: #2e7d32; text-decoration: none; border: 2px solid #2e7d32; border-radius: 8px; font-weight: bold;">
+                        🧮 除草剤希釈計算ツール（別タブ）
+                    </a>
+                </div>
             </div>
 
             <!-- 害虫防除 詳細ボックス -->
@@ -861,7 +880,7 @@
             </div>
 
             <!-- 除草剤散布（発芽後）詳細ボックス -->
-            <div class="detail-box" id="herbicideAfterDetail">
+<div class="detail-box" id="herbicideAfterDetail">
                 <h4>
                     <span>💧 除草剤散布（発芽後）</span>
                     <button class="back-button" onclick="backToTable()">← 戻る</button>
@@ -963,8 +982,14 @@
                         </table>
                     </li>
                 </ul>
+                
+                <div style="margin-top: 15px; padding: 10px; border-top: 1px solid #eee; text-align: right;">
+                    <a href="除草剤希釈.htm" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 10px 20px; background-color: #e8f5e9; color: #2e7d32; text-decoration: none; border: 2px solid #2e7d32; border-radius: 8px; font-weight: bold; font-size: 0.9em;">
+                        🧮 除草剤希釈計算（別タブで開く）
+                    </a>
+                </div>
             </div>
-
+            
             <!-- 追肥 詳細ボックス -->
             <div class="detail-box" id="topDressingDetail">
                 <h4>
@@ -1030,7 +1055,7 @@
                                     <td>散布</td>
                                 </tr>
                                 <tr>
-                                    <td rowspan="1"><strong>パダンSG水溶剤</strong></td>
+                                    <td><strong>パダンSG水溶剤</strong></td>
                                     <td>ツマジロクサヨトウ</td>
                                     <td>収穫21日前まで</td>
                                     <td>100～300リットル</td>
@@ -1060,8 +1085,30 @@
                         </table>
                     </li>
                 </ul>
-            </div>
 
+                <div style="margin-top: 20px;">
+                    <a href="害虫防除農薬希釈.htm" target="_blank" rel="noopener noreferrer" 
+                       style="display: inline-block; padding: 10px 20px; background-color: #f1f8f1; color: #2e7d32; text-decoration: none; border: 2px solid #2e7d32; border-radius: 12px; font-weight: bold; font-size: 16px;">
+                        🧮 害虫防除農薬希釈計算（別タブで開く）
+                    </a>
+                </div>
+
+               <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px;">
+                    <a href="https://www.pref.shimane.lg.jp/industry/norin/gijutsu/nougyo_tech/byougaityuu/byougaityuu-index/kon/sc113.data/ya113.gif" 
+                       target="_blank" rel="noopener noreferrer" 
+                       style="display: inline-block; padding: 10px 15px; background-color: #ffffff; color: #0056b3; text-decoration: none; border: 2px solid #0056b3; border-radius: 12px; font-weight: bold; font-size: 14px;">
+                        🔗 アワヨトウ・アワノメイガ
+                    </a>
+
+                    <a href="https://www.pref.saitama.lg.jp/images/158277/tsumasyu1.jpg" 
+                       target="_blank" rel="noopener noreferrer" 
+                       style="display: inline-block; padding: 10px 15px; background-color: #ffffff; color: #d32f2f; text-decoration: none; border: 2px solid #d32f2f; border-radius: 12px; font-weight: bold; font-size: 14px;">
+                        🦟 ツマジロクサヨトウ
+                    </a>
+                </div>
+            </div>
+            
+            
             <!-- 倒伏被害 詳細ボックス -->
             <div class="detail-box" id="lodgingDetail">
                 <h4>
@@ -1112,7 +1159,7 @@
             </div>
 
             <!-- 収穫 詳細ボックス -->
-            <div class="detail-box" id="harvestDetail">
+<div class="detail-box" id="harvestDetail">
                 <h4>
                     <span>✂️ 収穫</span>
                     <button class="back-button" onclick="backToTable()">← 戻る</button>
@@ -1122,46 +1169,27 @@
                     <li>収穫期は水分70％程度になる黄熟期ごろ</li>
                     <li>地面から15cmの高さで刈り、1.9cmに微細断してラップは基本6重巻き、長期保存8重巻き</li>
                 </ul>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        function toggleTable() {
-            const tableContent = document.getElementById('tableContent');
-            const button = document.querySelector('.toggle-button');
-            
-            if (tableContent.classList.contains('hidden')) {
-                tableContent.classList.remove('hidden');
-                button.textContent = '▼ 表を非表示にする';
-            } else {
-                tableContent.classList.add('hidden');
-                button.textContent = '▶ 表を表示する';
+            </div> </div> </div> <script>
+        // 1. 詳細へ瞬時にジャンプ（スクロール演出なし）
+        function scrollToDetail(id) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.display = 'block'; 
+                // location.hashを使うことで瞬時に移動
+                location.hash = id;
             }
         }
 
-        function scrollToDetail(elementId) {
-            const element = document.getElementById(elementId);
-            element.classList.remove('hidden');
-            
-            // スムーズにスクロール
-            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-
+        // 2. 戻るボタン：瞬時に一番上へ
         function backToTable() {
-            const tableContent = document.getElementById('tableContent');
-            const toggleButton = document.querySelector('.toggle-button');
+            // 画面最上部へ一瞬で移動
+            window.scrollTo(0, 0);
             
-            // 表が非表示の場合は表示にする
-            if (tableContent.classList.contains('hidden')) {
-                tableContent.classList.remove('hidden');
-                toggleButton.textContent = '▼ 表を非表示にする';
+            // URLから「#seedingDetail」などのIDを消してリセット
+            if (history.replaceState) {
+                history.replaceState(null, null, window.location.pathname);
             }
-            
-            // 表示/非表示ボタンまでスクロール
-            toggleButton.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     </script>
 </body>
 </html>
-
