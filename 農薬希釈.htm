@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>農薬希釈計算（面積対応版）</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; padding: 20px; background-color: #f0fdf4; }
+        .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); width: 100%; max-width: 420px; }
+        h2 { color: #15803d; text-align: center; font-size: 1.4rem; margin-bottom: 20px; border-bottom: 3px solid #bbf7d0; padding-bottom: 10px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 0.9rem; color: #374151; }
+        input { width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box; font-size: 1rem; transition: border-color 0.2s; }
+        input:focus { outline: none; border-color: #22c55e; }
+        
+        .result-container { margin-top: 20px; display: grid; gap: 12px; }
+        .result-box { padding: 15px; border-radius: 10px; text-align: center; }
+        .box-total { background-color: #f8fafc; border: 1px solid #e2e8f0; grid-column: span 2; }
+        .box-concentrate { background-color: #fff1f2; border: 1px solid #fecaca; }
+        .box-water { background-color: #eff6ff; border: 1px solid #bfdbfe; }
+        
+        .label-sm { font-size: 0.85rem; color: #4b5563; margin-bottom: 4px; font-weight: bold; }
+        .val { font-size: 1.6rem; font-weight: bold; color: #111827; }
+        .unit { font-size: 0.9rem; margin-left: 4px; color: #4b5563; }
+        .formula-note { font-size: 0.75rem; color: #9ca3af; margin-top: 20px; text-align: center; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>農薬希釈計算</h2>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="input-group">
+            <label>散布面積 (a)</label>
+            <input type="number" id="area" placeholder="例: 10" value="10" oninput="calculate()">
+        </div>
+        <div class="input-group">
+            <label>10a当り散布液量 (L)</label>
+            <input type="number" id="liquidPer10a" placeholder="例: 100" oninput="calculate()">
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label>希釈倍数 (倍)</label>
+        <input type="number" id="rate" placeholder="例: 1000" oninput="calculate()">
+    </div>
+
+    <div class="result-container">
+        <div class="result-box box-total">
+            <div class="label-sm">作る散布液の合計量</div>
+            <div class="val" id="totalL">0<span class="unit">L</span></div>
+        </div>
+        <div class="result-box box-concentrate">
+            <div class="label-sm">必要な原液量</div>
+            <div class="val" id="geneki">0<span class="unit">ml</span></div>
+        </div>
+        <div class="result-box box-water">
+            <div class="label-sm">加える水の量</div>
+            <div class="val" id="mizu">0<span class="unit">L</span></div>
+        </div>
+    </div>
+
+    <div class="formula-note">
+        ※1アール(a) = 100㎡ = 30坪<br>
+        ※計算式: 合計液量 = (面積 / 10) × 10a当り液量<br>
+        ※原液(ml) = (合計液量 / 倍数) × 1000
+    </div>
+</div>
+
+<script>
+    function calculate() {
+        const area = parseFloat(document.getElementById('area').value) || 0;
+        const liquidPer10a = parseFloat(document.getElementById('liquidPer10a').value) || 0;
+        const rate = parseFloat(document.getElementById('rate').value) || 0;
+        
+        const totalLEl = document.getElementById('totalL');
+        const genekiEl = document.getElementById('geneki');
+        const mizuEl = document.getElementById('mizu');
+
+        if (area > 0 && liquidPer10a > 0 && rate > 0) {
+            // 合計散布液量を計算 (L)
+            const totalL = (area / 10) * liquidPer10a;
+            // 原液量を計算 (ml)
+            const genekiMl = (totalL / rate) * 1000;
+            // 水の量を計算 (L)
+            const mizuL = totalL - (genekiMl / 1000);
+
+            // 表示
+            totalLEl.innerHTML = (Math.round(totalL * 100) / 100) + '<span class="unit">L</span>';
+            genekiEl.innerHTML = (Math.round(genekiMl * 100) / 100) + '<span class="unit">ml</span>';
+            mizuEl.innerHTML = (Math.round(mizuL * 100) / 100) + '<span class="unit">L</span>';
+        } else {
+            totalLEl.innerHTML = '0<span class="unit">L</span>';
+            genekiEl.innerHTML = '0<span class="unit">ml</span>';
+            mizuEl.innerHTML = '0<span class="unit">L</span>';
+        }
+    }
+</script>
+
+</body>
+</html>
