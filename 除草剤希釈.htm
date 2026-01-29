@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>除草剤散布計算</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; padding: 20px; background-color: #f0f9ff; }
+        .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); width: 100%; max-width: 420px; }
+        h2 { color: #0369a1; text-align: center; font-size: 1.4rem; margin-bottom: 20px; border-bottom: 3px solid #bae6fd; padding-bottom: 10px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 0.9rem; color: #374151; }
+        input { width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        input:focus { outline: none; border-color: #0ea5e9; }
+        
+        .result-container { margin-top: 20px; display: grid; gap: 12px; }
+        .result-box { padding: 15px; border-radius: 10px; text-align: center; }
+        .box-medicine { background-color: #fff7ed; border: 1px solid #ffedd5; }
+        .box-water { background-color: #f0f9ff; border: 1px solid #e0f2fe; }
+        
+        .label-sm { font-size: 0.85rem; color: #4b5563; margin-bottom: 4px; font-weight: bold; }
+        .val { font-size: 1.6rem; font-weight: bold; color: #111827; }
+        .unit { font-size: 0.9rem; margin-left: 4px; color: #4b5563; }
+        .formula-note { font-size: 0.75rem; color: #9ca3af; margin-top: 20px; text-align: center; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>除草剤 散布計算</h2>
+    
+    <div class="input-group">
+        <label>散布面積 (a)</label>
+        <input type="number" id="area" placeholder="例: 10" oninput="calculate()">
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="input-group">
+            <label>10a当り薬量 (ml/g)</label>
+            <input type="number" id="medPer10a" placeholder="例: 500" oninput="calculate()">
+        </div>
+        <div class="input-group">
+            <label>10a当り水量 (L)</label>
+            <input type="number" id="waterPer10a" placeholder="例: 100" oninput="calculate()">
+        </div>
+    </div>
+
+    <div class="result-container">
+        <div class="result-box box-medicine">
+            <div class="label-sm">必要な薬剤の総量</div>
+            <div class="val" id="totalMed">0<span class="unit">ml/g</span></div>
+        </div>
+        <div class="result-box box-water">
+            <div class="label-sm">必要な水の総量</div>
+            <div class="val" id="totalWater">0<span class="unit">L</span></div>
+        </div>
+    </div>
+
+    <div class="formula-note">
+        ※計算方法：(面積 ÷ 10) × 各10aあたりの量<br>
+        ※希釈倍率を気にする必要はありません。
+    </div>
+</div>
+
+<script>
+    function calculate() {
+        const area = parseFloat(document.getElementById('area').value) || 0;
+        const medPer10a = parseFloat(document.getElementById('medPer10a').value) || 0;
+        const waterPer10a = parseFloat(document.getElementById('waterPer10a').value) || 0;
+        
+        const totalMedEl = document.getElementById('totalMed');
+        const totalWaterEl = document.getElementById('totalWater');
+
+        if (area > 0) {
+            // 必要な薬剤総量
+            const totalMed = (area / 10) * medPer10a;
+            // 必要な水総量
+            const totalWater = (area / 10) * waterPer10a;
+
+            totalMedEl.innerHTML = (Math.round(totalMed * 10) / 10) + '<span class="unit">ml/g</span>';
+            totalWaterEl.innerHTML = (Math.round(totalWater * 10) / 10) + '<span class="unit">L</span>';
+        } else {
+            totalMedEl.innerHTML = '0<span class="unit">ml/g</span>';
+            totalWaterEl.innerHTML = '0<span class="unit">L</span>';
+        }
+    }
+</script>
+
+</body>
+</html>
