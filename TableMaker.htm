@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Professional Data Processor (Latest Record First)</title>
-    <style>
+<style>
         :root {
             --primary: #4f46e5;
             --bg: #f1f5f9;
@@ -26,20 +26,41 @@
         .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
         .header-item-card { background: #f8fafc; border: 1px solid var(--border); padding: 12px; border-radius: 8px; }
         
+        /* --- PDF/テーブルのレイアウト関連 --- */
         table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; table-layout: fixed; }
         th, td { border: 1px solid var(--border); padding: 10px; text-align: center; word-wrap: break-word; }
         th { background: #f8fafc; }
         .preview-title { text-align: center; font-size: 1.5rem; margin: 20px 0; font-weight: bold; }
+        
         .btn-group { margin-bottom: 15px; }
         .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; margin-right: 5px; }
         .btn-success { background: #10b981; color: white; }
         .btn-warning { background: var(--accent); color: white; }
         .btn-primary { background: var(--primary); color: white; }
 
+        /* --- 印刷・PDF出力用設定 --- */
         @media print {
-            .no-print, .btn-group { display: none !important; }
-            body, .container, .card { background: white !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; width: 100% !important; }
-            @page { size: A4 landscape; margin: 15mm; }
+            /* 1. 印刷に不要な要素（ボタンや入力フォーム）を隠す */
+            .no-print, .btn-group, textarea, .config-grid { display: none !important; }
+
+            /* 2. 背景色や余白のリセット（PDF生成時のズレ防止） */
+            body, .container, .card { 
+                background: white !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+                box-shadow: none !important; 
+                width: 100% !important; 
+            }
+
+            /* 3. テーブルのフォントサイズ調整（収まりが悪い場合はここをいじる） */
+            table { font-size: 0.9rem; }
+            th, td { padding: 6px; }
+
+            /* 4. A4設定：サイズ(portrait=縦, landscape=横)と余白 */
+            @page { 
+                size: A4 landscape; /* 横向き設定。縦にするなら portrait */
+                margin: 15mm;       /* 上下左右の余白 */
+            }
         }
     </style>
 </head>
