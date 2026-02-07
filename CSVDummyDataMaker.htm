@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>CSV Filter & Grouping Tool</title>
+    <title>CSV Data Generator</title>
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 20px; max-width: 1000px; margin: auto; background: #f9f9f9; }
         textarea { width: 100%; height: 200px; font-family: monospace; margin: 10px 0; border: 1px solid #ccc; padding: 10px; }
@@ -11,42 +11,70 @@
         button { padding: 8px 16px; cursor: pointer; border: none; border-radius: 4px; transition: 0.3s; margin-right: 5px; }
         .btn-generate { background: #28a745; color: white; }
         .btn-convert { background: #007bff; color: white; }
-        input[type="date"] { padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        input[type="date"], input[type="number"] { padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        .input-group { margin-bottom: 10px; }
+        .label-tag { background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h2>CSV 名前主体グループ化・抽出ツール</h2>
+    <h2>CSV データ生成・グループ化ツール</h2>
 
     <div class="controls">
-        <button class="btn-generate" onclick="generateDummy()">① 800行のダミーデータを生成</button>
+        <div class="input-group">
+            <span class="label-tag">作成条件</span>
+            開始日: <input type="date" id="startDate" value="2025-01-01"> 〜 
+            本日まで、計 <input type="number" id="rowCount" value="800" min="1" style="width: 80px;"> 行
+            <button class="btn-generate" onclick="generateDummy()">① データを生成</button>
+        </div>
         <hr>
-        <p>② 抽出条件： 
-            <input type="date" id="startDate" value="2026-01-01"> 以降
-            <button class="btn-convert" onclick="convert()">③ 抽出してJSON変換</button>
-        </p>
+        <div class="input-group">
+            <button class="btn-convert" onclick="convert()">② 名前ごとにグループ化(JSON)</button>
+        </div>
     </div>
 
-    <textarea id="csvInput" placeholder="ここにCSVデータが表示されます"></textarea>
+    <textarea id="csvInput" placeholder="ここにCSVデータが生成されます"></textarea>
 
     <h3>出力結果 (JSON):</h3>
-    <pre id="jsonOutput">変換ボタンを押すとここに結果が表示されます</pre>
+    <pre id="jsonOutput">変換ボタンを押すと結果が表示されます</pre>
 
     <script>
-        // 800行のダミーデータを生成する関数
+        // 日付を YYYY/MM/DD 形式にするヘルパー関数
+        function formatDate(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}/${m}/${day = d}`;
+        }
+
         function generateDummy() {
+            const count = parseInt(document.getElementById('rowCount').value) || 100;
+            const startStr = document.getElementById('startDate').value;
+            const startDate = new Date(startStr);
+            const endDate = new Date(); 
+            
+            const timeDiff = endDate.getTime() - startDate.getTime();
+            
+            if (timeDiff < 0) {
+                alert("開始日は本日より前の日付を選択してください。");
+                return;
+            }
+
             const names = ["田中", "佐藤", "鈴木", "高橋", "伊藤", "渡辺", "山本", "中村"];
             const items = ["打合せ", "資料作成", "システム開発", "顧客対応", "事務作業"];
             const contents = ["定例MTG", "見積書作成", "バグ修正", "電話応対", "経費精算", "コードレビュー"];
             
             let csv = "";
-            let startDate = new Date(2026, 0, 1); // 2026年1月1日から
 
-            for (let i = 0; i < 800; i++) {
-                // 日付を少しずつ進める
-                let d = new Date(startDate);
-                d.setDate(d.getDate() + Math.floor(i / 10)); 
-                let dateStr = d.toISOString().split('T')[0];
+            for (let i = 0; i < count; i++) {
+                let currentTimestamp = startDate.getTime() + (timeDiff * (i / count));
+                let d = new Date(currentTimestamp);
+                
+                // YYYY/MM/DD 形式で生成
+                let y = d.getFullYear();
+                let m = String(d.getMonth() + 1).padStart(2, '0');
+                let day = String(d.getDate()).padStart(2, '0');
+                let dateStr = `${y}/${m}/${day}`;
 
                 let name = names[Math.floor(Math.random() * names.length)];
                 let item = items[Math.floor(Math.random() * items.length)];
@@ -57,10 +85,8 @@
             document.getElementById('csvInput').value = csv.trim();
         }
 
-        // CSVをフィルタリングして名前主体のJSONに変換する関数
         function convert() {
             const input = document.getElementById('csvInput').value.trim();
-            const minDate = document.getElementById('startDate').value;
             if (!input) return;
 
             const lines = input.split('\n');
@@ -69,20 +95,10 @@
             lines.forEach(line => {
                 const cols = line.split(',');
                 if (cols.length < 4) return;
-
                 const [date, name, item, content] = cols.map(s => s.trim());
 
-                // 日付条件でフィルタリング
-                if (date >= minDate) {
-                    if (!result[name]) {
-                        result[name] = [];
-                    }
-                    result[name].push({
-                        "日付": date,
-                        "項目": item,
-                        "内容": content
-                    });
-                }
+                if (!result[name]) result[name] = [];
+                result[name].push({ "日付": date, "項目": item, "内容": content });
             });
 
             document.getElementById('jsonOutput').textContent = JSON.stringify(result, null, 2);

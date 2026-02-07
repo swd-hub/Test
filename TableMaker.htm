@@ -2,76 +2,44 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Professional Cross-Table Builder</title>
+    <title>Professional Data Processor (Latest Record First)</title>
     <style>
-        /* --- [通常画面用の基本スタイル] --- */
         :root {
             --primary: #4f46e5;
             --bg: #f1f5f9;
             --card: #ffffff;
             --border: #e2e8f0;
             --text-main: #1e293b;
+            --accent: #f59e0b;
         }
         body { font-family: sans-serif; background-color: var(--bg); color: var(--text-main); padding: 20px; }
         .container { max-width: 1200px; margin: auto; }
         .card { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h3 { border-left: 5px solid var(--primary); padding-left: 15px; font-size: 1rem; }
-        textarea { width: 100%; height: 100px; border: 2px dashed var(--border); border-radius: 8px; padding: 10px; cursor: pointer; box-sizing: border-box; }
+        h3 { border-left: 5px solid var(--primary); padding-left: 15px; font-size: 1rem; margin-top: 0; }
+        textarea { width: 100%; height: 120px; border: 2px dashed var(--border); border-radius: 8px; padding: 10px; cursor: pointer; box-sizing: border-box; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .stat-item { background: #f8fafc; border: 1px solid var(--border); padding: 10px; border-radius: 8px; text-align: center; }
+        .stat-value { display: block; font-size: 1.2rem; font-weight: bold; color: var(--primary); }
+        .stat-label { font-size: 0.75rem; color: #64748b; }
+
         .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
         .header-item-card { background: #f8fafc; border: 1px solid var(--border); padding: 12px; border-radius: 8px; }
-        .input-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-        .input-row input[type="text"] { flex: 1; padding: 5px; border: 1px solid var(--border); border-radius: 4px; }
-        .input-row input[type="number"] { width: 50px; padding: 5px; text-align: center; border: 1px solid var(--primary); border-radius: 4px; }
-        .mode-row { font-size: 0.8rem; color: #64748b; }
         
-        /* 画面表示用のテーブルスタイル */
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; table-layout: fixed; } /* table-layout: fixed で列幅を均等化 */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; table-layout: fixed; }
         th, td { border: 1px solid var(--border); padding: 10px; text-align: center; word-wrap: break-word; }
         th { background: #f8fafc; }
         .preview-title { text-align: center; font-size: 1.5rem; margin: 20px 0; font-weight: bold; }
         .btn-group { margin-bottom: 15px; }
         .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; margin-right: 5px; }
         .btn-success { background: #10b981; color: white; }
+        .btn-warning { background: var(--accent); color: white; }
         .btn-primary { background: var(--primary); color: white; }
 
-        /* --- [PDF・印刷用のスタイル設定] --- */
         @media print {
-            /* 1. 操作画面など不要な要素をすべて隠す */
-            .no-print, .btn-group, header { display: none !important; }
-
-            /* 2. 背景色やシャドウをリセット */
+            .no-print, .btn-group { display: none !important; }
             body, .container, .card { background: white !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; width: 100% !important; }
-
-            /* 3. 余白の設定 (上下左右) */
-            @page {
-                size: A4 landscape; /* 横向き設定 (縦なら portrait) */
-                margin: 15mm;       /* ここでPDFの余白（マージン）を調整 */
-            }
-
-            /* 4. 表題のデザイン調整 */
-            .preview-title {
-                margin-top: 0;
-                margin-bottom: 20px;
-                font-size: 20pt;    /* 表題のフォントサイズ */
-                color: black;
-            }
-
-            /* 5. テーブルの調整 */
-            table {
-                width: 100% !important;
-                border: 1px solid black !important;
-                table-layout: auto !important; /* PDFではコンテンツに合わせて幅調整 */
-            }
-            th, td {
-                border: 1px solid black !important;
-                font-size: 10pt !important; /* ★PDF内の文字の大きさはここで調整 */
-                padding: 5px !important;    /* ★セルの余白（高さ）はここで調整 */
-                color: black !important;
-            }
-            th { background-color: #eee !important; -webkit-print-color-adjust: exact; }
-
-            /* 6. 特定の列幅を指定したい場合 (例: 氏名列を少し広げるなど) */
-            /* td:first-child { width: 100px; } */
+            @page { size: A4 landscape; margin: 15mm; }
         }
     </style>
 </head>
@@ -80,27 +48,39 @@
 <div class="container">
     <div class="card no-print">
         <h3>基本設定</h3>
-        <input type="text" id="tableTitle" placeholder="PDFに出力される表題を入力" style="width: 100%; padding: 10px; box-sizing: border-box;" oninput="renderTable()">
+        <input type="text" id="tableTitle" placeholder="表題を入力" style="width: 100%; padding: 10px; box-sizing: border-box;" oninput="renderTable()">
     </div>
 
     <div class="card no-print">
-        <h3>データ読み込み (ダブルクリックでファイル選択)</h3>
-        <textarea id="csvInput" ondblclick="document.getElementById('fileHidden').click()" oninput="processData()" placeholder="CSVを貼り付け"></textarea>
+        <h3>CSVデータ読み込み</h3>
+        <textarea id="csvInput" ondblclick="document.getElementById('fileHidden').click()" oninput="processData()" placeholder="CSVを貼り付け（ダブルクリックでファイル選択）"></textarea>
         <input type="file" id="fileHidden" style="display:none" accept=".csv" onchange="handleFile(event)">
-        <div style="margin-top:10px;">
-            抽出基準日: <input type="date" id="dateFilter" onchange="processData()">
+        
+        <div id="statsPanel" style="margin-top:15px; display:none;">
+            <div class="stats-grid">
+                <div class="stat-item"><span class="stat-label">入力総行数</span><span id="statTotal" class="stat-value">0</span></div>
+                <div class="stat-item"><span class="stat-label">完全重複(全一致)</span><span id="statFullDup" class="stat-value">0</span></div>
+                <div class="stat-item"><span class="stat-label">日付違いで重複</span><span id="statDateDup" class="stat-value">0</span></div>
+                <div class="stat-item"><span class="stat-label">有効(ユニーク)データ</span><span id="statUnique" class="stat-value">0</span></div>
+                <div class="stat-item" style="border-color: var(--accent);">
+                    <span class="stat-label">表のサイズ(ヘッダー込)</span>
+                    <span id="statTableDim" class="stat-value">0行 × 0列</span>
+                </div>
+            </div>
+            表示フィルタ（基準日以降）: <input type="date" id="dateFilter" onchange="processData()">
         </div>
     </div>
 
     <div id="configSection" class="card no-print" style="display:none;">
-        <h3>項目設定 <small style="color:red; font-size:0.7rem;">※「0」で非表示。数字で順序割込。</small></h3>
+        <h3>クロス表のカラム設定</h3>
         <div id="headerSettings" class="config-grid"></div>
     </div>
 
     <div class="card">
         <div class="btn-group no-print">
             <button class="btn btn-success" onclick="exportCSV()">CSV保存</button>
-            <button class="btn btn-primary" onclick="window.print()">PDF出力 (印刷)</button>
+            <button class="btn btn-warning" onclick="exportJSON()">JSON保存</button>
+            <button class="btn btn-primary" onclick="window.print()">PDF出力</button>
         </div>
         <div id="displayTitle" class="preview-title"></div>
         <div id="tablePreview"></div>
@@ -108,11 +88,15 @@
 </div>
 
 <script>
-let nameGroupedData = {};
+let processedDataList = [];
+let nameGroupedData = {}; 
 let headerConfigs = [];
+let stats = { total: 0, fullDup: 0, dateDup: 0, unique: 0 };
+let currentTableStats = { rows: 0, cols: 0 };
 
 function handleFile(e) {
     const file = e.target.files[0];
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
         document.getElementById('csvInput').value = event.target.result;
@@ -124,26 +108,52 @@ function handleFile(e) {
 function processData() {
     const text = document.getElementById('csvInput').value.trim();
     if (!text) return;
-    const lines = text.split('\n');
-    const tempGrouped = {};
-    const itemSet = new Set();
-    const filterDate = document.getElementById('dateFilter').value.replace(/-/g, '/');
+    
+    const lines = text.split('\n').filter(l => l.trim() !== "");
+    stats.total = lines.length;
 
-    lines.forEach(line => {
-        const cols = line.split(/,|\t/).map(s => s.trim());
+    // 1. 完全一致の排除
+    const uniqueLines = [...new Set(lines)];
+    stats.fullDup = stats.total - uniqueLines.length;
+
+    // 2. 名前・項目・内容が一致する場合に「最新」を優先
+    const latestMap = new Map();
+    const itemSet = new Set();
+    let dateDupCount = 0;
+
+    uniqueLines.forEach(line => {
+        const cols = line.split(/,|\t/).map(s => s.trim().replace(/^"|"$/g, ''));
         if (cols.length < 4) return;
-        let [date, name, item, content] = cols;
-        date = date.replace(/-/g, '/');
-        if (!tempGrouped[name]) tempGrouped[name] = [];
-        tempGrouped[name].push({ date, item, content });
+        let [dateStr, name, item, content] = cols;
+        const dateObj = new Date(dateStr.replace(/-/g, '/'));
+        const key = `${name}|${item}|${content}`;
+        
+        if (!latestMap.has(key)) {
+            latestMap.set(key, { date: dateStr, name, item, content, timestamp: dateObj.getTime() });
+        } else {
+            dateDupCount++; 
+            // 既存より「新しい」日付なら上書き
+            if (dateObj.getTime() > latestMap.get(key).timestamp) {
+                latestMap.set(key, { date: dateStr, name, item, content, timestamp: dateObj.getTime() });
+            }
+        }
         itemSet.add(item);
     });
 
+    stats.dateDup = dateDupCount;
+    processedDataList = Array.from(latestMap.values());
+    stats.unique = processedDataList.length;
+
+    const filterDate = document.getElementById('dateFilter').value;
+    const filterTimestamp = filterDate ? new Date(filterDate).getTime() : 0;
+
     nameGroupedData = {};
-    for (const name in tempGrouped) {
-        const latestDate = tempGrouped[name].reduce((max, p) => p.date > max ? p.date : max, "");
-        if (!filterDate || latestDate >= filterDate) nameGroupedData[name] = tempGrouped[name];
-    }
+    processedDataList.forEach(d => {
+        if (d.timestamp >= filterTimestamp) {
+            if (!nameGroupedData[d.name]) nameGroupedData[d.name] = [];
+            nameGroupedData[d.name].push(d);
+        }
+    });
 
     const newItems = Array.from(itemSet);
     if (headerConfigs.length === 0) {
@@ -151,9 +161,27 @@ function processData() {
             raw: item, alias: item, order: i + 1, mode: 'content'
         }));
     }
+
+    document.getElementById('statsPanel').style.display = 'block';
     document.getElementById('configSection').style.display = 'block';
     renderHeaderConfigUI();
     renderTable();
+}
+
+function renderHeaderConfigUI() {
+    const container = document.getElementById('headerSettings');
+    container.innerHTML = headerConfigs.map((config, i) => `
+        <div class="header-item-card">
+            <div class="input-row">
+                <input type="number" value="${config.order}" min="0" onchange="updateOrder(${i}, this.value)">
+                <input type="text" value="${config.alias}" oninput="headerConfigs[${i}].alias=this.value; renderTable()">
+            </div>
+            <div style="font-size:0.8rem;">
+                <label><input type="radio" name="m_${i}" value="content" ${config.mode==='content'?'checked':''} onchange="headerConfigs[${i}].mode='content'; renderTable()">内容</label>
+                <label><input type="radio" name="m_${i}" value="date" ${config.mode==='date'?'checked':''} onchange="headerConfigs[${i}].mode='date'; renderTable()">日付</label>
+            </div>
+        </div>
+    `).join('');
 }
 
 function updateOrder(index, newOrder) {
@@ -169,40 +197,46 @@ function updateOrder(index, newOrder) {
     renderTable();
 }
 
-function renderHeaderConfigUI() {
-    const container = document.getElementById('headerSettings');
-    container.innerHTML = headerConfigs.map((config, i) => `
-        <div class="header-item-card">
-            <div class="input-row">
-                <input type="number" value="${config.order}" min="0" onchange="updateOrder(${i}, this.value)">
-                <input type="text" value="${config.alias}" oninput="headerConfigs[${i}].alias=this.value; renderTable()">
-            </div>
-            <div class="mode-row">
-                <label><input type="radio" name="m_${i}" value="content" ${config.mode==='content'?'checked':''} onchange="headerConfigs[${i}].mode='content'; renderTable()">内容</label>
-                <label><input type="radio" name="m_${i}" value="date" ${config.mode==='date'?'checked':''} onchange="headerConfigs[${i}].mode='date'; renderTable()">日付</label>
-            </div>
-        </div>
-    `).join('');
-}
-
 function renderTable() {
     document.getElementById('displayTitle').innerText = document.getElementById('tableTitle').value;
     const activeConfigs = headerConfigs.filter(c => c.order > 0).sort((a, b) => a.order - b.order);
+    const names = Object.keys(nameGroupedData);
+
+    currentTableStats.rows = names.length + 1;
+    currentTableStats.cols = activeConfigs.length + 1; 
 
     let html = `<table><thead><tr><th>氏名</th>`;
     activeConfigs.forEach(c => html += `<th>${c.alias}</th>`);
     html += `</tr></thead><tbody>`;
 
-    for (const name in nameGroupedData) {
+    names.forEach(name => {
         html += `<tr><td><strong>${name}</strong></td>`;
         activeConfigs.forEach(c => {
+            // ここで「鈴木×打合せ」に対して該当するデータ(233件の中にあるもの)を表示
+            // ※複数ある場合は最初の1つが表示される
             const entry = nameGroupedData[name].find(d => d.item === c.raw);
             html += `<td>${entry ? (c.mode === 'content' ? entry.content : entry.date) : '-'}</td>`;
         });
         html += `</tr>`;
-    }
+    });
     html += `</tbody></table>`;
+    
     document.getElementById('tablePreview').innerHTML = html;
+    
+    document.getElementById('statTotal').innerText = stats.total;
+    document.getElementById('statFullDup').innerText = stats.fullDup;
+    document.getElementById('statDateDup').innerText = stats.dateDup;
+    document.getElementById('statUnique').innerText = stats.unique;
+    document.getElementById('statTableDim').innerText = `${currentTableStats.rows}行 × ${currentTableStats.cols}列`;
+}
+
+function getTimestampStr() {
+    const now = new Date();
+    return now.getFullYear() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0') +
+        String(now.getHours()).padStart(2, '0') +
+        String(now.getMinutes()).padStart(2, '0');
 }
 
 function exportCSV() {
@@ -217,7 +251,43 @@ function exportCSV() {
     const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = "cross_table.csv";
+    link.download = `table_${getTimestampStr()}.csv`;
+    link.click();
+}
+
+function exportJSON() {
+    const userFocusData = [];
+    for (const name in nameGroupedData) {
+        userFocusData.push({
+            name: name,
+            records: nameGroupedData[name].map(r => ({
+                date: r.date,
+                item: r.item,
+                content: r.content
+            }))
+        });
+    }
+
+    const output = {
+        meta: {
+            filename: `data_${getTimestampStr()}.json`,
+            note: "Kept latest date for Name+Item+Content matches.",
+            stats: {
+                input_total_lines: stats.total,
+                full_duplicate_removed: stats.fullDup,
+                different_date_duplicate_removed: stats.dateDup,
+                final_unique_data_count: stats.unique,
+                preview_table_rows_incl_header: currentTableStats.rows,
+                preview_table_cols: currentTableStats.cols
+            }
+        },
+        payload: userFocusData
+    };
+
+    const blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = output.meta.filename;
     link.click();
 }
 </script>
