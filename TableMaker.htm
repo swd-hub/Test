@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Professional Cross-Table Builder</title>
+    <style>
+        /* --- [通常画面用の基本スタイル] --- */
+        :root {
+            --primary: #4f46e5;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+        }
+        body { font-family: sans-serif; background-color: var(--bg); color: var(--text-main); padding: 20px; }
+        .container { max-width: 1200px; margin: auto; }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h3 { border-left: 5px solid var(--primary); padding-left: 15px; font-size: 1rem; }
+        textarea { width: 100%; height: 100px; border: 2px dashed var(--border); border-radius: 8px; padding: 10px; cursor: pointer; box-sizing: border-box; }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .header-item-card { background: #f8fafc; border: 1px solid var(--border); padding: 12px; border-radius: 8px; }
+        .input-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .input-row input[type="text"] { flex: 1; padding: 5px; border: 1px solid var(--border); border-radius: 4px; }
+        .input-row input[type="number"] { width: 50px; padding: 5px; text-align: center; border: 1px solid var(--primary); border-radius: 4px; }
+        .mode-row { font-size: 0.8rem; color: #64748b; }
+        
+        /* 画面表示用のテーブルスタイル */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; table-layout: fixed; } /* table-layout: fixed で列幅を均等化 */
+        th, td { border: 1px solid var(--border); padding: 10px; text-align: center; word-wrap: break-word; }
+        th { background: #f8fafc; }
+        .preview-title { text-align: center; font-size: 1.5rem; margin: 20px 0; font-weight: bold; }
+        .btn-group { margin-bottom: 15px; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; margin-right: 5px; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-primary { background: var(--primary); color: white; }
+
+        /* --- [PDF・印刷用のスタイル設定] --- */
+        @media print {
+            /* 1. 操作画面など不要な要素をすべて隠す */
+            .no-print, .btn-group, header { display: none !important; }
+
+            /* 2. 背景色やシャドウをリセット */
+            body, .container, .card { background: white !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; width: 100% !important; }
+
+            /* 3. 余白の設定 (上下左右) */
+            @page {
+                size: A4 landscape; /* 横向き設定 (縦なら portrait) */
+                margin: 15mm;       /* ここでPDFの余白（マージン）を調整 */
+            }
+
+            /* 4. 表題のデザイン調整 */
+            .preview-title {
+                margin-top: 0;
+                margin-bottom: 20px;
+                font-size: 20pt;    /* 表題のフォントサイズ */
+                color: black;
+            }
+
+            /* 5. テーブルの調整 */
+            table {
+                width: 100% !important;
+                border: 1px solid black !important;
+                table-layout: auto !important; /* PDFではコンテンツに合わせて幅調整 */
+            }
+            th, td {
+                border: 1px solid black !important;
+                font-size: 10pt !important; /* ★PDF内の文字の大きさはここで調整 */
+                padding: 5px !important;    /* ★セルの余白（高さ）はここで調整 */
+                color: black !important;
+            }
+            th { background-color: #eee !important; -webkit-print-color-adjust: exact; }
+
+            /* 6. 特定の列幅を指定したい場合 (例: 氏名列を少し広げるなど) */
+            /* td:first-child { width: 100px; } */
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card no-print">
+        <h3>基本設定</h3>
+        <input type="text" id="tableTitle" placeholder="PDFに出力される表題を入力" style="width: 100%; padding: 10px; box-sizing: border-box;" oninput="renderTable()">
+    </div>
+
+    <div class="card no-print">
+        <h3>データ読み込み (ダブルクリックでファイル選択)</h3>
+        <textarea id="csvInput" ondblclick="document.getElementById('fileHidden').click()" oninput="processData()" placeholder="CSVを貼り付け"></textarea>
+        <input type="file" id="fileHidden" style="display:none" accept=".csv" onchange="handleFile(event)">
+        <div style="margin-top:10px;">
+            抽出基準日: <input type="date" id="dateFilter" onchange="processData()">
+        </div>
+    </div>
+
+    <div id="configSection" class="card no-print" style="display:none;">
+        <h3>項目設定 <small style="color:red; font-size:0.7rem;">※「0」で非表示。数字で順序割込。</small></h3>
+        <div id="headerSettings" class="config-grid"></div>
+    </div>
+
+    <div class="card">
+        <div class="btn-group no-print">
+            <button class="btn btn-success" onclick="exportCSV()">CSV保存</button>
+            <button class="btn btn-primary" onclick="window.print()">PDF出力 (印刷)</button>
+        </div>
+        <div id="displayTitle" class="preview-title"></div>
+        <div id="tablePreview"></div>
+    </div>
+</div>
+
+<script>
+let nameGroupedData = {};
+let headerConfigs = [];
+
+function handleFile(e) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        document.getElementById('csvInput').value = event.target.result;
+        processData();
+    };
+    reader.readAsText(file);
+}
+
+function processData() {
+    const text = document.getElementById('csvInput').value.trim();
+    if (!text) return;
+    const lines = text.split('\n');
+    const tempGrouped = {};
+    const itemSet = new Set();
+    const filterDate = document.getElementById('dateFilter').value.replace(/-/g, '/');
+
+    lines.forEach(line => {
+        const cols = line.split(/,|\t/).map(s => s.trim());
+        if (cols.length < 4) return;
+        let [date, name, item, content] = cols;
+        date = date.replace(/-/g, '/');
+        if (!tempGrouped[name]) tempGrouped[name] = [];
+        tempGrouped[name].push({ date, item, content });
+        itemSet.add(item);
+    });
+
+    nameGroupedData = {};
+    for (const name in tempGrouped) {
+        const latestDate = tempGrouped[name].reduce((max, p) => p.date > max ? p.date : max, "");
+        if (!filterDate || latestDate >= filterDate) nameGroupedData[name] = tempGrouped[name];
+    }
+
+    const newItems = Array.from(itemSet);
+    if (headerConfigs.length === 0) {
+        headerConfigs = newItems.map((item, i) => ({
+            raw: item, alias: item, order: i + 1, mode: 'content'
+        }));
+    }
+    document.getElementById('configSection').style.display = 'block';
+    renderHeaderConfigUI();
+    renderTable();
+}
+
+function updateOrder(index, newOrder) {
+    newOrder = parseInt(newOrder);
+    if (newOrder > 0) {
+        headerConfigs.forEach((config, i) => {
+            if (i === index) return;
+            if (config.order >= newOrder && config.order !== 0) config.order += 1;
+        });
+    }
+    headerConfigs[index].order = newOrder;
+    renderHeaderConfigUI();
+    renderTable();
+}
+
+function renderHeaderConfigUI() {
+    const container = document.getElementById('headerSettings');
+    container.innerHTML = headerConfigs.map((config, i) => `
+        <div class="header-item-card">
+            <div class="input-row">
+                <input type="number" value="${config.order}" min="0" onchange="updateOrder(${i}, this.value)">
+                <input type="text" value="${config.alias}" oninput="headerConfigs[${i}].alias=this.value; renderTable()">
+            </div>
+            <div class="mode-row">
+                <label><input type="radio" name="m_${i}" value="content" ${config.mode==='content'?'checked':''} onchange="headerConfigs[${i}].mode='content'; renderTable()">内容</label>
+                <label><input type="radio" name="m_${i}" value="date" ${config.mode==='date'?'checked':''} onchange="headerConfigs[${i}].mode='date'; renderTable()">日付</label>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderTable() {
+    document.getElementById('displayTitle').innerText = document.getElementById('tableTitle').value;
+    const activeConfigs = headerConfigs.filter(c => c.order > 0).sort((a, b) => a.order - b.order);
+
+    let html = `<table><thead><tr><th>氏名</th>`;
+    activeConfigs.forEach(c => html += `<th>${c.alias}</th>`);
+    html += `</tr></thead><tbody>`;
+
+    for (const name in nameGroupedData) {
+        html += `<tr><td><strong>${name}</strong></td>`;
+        activeConfigs.forEach(c => {
+            const entry = nameGroupedData[name].find(d => d.item === c.raw);
+            html += `<td>${entry ? (c.mode === 'content' ? entry.content : entry.date) : '-'}</td>`;
+        });
+        html += `</tr>`;
+    }
+    html += `</tbody></table>`;
+    document.getElementById('tablePreview').innerHTML = html;
+}
+
+function exportCSV() {
+    const table = document.querySelector("table");
+    if(!table) return;
+    let csv = [];
+    for (let i = 0; i < table.rows.length; i++) {
+        let row = [], cols = table.rows[i].cells;
+        for (let j = 0; j < cols.length; j++) row.push('"' + cols[j].innerText + '"');
+        csv.push(row.join(","));
+    }
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "cross_table.csv";
+    link.click();
+}
+</script>
+</body>
+</html>
