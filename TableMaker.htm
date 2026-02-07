@@ -2,65 +2,55 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Professional Data Processor (Latest Record First)</title>
-<style>
+    <title>みんなにやさしい集計ツール</title>
+    <style>
         :root {
             --primary: #4f46e5;
             --bg: #f1f5f9;
             --card: #ffffff;
             --border: #e2e8f0;
             --text-main: #1e293b;
-            --accent: #f59e0b;
         }
-        body { font-family: sans-serif; background-color: var(--bg); color: var(--text-main); padding: 20px; }
-        .container { max-width: 1200px; margin: auto; }
+        body { font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; background-color: var(--bg); color: var(--text-main); padding: 20px; }
+        .container { max-width: 1400px; margin: auto; }
         .card { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h3 { border-left: 5px solid var(--primary); padding-left: 15px; font-size: 1rem; margin-top: 0; }
-        textarea { width: 100%; height: 120px; border: 2px dashed var(--border); border-radius: 8px; padding: 10px; cursor: pointer; box-sizing: border-box; }
+        h3 { border-left: 5px solid var(--primary); padding-left: 15px; font-size: 1.1rem; margin-top: 0; }
+        
+        textarea { width: 100%; height: 120px; border: 2px dashed var(--border); border-radius: 8px; padding: 10px; cursor: pointer; box-sizing: border-box; font-family: monospace; font-size: 1rem; }
         
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 15px; }
         .stat-item { background: #f8fafc; border: 1px solid var(--border); padding: 10px; border-radius: 8px; text-align: center; }
         .stat-value { display: block; font-size: 1.2rem; font-weight: bold; color: var(--primary); }
-        .stat-label { font-size: 0.75rem; color: #64748b; }
+        .stat-label { font-size: 0.8rem; color: #64748b; }
 
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
-        .header-item-card { background: #f8fafc; border: 1px solid var(--border); padding: 12px; border-radius: 8px; }
+        .config-grid { display: flex; flex-wrap: wrap; gap: 15px; }
+        .header-item-card { background: #f8fafc; border: 1px solid var(--border); padding: 15px; border-radius: 8px; width: 320px; flex-shrink: 0; }
+        .input-row { display: flex; gap: 5px; margin-bottom: 10px; align-items: center; }
         
-        /* --- PDF/テーブルのレイアウト関連 --- */
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; table-layout: fixed; }
+        .column-filters { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 10px; }
+        .column-filters div { display: flex; flex-direction: column; font-size: 0.75rem; }
+        .column-filters input { padding: 4px; border: 1px solid var(--border); border-radius: 3px; font-size: 0.8rem; width: 100%; box-sizing: border-box; }
+
+        .table-wrapper { width: 100%; overflow-x: auto; background: white; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
         th, td { border: 1px solid var(--border); padding: 10px; text-align: center; word-wrap: break-word; }
         th { background: #f8fafc; }
-        .preview-title { text-align: center; font-size: 1.5rem; margin: 20px 0; font-weight: bold; }
+        .preview-title { text-align: center; font-size: 1.6rem; margin: 20px 0; font-weight: bold; }
         
         .btn-group { margin-bottom: 15px; }
-        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; margin-right: 5px; }
+        .btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; margin-right: 8px; font-size: 0.9rem; }
         .btn-success { background: #10b981; color: white; }
-        .btn-warning { background: var(--accent); color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
         .btn-primary { background: var(--primary); color: white; }
+        .btn-info { background: #3b82f6; color: white; }
 
-        /* --- 印刷・PDF出力用設定 --- */
+        .data-text-preview { margin-top: 15px; background: #eee; padding: 10px; border-radius: 6px; display: none; }
+        .data-text-preview textarea { height: 100px; background: #fff; cursor: text; }
+
         @media print {
-            /* 1. 印刷に不要な要素（ボタンや入力フォーム）を隠す */
-            .no-print, .btn-group, textarea, .config-grid { display: none !important; }
-
-            /* 2. 背景色や余白のリセット（PDF生成時のズレ防止） */
-            body, .container, .card { 
-                background: white !important; 
-                padding: 0 !important; 
-                margin: 0 !important; 
-                box-shadow: none !important; 
-                width: 100% !important; 
-            }
-
-            /* 3. テーブルのフォントサイズ調整（収まりが悪い場合はここをいじる） */
-            table { font-size: 0.9rem; }
-            th, td { padding: 6px; }
-
-            /* 4. A4設定：サイズ(portrait=縦, landscape=横)と余白 */
-            @page { 
-                size: A4 landscape; /* 横向き設定。縦にするなら portrait */
-                margin: 15mm;       /* 上下左右の余白 */
-            }
+            .no-print, .btn-group, textarea, .config-grid, .stats-grid, .data-text-preview { display: none !important; }
+            body, .container, .card { background: white !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; }
+            @page { size: A4 landscape; margin: 15mm; }
         }
     </style>
 </head>
@@ -68,52 +58,66 @@
 
 <div class="container">
     <div class="card no-print">
-        <h3>基本設定</h3>
-        <input type="text" id="tableTitle" placeholder="表題を入力" style="width: 100%; padding: 10px; box-sizing: border-box;" oninput="renderTable()">
+        <h3>1. 表題（タイトル）を決める</h3>
+        <input type="text" id="tableTitle" placeholder="例：活動報告" style="width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 4px;" oninput="renderTable()">
     </div>
 
     <div class="card no-print">
-        <h3>CSVデータ読み込み</h3>
-        <textarea id="csvInput" ondblclick="document.getElementById('fileHidden').click()" oninput="processData()" placeholder="CSVを貼り付け（ダブルクリックでファイル選択）"></textarea>
+        <h3>2. データの読み込み</h3>
+        <p style="font-size: 0.85rem; color: #666; margin-bottom: 8px;">枠内を<strong>「2回トントン（ダブルクリック）」</strong>してファイルを選ぶか、貼り付けてください。</p>
+        <textarea id="csvInput" ondblclick="document.getElementById('fileHidden').click()" oninput="processData()" placeholder="ここにデータを貼り付けてください"></textarea>
         <input type="file" id="fileHidden" style="display:none" accept=".csv" onchange="handleFile(event)">
         
-        <div id="statsPanel" style="margin-top:15px; display:none;">
+        <div id="statsPanel" style="margin-top:20px; display:none;">
             <div class="stats-grid">
                 <div class="stat-item"><span class="stat-label">入力総行数</span><span id="statTotal" class="stat-value">0</span></div>
-                <div class="stat-item"><span class="stat-label">完全重複(全一致)</span><span id="statFullDup" class="stat-value">0</span></div>
-                <div class="stat-item"><span class="stat-label">日付違いで重複</span><span id="statDateDup" class="stat-value">0</span></div>
-                <div class="stat-item"><span class="stat-label">有効(ユニーク)データ</span><span id="statUnique" class="stat-value">0</span></div>
-                <div class="stat-item" style="border-color: var(--accent);">
-                    <span class="stat-label">表のサイズ(ヘッダー込)</span>
-                    <span id="statTableDim" class="stat-value">0行 × 0列</span>
-                </div>
+                <div class="stat-item"><span class="stat-label">完全重複排除</span><span id="statFullDup" class="stat-value">0</span></div>
+                <div class="stat-item"><span class="stat-label">有効データ</span><span id="statUnique" class="stat-value">0</span></div>
+                <div class="stat-item" style="border-color: var(--accent);"><span class="stat-label">今の表のサイズ</span><span id="statTableDim" class="stat-value">0 × 0</span></div>
             </div>
-            表示フィルタ（基準日以降）: <input type="date" id="dateFilter" onchange="processData()">
+
+            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+                <label style="font-weight: bold; cursor: pointer; display: inline-block; margin-right: 25px;">
+                    <input type="checkbox" id="enableDedup" checked onchange="processData()"> 同じ人のデータが複数ある場合、最新のものだけを表示する
+                </label>
+                <label style="font-size: 0.9rem;">
+                    <strong>いつからのデータを表示するか:</strong> 
+                    <input type="date" id="dateFilter" onchange="renderTable()" style="padding: 5px;">
+                </label>
+            </div>
         </div>
     </div>
 
     <div id="configSection" class="card no-print" style="display:none;">
-        <h3>クロス表のカラム設定</h3>
+        <h3>3. 項目の表示設定</h3>
         <div id="headerSettings" class="config-grid"></div>
     </div>
 
     <div class="card">
         <div class="btn-group no-print">
+            <button class="btn btn-info" onclick="toggleTextPreview('csv')">CSVの中身を確認</button>
+            <button class="btn btn-info" onclick="toggleTextPreview('json')">JSONの中身を確認</button>
             <button class="btn btn-success" onclick="exportCSV()">CSV保存</button>
             <button class="btn btn-warning" onclick="exportJSON()">JSON保存</button>
-            <button class="btn btn-primary" onclick="window.print()">PDF出力</button>
+            <button class="btn btn-primary" onclick="window.print()">印刷 / PDF出力</button>
         </div>
+
+        <div id="dataTextPreview" class="data-text-preview no-print">
+            <strong id="previewType"></strong>の中身：
+            <textarea id="dataTextOutput" readonly></textarea>
+        </div>
+
         <div id="displayTitle" class="preview-title"></div>
-        <div id="tablePreview"></div>
+        <div class="table-wrapper">
+            <div id="tablePreview"></div>
+        </div>
     </div>
 </div>
 
 <script>
-let processedDataList = [];
-let nameGroupedData = {}; 
+let rawRecords = []; 
 let headerConfigs = [];
-let stats = { total: 0, fullDup: 0, dateDup: 0, unique: 0 };
-let currentTableStats = { rows: 0, cols: 0 };
+let stats = { total: 0, fullDup: 0, unique: 0 };
 
 function handleFile(e) {
     const file = e.target.files[0];
@@ -129,57 +133,44 @@ function handleFile(e) {
 function processData() {
     const text = document.getElementById('csvInput').value.trim();
     if (!text) return;
-    
     const lines = text.split('\n').filter(l => l.trim() !== "");
     stats.total = lines.length;
-
-    // 1. 完全一致の排除
     const uniqueLines = [...new Set(lines)];
     stats.fullDup = stats.total - uniqueLines.length;
 
-    // 2. 名前・項目・内容が一致する場合に「最新」を優先
-    const latestMap = new Map();
+    const isDedup = document.getElementById('enableDedup').checked;
     const itemSet = new Set();
-    let dateDupCount = 0;
+    const tempRecords = [];
 
     uniqueLines.forEach(line => {
         const cols = line.split(/,|\t/).map(s => s.trim().replace(/^"|"$/g, ''));
         if (cols.length < 4) return;
-        let [dateStr, name, item, content] = cols;
-        const dateObj = new Date(dateStr.replace(/-/g, '/'));
-        const key = `${name}|${item}|${content}`;
-        
-        if (!latestMap.has(key)) {
-            latestMap.set(key, { date: dateStr, name, item, content, timestamp: dateObj.getTime() });
-        } else {
-            dateDupCount++; 
-            // 既存より「新しい」日付なら上書き
-            if (dateObj.getTime() > latestMap.get(key).timestamp) {
-                latestMap.set(key, { date: dateStr, name, item, content, timestamp: dateObj.getTime() });
-            }
-        }
-        itemSet.add(item);
+        itemSet.add(cols[2]);
+        tempRecords.push({
+            date: cols[0].replace(/-/g, '/'),
+            name: cols[1],
+            item: cols[2],
+            content: cols[3],
+            ts: new Date(cols[0].replace(/-/g, '/')).getTime()
+        });
     });
 
-    stats.dateDup = dateDupCount;
-    processedDataList = Array.from(latestMap.values());
-    stats.unique = processedDataList.length;
+    if (isDedup) {
+        const map = new Map();
+        tempRecords.forEach(r => {
+            const key = `${r.name}|${r.item}`;
+            if (!map.has(key) || r.ts > map.get(key).ts) map.set(key, r);
+        });
+        rawRecords = Array.from(map.values());
+    } else {
+        rawRecords = tempRecords;
+    }
+    stats.unique = rawRecords.length;
 
-    const filterDate = document.getElementById('dateFilter').value;
-    const filterTimestamp = filterDate ? new Date(filterDate).getTime() : 0;
-
-    nameGroupedData = {};
-    processedDataList.forEach(d => {
-        if (d.timestamp >= filterTimestamp) {
-            if (!nameGroupedData[d.name]) nameGroupedData[d.name] = [];
-            nameGroupedData[d.name].push(d);
-        }
-    });
-
-    const newItems = Array.from(itemSet);
     if (headerConfigs.length === 0) {
-        headerConfigs = newItems.map((item, i) => ({
-            raw: item, alias: item, order: i + 1, mode: 'content'
+        headerConfigs = Array.from(itemSet).map((item, i) => ({
+            raw: item, alias: item, order: i + 1, mode: 'content',
+            fDate: '', fFreq: 1, fContent: ''
         }));
     }
 
@@ -194,122 +185,91 @@ function renderHeaderConfigUI() {
     container.innerHTML = headerConfigs.map((config, i) => `
         <div class="header-item-card">
             <div class="input-row">
-                <input type="number" value="${config.order}" min="0" onchange="updateOrder(${i}, this.value)">
-                <input type="text" value="${config.alias}" oninput="headerConfigs[${i}].alias=this.value; renderTable()">
+                <span>順序:</span><input type="number" style="width:40px" value="${config.order}" onchange="headerConfigs[${i}].order=parseInt(this.value); renderTable()">
+                <span style="margin-left:5px">名前:</span><input type="text" style="flex:1" value="${config.alias}" oninput="headerConfigs[${i}].alias=this.value; renderTable()">
             </div>
-            <div style="font-size:0.8rem;">
-                <label><input type="radio" name="m_${i}" value="content" ${config.mode==='content'?'checked':''} onchange="headerConfigs[${i}].mode='content'; renderTable()">内容</label>
-                <label><input type="radio" name="m_${i}" value="date" ${config.mode==='date'?'checked':''} onchange="headerConfigs[${i}].mode='date'; renderTable()">日付</label>
+            <div style="font-size:0.85rem; display:flex; justify-content:space-around; background:#fff; padding:5px; border-radius:4px; border:1px solid #e2e8f0;">
+                <label><input type="radio" name="m_${i}" value="content" ${config.mode==='content'?'checked':''} onchange="headerConfigs[${i}].mode='content'; renderTable()"> 内容</label>
+                <label><input type="radio" name="m_${i}" value="date" ${config.mode==='date'?'checked':''} onchange="headerConfigs[${i}].mode='date'; renderTable()"> 日付</label>
+                <label><input type="radio" name="m_${i}" value="freq" ${config.mode==='freq'?'checked':''} onchange="headerConfigs[${i}].mode='freq'; renderTable()"> 頻度</label>
+            </div>
+            <div class="column-filters">
+                <div><span>日付フィルタ</span><input type="text" value="${config.fDate}" placeholder="2025/01" oninput="headerConfigs[${i}].fDate=this.value; renderTable()"></div>
+                <div><span>頻度(以上)</span><input type="number" value="${config.fFreq}" min="1" oninput="headerConfigs[${i}].fFreq=parseInt(this.value); renderTable()"></div>
+                <div><span>内容フィルタ</span><input type="text" value="${config.fContent}" placeholder="キーワード" oninput="headerConfigs[${i}].fContent=this.value; renderTable()"></div>
             </div>
         </div>
     `).join('');
 }
 
-function updateOrder(index, newOrder) {
-    newOrder = parseInt(newOrder);
-    if (newOrder > 0) {
-        headerConfigs.forEach((config, i) => {
-            if (i === index) return;
-            if (config.order >= newOrder && config.order !== 0) config.order += 1;
+function getTableData() {
+    const activeConfigs = headerConfigs.filter(c => c.order > 0).sort((a, b) => a.order - b.order);
+    const limitDate = document.getElementById('dateFilter').value;
+    const limitTs = limitDate ? new Date(limitDate).getTime() : 0;
+    const grouped = {};
+    rawRecords.forEach(r => {
+        if (limitTs && r.ts < limitTs) return;
+        if (!grouped[r.name]) grouped[r.name] = {};
+        if (!grouped[r.name][r.item]) grouped[r.name][r.item] = [];
+        grouped[r.name][r.item].push(r);
+    });
+    const names = Object.keys(grouped).sort();
+    const rows = names.map(name => {
+        let hasMatch = false;
+        const cells = activeConfigs.map(c => {
+            let items = grouped[name][c.raw] || [];
+            if (c.fDate) items = items.filter(it => it.date.includes(c.fDate));
+            if (c.fContent) items = items.filter(it => it.content.includes(c.fContent));
+            if (items.length === 0 || items.length < c.fFreq) return "-";
+            hasMatch = true;
+            if (c.mode === 'freq') return items.length + " 回";
+            if (c.mode === 'date') return items[items.length-1].date;
+            return items[items.length-1].content;
         });
-    }
-    headerConfigs[index].order = newOrder;
-    renderHeaderConfigUI();
-    renderTable();
+        return hasMatch ? [name, ...cells] : null;
+    }).filter(r => r !== null);
+    return { headers: ["氏名", ...activeConfigs.map(c => c.alias)], rows };
 }
 
 function renderTable() {
+    const { headers, rows } = getTableData();
     document.getElementById('displayTitle').innerText = document.getElementById('tableTitle').value;
-    const activeConfigs = headerConfigs.filter(c => c.order > 0).sort((a, b) => a.order - b.order);
-    const names = Object.keys(nameGroupedData);
-
-    currentTableStats.rows = names.length + 1;
-    currentTableStats.cols = activeConfigs.length + 1; 
-
-    let html = `<table><thead><tr><th>氏名</th>`;
-    activeConfigs.forEach(c => html += `<th>${c.alias}</th>`);
-    html += `</tr></thead><tbody>`;
-
-    names.forEach(name => {
-        html += `<tr><td><strong>${name}</strong></td>`;
-        activeConfigs.forEach(c => {
-            // ここで「鈴木×打合せ」に対して該当するデータ(233件の中にあるもの)を表示
-            // ※複数ある場合は最初の1つが表示される
-            const entry = nameGroupedData[name].find(d => d.item === c.raw);
-            html += `<td>${entry ? (c.mode === 'content' ? entry.content : entry.date) : '-'}</td>`;
-        });
-        html += `</tr>`;
-    });
-    html += `</tbody></table>`;
-    
-    document.getElementById('tablePreview').innerHTML = html;
-    
+    let html = `<table><thead><tr>` + headers.map(h => `<th>${h}</th>`).join('') + `</tr></thead><tbody>`;
+    rows.forEach(r => html += `<tr>` + r.map((c, i) => i===0?`<td><strong>${c}</strong></td>`:`<td>${c}</td>`).join('') + `</tr>`);
+    document.getElementById('tablePreview').innerHTML = html + `</tbody></table>`;
     document.getElementById('statTotal').innerText = stats.total;
     document.getElementById('statFullDup').innerText = stats.fullDup;
-    document.getElementById('statDateDup').innerText = stats.dateDup;
     document.getElementById('statUnique').innerText = stats.unique;
-    document.getElementById('statTableDim').innerText = `${currentTableStats.rows}行 × ${currentTableStats.cols}列`;
+    document.getElementById('statTableDim').innerText = `${rows.length}名 × ${headers.length-1}項目`;
 }
 
-function getTimestampStr() {
-    const now = new Date();
-    return now.getFullYear() +
-        String(now.getMonth() + 1).padStart(2, '0') +
-        String(now.getDate()).padStart(2, '0') +
-        String(now.getHours()).padStart(2, '0') +
-        String(now.getMinutes()).padStart(2, '0');
+function toggleTextPreview(format) {
+    const { headers, rows } = getTableData();
+    const panel = document.getElementById('dataTextPreview');
+    const output = document.getElementById('dataTextOutput');
+    panel.style.display = 'block';
+    document.getElementById('previewType').innerText = format.toUpperCase();
+    if (format === 'csv') {
+        let csv = [headers.map(h => `"${h}"`).join(",")];
+        rows.forEach(r => csv.push(r.map(c => `"${c}"`).join(",")));
+        output.value = csv.join("\n");
+    } else {
+        output.value = JSON.stringify(rows.map(r => {
+            let o = {}; headers.forEach((h, i) => o[h] = r[i]); return o;
+        }), null, 2);
+    }
 }
 
 function exportCSV() {
-    const table = document.querySelector("table");
-    if(!table) return;
-    let csv = [];
-    for (let i = 0; i < table.rows.length; i++) {
-        let row = [], cols = table.rows[i].cells;
-        for (let j = 0; j < cols.length; j++) row.push('"' + cols[j].innerText + '"');
-        csv.push(row.join(","));
-    }
-    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `table_${getTimestampStr()}.csv`;
-    link.click();
+    toggleTextPreview('csv');
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), document.getElementById('dataTextOutput').value], { type: 'text/csv' });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "集計結果.csv"; a.click();
 }
 
 function exportJSON() {
-    const userFocusData = [];
-    for (const name in nameGroupedData) {
-        userFocusData.push({
-            name: name,
-            records: nameGroupedData[name].map(r => ({
-                date: r.date,
-                item: r.item,
-                content: r.content
-            }))
-        });
-    }
-
-    const output = {
-        meta: {
-            filename: `data_${getTimestampStr()}.json`,
-            note: "Kept latest date for Name+Item+Content matches.",
-            stats: {
-                input_total_lines: stats.total,
-                full_duplicate_removed: stats.fullDup,
-                different_date_duplicate_removed: stats.dateDup,
-                final_unique_data_count: stats.unique,
-                preview_table_rows_incl_header: currentTableStats.rows,
-                preview_table_cols: currentTableStats.cols
-            }
-        },
-        payload: userFocusData
-    };
-
-    const blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = output.meta.filename;
-    link.click();
+    toggleTextPreview('json');
+    const blob = new Blob([document.getElementById('dataTextOutput').value], { type: 'application/json' });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "データ.json"; a.click();
 }
 </script>
 </body>
