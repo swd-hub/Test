@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>みんなにやさしい集計ツール</title>
+    <title>デジタルトランスフォーメーション（ＤＸ）推進　集計ツール</title>
     <style>
         :root {
             --primary: #4f46e5;
@@ -59,7 +59,7 @@
 <div class="container">
     <div class="card no-print">
         <h3>1. 表題（タイトル）を決める</h3>
-        <input type="text" id="tableTitle" placeholder="例：活動報告" style="width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 4px;" oninput="renderTable()">
+        <input type="text" id="tableTitle" placeholder="例：月間まとめ" style="width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 4px;" oninput="renderTable()">
     </div>
 
     <div class="card no-print">
@@ -73,17 +73,18 @@
                 <div class="stat-item"><span class="stat-label">入力総行数</span><span id="statTotal" class="stat-value">0</span></div>
                 <div class="stat-item"><span class="stat-label">完全重複排除</span><span id="statFullDup" class="stat-value">0</span></div>
                 <div class="stat-item"><span class="stat-label">有効データ</span><span id="statUnique" class="stat-value">0</span></div>
-                <div class="stat-item" style="border-color: var(--accent);"><span class="stat-label">今の表のサイズ</span><span id="statTableDim" class="stat-value">0 × 0</span></div>
+                <div class="stat-item" style="border-color: var(--primary);"><span class="stat-label">今の表のサイズ</span><span id="statTableDim" class="stat-value">0 × 0</span></div>
             </div>
 
             <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
                 <label style="font-weight: bold; cursor: pointer; display: inline-block; margin-right: 25px;">
-                    <input type="checkbox" id="enableDedup" checked onchange="processData()"> 同じ人のデータが複数ある場合、最新のものだけを表示する
+                    <input type="checkbox" id="enableDedup" checked onchange="processData()"> 同じ名前のデータが複数ある場合、最新のものだけを表示する
                 </label>
-                <label style="font-size: 0.9rem;">
-                    <strong>いつからのデータを表示するか:</strong> 
-                    <input type="date" id="dateFilter" onchange="renderTable()" style="padding: 5px;">
-                </label>
+                <div style="margin-top: 10px; font-size: 0.9rem; color: #334155;">
+                    <strong>表に表示する基準：</strong>
+                    <input type="date" id="latestDateLimit" onchange="renderTable()" style="padding: 5px;">
+                    <span>より後に、一度でも記録がある「名前（対象）」だけを表示する</span>
+                </div>
             </div>
         </div>
     </div>
@@ -204,20 +205,25 @@ function renderHeaderConfigUI() {
 
 function getTableData() {
     const activeConfigs = headerConfigs.filter(c => c.order > 0).sort((a, b) => a.order - b.order);
-    const limitDate = document.getElementById('dateFilter').value;
-    const limitTs = limitDate ? new Date(limitDate).getTime() : 0;
+    const dateLimitValue = document.getElementById('latestDateLimit').value;
+    const dateLimitTs = dateLimitValue ? new Date(dateLimitValue).getTime() : 0;
+    
     const grouped = {};
     rawRecords.forEach(r => {
-        if (limitTs && r.ts < limitTs) return;
-        if (!grouped[r.name]) grouped[r.name] = {};
-        if (!grouped[r.name][r.item]) grouped[r.name][r.item] = [];
-        grouped[r.name][r.item].push(r);
+        if (!grouped[r.name]) grouped[r.name] = { items: {}, maxTs: 0 };
+        if (!grouped[r.name].items[r.item]) grouped[r.name].items[r.item] = [];
+        grouped[r.name].items[r.item].push(r);
+        if (r.ts > grouped[r.name].maxTs) grouped[r.name].maxTs = r.ts;
     });
-    const names = Object.keys(grouped).sort();
+
+    const names = Object.keys(grouped).filter(name => {
+        return grouped[name].maxTs >= dateLimitTs;
+    }).sort();
+
     const rows = names.map(name => {
         let hasMatch = false;
         const cells = activeConfigs.map(c => {
-            let items = grouped[name][c.raw] || [];
+            let items = grouped[name].items[c.raw] || [];
             if (c.fDate) items = items.filter(it => it.date.includes(c.fDate));
             if (c.fContent) items = items.filter(it => it.content.includes(c.fContent));
             if (items.length === 0 || items.length < c.fFreq) return "-";
@@ -228,7 +234,8 @@ function getTableData() {
         });
         return hasMatch ? [name, ...cells] : null;
     }).filter(r => r !== null);
-    return { headers: ["氏名", ...activeConfigs.map(c => c.alias)], rows };
+
+    return { headers: ["名前（対象）", ...activeConfigs.map(c => c.alias)], rows };
 }
 
 function renderTable() {
@@ -237,10 +244,11 @@ function renderTable() {
     let html = `<table><thead><tr>` + headers.map(h => `<th>${h}</th>`).join('') + `</tr></thead><tbody>`;
     rows.forEach(r => html += `<tr>` + r.map((c, i) => i===0?`<td><strong>${c}</strong></td>`:`<td>${c}</td>`).join('') + `</tr>`);
     document.getElementById('tablePreview').innerHTML = html + `</tbody></table>`;
+    
     document.getElementById('statTotal').innerText = stats.total;
     document.getElementById('statFullDup').innerText = stats.fullDup;
     document.getElementById('statUnique').innerText = stats.unique;
-    document.getElementById('statTableDim').innerText = `${rows.length}名 × ${headers.length-1}項目`;
+    document.getElementById('statTableDim').innerText = `${rows.length}件 × ${headers.length-1}項目`;
 }
 
 function toggleTextPreview(format) {
