@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Data Viewer - Card Database</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --sidebar-width: 380px;
+        }
+        body { font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; background-color: var(--bg); color: var(--text-main); margin: 0; overflow: hidden; display: flex; }
+
+        /* 操作パネル（ドロワー） */
+        #sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: #fff;
+            border-right: 1px solid var(--border);
+            position: fixed;
+            left: calc(-1 * var(--sidebar-width));
+            top: 0;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            padding: 30px 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        }
+        #sidebar.open { transform: translateX(var(--sidebar-width)); }
+
+        /* メインエリア */
+        #main-content {
+            flex: 1;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+            padding: 40px;
+            box-sizing: border-box;
+        }
+
+        /* トグルボタン */
+        .toggle-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1100;
+            background: var(--text-main);
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* 巨大化したカード */
+        .db-card {
+            background: var(--card);
+            width: 100%;
+            max-width: 1000px;
+            height: 85vh;
+            padding: 60px;
+            border-radius: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
+            border-top: 15px solid var(--primary);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        .card-header {
+            border-bottom: 4px solid var(--bg);
+            margin-bottom: 40px;
+            padding-bottom: 15px;
+        }
+        .card-header h1 { font-size: 3rem; margin: 0; color: var(--text-main); letter-spacing: -0.02em; }
+        
+        .card-body {
+            flex: 1;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+        }
+        .card-field {
+            background: #fdfdfd;
+            border: 1px solid #f1f5f9;
+            padding: 20px;
+            border-radius: 16px;
+            transition: 0.2s;
+        }
+        .card-field:hover { border-color: var(--primary); background: #fff; }
+        .field-label { font-size: 0.85rem; color: var(--primary); font-weight: 800; margin-bottom: 10px; letter-spacing: 0.05em; }
+        .field-value { font-size: 1.3rem; line-height: 1.4; color: #1e293b; font-weight: 500; }
+        .field-date { font-size: 0.75rem; color: #94a3b8; margin-top: 10px; font-family: monospace; }
+
+        /* ページ操作 */
+        .nav-controls { display: flex; align-items: center; gap: 40px; margin-top: 30px; }
+        .btn { padding: 15px 35px; border-radius: 12px; border: none; cursor: pointer; font-weight: bold; font-size: 1.1rem; transition: all 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(79, 70, 229, 0.4); }
+        
+        /* 設定項目 */
+        textarea { width: 100%; height: 120px; margin-bottom: 20px; border-radius: 12px; border: 2px dashed var(--border); padding: 15px; font-size: 0.85rem; }
+        .setting-section { margin-bottom: 30px; }
+        .setting-section h3 { font-size: 0.9rem; border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 15px; }
+
+        @media print { .toggle-btn, #sidebar, .nav-controls { display: none !important; } .db-card { width: 100%; height: auto; box-shadow: none; border: 1px solid #000; } }
+    </style>
+</head>
+<body>
+
+<button class="toggle-btn" onclick="toggleSidebar()">☰ 設定パネル</button>
+
+<div id="sidebar">
+    <h2 style="margin-top: 40px; font-size: 1.5rem;">Data Configuration</h2>
+    
+    <div class="setting-section">
+        <h3>1. データ読込</h3>
+        <p style="font-size: 0.75rem; color: #64748b;">CSV貼り付け or ダブルクリック選択</p>
+        <textarea id="csvInput" ondblclick="document.getElementById('fileHidden').click()" oninput="processData()" placeholder="ここにCSVデータを貼り付け"></textarea>
+        <input type="file" id="fileHidden" style="display:none" accept=".csv" onchange="handleFile(event)">
+        
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; color: var(--primary); font-weight: bold;">
+            <input type="checkbox" id="enableDedup" checked onchange="processData()"> 各項目の最終更新日データのみ抽出
+        </label>
+    </div>
+    
+    <div class="setting-section">
+        <h3>2. 絞り込み条件</h3>
+        <input type="text" id="globalSearch" style="width:100%; padding:12px; margin-bottom:10px; border:1px solid var(--border); border-radius:8px;" placeholder="名前(主キー)を検索..." oninput="renderView()">
+        <p style="font-size: 0.75rem; margin-bottom:5px;">基準日以降の記録がある対象のみ表示:</p>
+        <input type="date" id="dateFilter" style="width:100%; padding:12px; border:1px solid var(--border); border-radius:8px;" onchange="renderView()">
+    </div>
+
+    <div class="setting-section">
+        <h3>3. 表示項目の表示名設定</h3>
+        <div id="headerSettings"></div>
+    </div>
+</div>
+
+<div id="main-content">
+    <div id="cardView" style="width: 100%; display: flex; justify-content: center;"></div>
+
+    <div class="nav-controls">
+        <button class="btn btn-primary" onclick="changePage(-1)">◀ PREV</button>
+        <span id="pageInfo" style="font-size: 1.5rem; font-weight: 800; font-family: 'Courier New', Courier, monospace;">0 / 0</span>
+        <button class="btn btn-primary" onclick="changePage(1)">NEXT ▶</button>
+    </div>
+</div>
+
+<script>
+let rawRecords = [];
+let headerConfigs = [];
+let currentIndex = 0;
+
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+}
+
+function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        document.getElementById('csvInput').value = event.target.result;
+        processData();
+    };
+    reader.readAsText(file);
+}
+
+function processData() {
+    const text = document.getElementById('csvInput').value.trim();
+    if (!text) return;
+    
+    // 全行パース & 日付で降順ソート（新しい日付を配列の前方へ）
+    const allParsed = text.split('\n')
+        .filter(l => l.trim() !== "")
+        .map(line => {
+            const cols = line.split(/,|\t/).map(s => s.trim().replace(/^"|"$/g, ''));
+            return {
+                date: cols[0].replace(/-/g, '/'),
+                name: cols[1],
+                item: cols[2],
+                content: cols[3],
+                ts: new Date(cols[0].replace(/-/g, '/')).getTime()
+            };
+        })
+        .filter(r => !isNaN(r.ts))
+        .sort((a, b) => b.ts - a.ts); 
+
+    const isFinalOnly = document.getElementById('enableDedup').checked;
+    const itemSet = new Set();
+
+    if (isFinalOnly) {
+        // 同じ「氏名＋項目」の組み合わせで、最初に出現したもの（＝最新日付）のみ保持
+        const map = new Map();
+        allParsed.forEach(r => {
+            const key = `${r.name}|${r.item}`;
+            if (!map.has(key)) map.set(key, r);
+            itemSet.add(r.item);
+        });
+        rawRecords = Array.from(map.values());
+    } else {
+        allParsed.forEach(r => itemSet.add(r.item));
+        rawRecords = allParsed;
+    }
+
+    if (headerConfigs.length === 0) {
+        headerConfigs = Array.from(itemSet).map((item, i) => ({
+            raw: item, alias: item, active: true
+        }));
+    }
+    renderHeaderSettings();
+    renderView();
+}
+
+function renderHeaderSettings() {
+    const container = document.getElementById('headerSettings');
+    container.innerHTML = headerConfigs.map((config, i) => `
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; background:#f8fafc; padding:8px; border-radius:8px;">
+            <input type="checkbox" ${config.active?'checked':''} onchange="headerConfigs[${i}].active=this.checked; renderView()">
+            <input type="text" value="${config.alias}" style="flex:1; padding:4px; border:1px solid #ddd; border-radius:4px;" oninput="headerConfigs[${i}].alias=this.value; renderView()">
+        </div>
+    `).join('');
+}
+
+function getFilteredData() {
+    const searchTerm = document.getElementById('globalSearch').value.toLowerCase();
+    const dateLimit = document.getElementById('dateFilter').value;
+    const dateLimitTs = dateLimit ? new Date(dateLimit).getTime() : 0;
+
+    const grouped = {};
+    rawRecords.forEach(r => {
+        if (!grouped[r.name]) grouped[r.name] = { name: r.name, items: {}, maxTs: 0 };
+        // 重複排除オフの場合は、同じ項目でも「より新しい日付」を優先してカードに表示
+        if (!grouped[r.name].items[r.item] || r.ts > grouped[r.name].items[r.item].ts) {
+            grouped[r.name].items[r.item] = r;
+        }
+        if (r.ts > grouped[r.name].maxTs) grouped[r.name].maxTs = r.ts;
+    });
+
+    return Object.values(grouped).filter(person => {
+        return person.name.toLowerCase().includes(searchTerm) && person.maxTs >= dateLimitTs;
+    }).sort((a, b) => b.maxTs - a.maxTs);
+}
+
+function renderView() {
+    const filtered = getFilteredData();
+    const container = document.getElementById('cardView');
+    const pageInfo = document.getElementById('pageInfo');
+
+    if (filtered.length === 0) {
+        container.innerHTML = "<div style='color:#94a3b8;'>条件に合致するデータがありません。設定パネルでCSVを読み込んでください。</div>";
+        pageInfo.innerText = "0 / 0";
+        return;
+    }
+
+    if (currentIndex >= filtered.length) currentIndex = 0;
+    const person = filtered[currentIndex];
+
+    let fieldsHtml = headerConfigs.filter(c => c.active).map(config => {
+        const record = person.items[config.raw];
+        return `
+            <div class="card-field">
+                <div class="field-label">${config.alias}</div>
+                <div class="field-value">${record ? record.content : "-"}</div>
+                <div class="field-date">📅最終確認: ${record ? record.date : "記録なし"}</div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="db-card">
+            <div class="card-header">
+                <div style="font-size:0.9rem; color:var(--primary); font-weight:800;">SUBJECT / PRIMARY KEY</div>
+                <h1>${person.name}</h1>
+            </div>
+            <div class="card-body">
+                ${fieldsHtml}
+            </div>
+        </div>
+    `;
+    pageInfo.innerText = `${currentIndex + 1} / ${filtered.length}`;
+}
+
+function changePage(step) {
+    const filtered = getFilteredData();
+    if (filtered.length === 0) return;
+    currentIndex = (currentIndex + step + filtered.length) % filtered.length;
+    renderView();
+}
+</script>
+</body>
+</html>
