@@ -206,7 +206,7 @@
   <header>
     <div class="eyebrow">Compound Interest &amp; Annuity</div>
     <h1>投資の経済計算</h1>
-    <div class="sub">現価・終価・年価・年利率・年数のうち、求めたい 1 項目だけを<br>空欄にして「計算する」を押してください。</div>
+    <div class="sub">現価・終価・年価・年利率・年数のうち、求めたい項目を<br>空欄のまま「計算する」を押してください（複数空欄でも可）。</div>
   </header>
 
   <div class="card">
@@ -247,7 +247,9 @@
 
     <div class="hint">
       ・単利ではなく複利（元利均等の年金現価・年金終価）で計算します。<br>
-      ・P・S・M の 3 つの元本系の値のうち、n・i は必須です。<br>
+      ・n（年数）・i（年利率）は基本的に必須です。<br>
+      ・S と M を両方空欄にした場合など、P・i・n から S が求まり、<br>
+      　　さらにその S を使って M も連鎖的に求まります。<br>
       ・年利率は「3」と入力すると 3%（=0.03）として計算します。
     </div>
   </div>
@@ -288,121 +290,102 @@ function calculate(){
   let i = (iPercent === null) ? null : iPercent / 100;
   let n = parseVal('n');
 
-  const blanks = [];
-  if(P === null) blanks.push('P');
-  if(S === null) blanks.push('S');
-  if(M === null) blanks.push('M');
-  if(i === null) blanks.push('i');
-  if(n === null) blanks.push('n');
-
+  const wasBlank = { P: P===null, S: S===null, M: M===null, i: i===null, n: n===null };
   const resultDiv = document.getElementById('result');
 
-  if(blanks.length === 0){
-    resultDiv.innerHTML = `<div class="error-box">求めたい項目を 1 つ、空欄のままにしてください。（現在すべて入力されています）</div>`;
-    return;
-  }
-  if(blanks.length > 1){
-    resultDiv.innerHTML = `<div class="error-box">空欄が ${blanks.length} 個あります（${blanks.join('・')}）。求めたい 1 項目だけを空欄にしてください。</div>`;
+  if(!wasBlank.P && !wasBlank.S && !wasBlank.M && !wasBlank.i && !wasBlank.n){
+    resultDiv.innerHTML = errBox('すべての項目が入力されています。求めたい項目を空欄にしてください。');
     return;
   }
 
-  const target = blanks[0];
-  document.getElementById('f-'+target).classList.add('unknown');
+  const formulaUsed = {};
+  const pow = () => (i !== null && n !== null) ? Math.pow(1+i, n) : null;
 
-  let value = null, formula = '', label = '', usedCase = '';
+  // 元のScratch同様、9パターンの条件を「2回」評価する。
+  // 1回目で求まった値を2回目で他の式にも使い回すことで、
+  // 例えば S と M が両方空欄でも P・i・n から S → その S を使って M、
+  // というように連鎖的に求まっていく。
+  for(let pass = 0; pass < 2; pass++){
 
-  // べき乗 = (1+i)^n（元のScratchの「べき乗」カスタムブロックに相当）
-  const pow = (i !== null && n !== null) ? Math.pow(1+i, n) : null;
+    if(P === null && S !== null && n !== null && i !== null){
+      const p = pow();
+      P = S / p;
+      formulaUsed.P = 'P = S / (1+i)ⁿ　【一括：終価から逆算】';
+    }
+    if(P === null && M !== null && n !== null && i !== null){
+      const p = pow();
+      P = (p - 1) * (M / (i * p));
+      formulaUsed.P = 'P = M・[(1+i)ⁿ−1] / [i・(1+i)ⁿ]　【年金現価】';
+    }
 
-  if(target === 'P'){
-    label = '現価 P';
-    // Scratch側は S→P（一括） の後に M→P（年金） を評価し、両方成立する場合は
-    // 年金側（M）の結果で上書きされる。その優先順位をそのまま再現する。
-    if(S !== null && n !== null && i !== null){
-      value = S / pow;
-      formula = 'P = S / (1+i)ⁿ　【一括：終価から逆算】';
-      usedCase = 'lump';
+    if(S === null && P !== null && n !== null && i !== null){
+      const p = pow();
+      S = p * P;
+      formulaUsed.S = 'S = P・(1+i)ⁿ　【一括：現価から複利計算】';
     }
-    if(M !== null && n !== null && i !== null){
-      value = (pow - 1) * (M / (i * pow));
-      formula = 'P = M・[(1+i)ⁿ−1] / [i・(1+i)ⁿ]　【年金現価】';
-      usedCase = 'annuity';
+    if(S === null && M !== null && n !== null && i !== null){
+      const p = pow();
+      S = ((p * (P !== null ? P : 0)) - 1) * (M / i);
+      formulaUsed.S = 'S = [(1+i)ⁿ・P − 1]・(M / i)　【年金終価（元のScratch定義どおり）】';
     }
-    if(value === null){
-      resultDiv.innerHTML = errBox('P を求めるには「n・i」に加えて「S」または「M」が必要です。');
-      return;
+
+    if(M === null && S !== null && n !== null && i !== null){
+      const p = pow();
+      M = (i * S) / (p - 1);
+      formulaUsed.M = 'M = i・S / [(1+i)ⁿ−1]　【減債基金：目標額Sに必要な積立額】';
     }
-  }
-  else if(target === 'S'){
-    label = '終価 S';
-    if(P !== null && n !== null && i !== null){
-      value = pow * P;
-      formula = 'S = P・(1+i)ⁿ　【一括：現価から複利計算】';
+    if(M === null && P !== null && n !== null && i !== null){
+      const p = pow();
+      M = (p * i) * (P / (p - 1));
+      formulaUsed.M = 'M = i・(1+i)ⁿ・P / [(1+i)ⁿ−1]　【資本回収：元本Pの返済（年金）額】';
     }
-    if(M !== null && n !== null && i !== null){
-      value = ((pow * (P !== null ? P : 0)) - 1) * (M / i);
-      formula = 'S = [(1+i)ⁿ・P − 1]・(M / i)　【年金終価（元のScratch定義どおり）】';
+
+    if(n === null && S !== null && P !== null && i !== null){
+      n = Math.ceil(Math.log(S / P) / Math.log(1 + i));
+      formulaUsed.n = 'n = log(S/P) / log(1+i)　【一括】';
     }
-    if(value === null){
-      resultDiv.innerHTML = errBox('S を求めるには「n・i」に加えて「P」または「M」が必要です。');
-      return;
+    if(n === null && S !== null && M !== null && i !== null){
+      n = Math.ceil(Math.log(((S * i) / M) + 1) / Math.log(1 + i));
+      formulaUsed.n = 'n = log((S・i/M)+1) / log(1+i)　【年金】';
     }
-  }
-  else if(target === 'M'){
-    label = '年価 M';
-    if(S !== null && n !== null && i !== null){
-      value = (i * S) / (pow - 1);
-      formula = 'M = i・S / [(1+i)ⁿ−1]　【減債基金：目標額Sに必要な積立額】';
-    }
-    if(P !== null && n !== null && i !== null){
-      value = (pow * i) * (P / (pow - 1));
-      formula = 'M = i・(1+i)ⁿ・P / [(1+i)ⁿ−1]　【資本回収：元本Pの返済（年金）額】';
-    }
-    if(value === null){
-      resultDiv.innerHTML = errBox('M を求めるには「n・i」に加えて「S」または「P」が必要です。');
-      return;
-    }
-  }
-  else if(target === 'n'){
-    label = '年数 n';
-    if(S !== null && P !== null && i !== null){
-      value = Math.log(S / P) / Math.log(1 + i);
-      formula = 'n = log(S/P) / log(1+i)　【一括】';
-    }
-    if(S !== null && M !== null && i !== null){
-      value = Math.log(((S * i) / M) + 1) / Math.log(1 + i);
-      formula = 'n = log((S・i/M)+1) / log(1+i)　【年金】';
-    }
-    if(value === null){
-      resultDiv.innerHTML = errBox('n を求めるには「S・i」に加えて「P」または「M」が必要です。');
-      return;
-    }
-    value = Math.ceil(value); // 元のScratchと同様、年数は切り上げ
-  }
-  else if(target === 'i'){
-    label = '年利率 i';
-    if(S !== null && P !== null && n !== null){
+
+    if(i === null && S !== null && P !== null && n !== null){
       const root = Math.pow(S / P, 1 / n);
-      value = (root - 1) * 100; // %表示
-      formula = 'i = [(S/P)^(1/n) − 1]　【S・P・nから逆算】';
-    }
-    if(value === null){
-      resultDiv.innerHTML = errBox('i を求めるには「S・P・n」がすべて必要です。');
-      return;
+      i = root - 1;
+      formulaUsed.i = 'i = [(S/P)^(1/n) − 1]　【S・P・nから逆算】';
     }
   }
 
-  const displayValue = (target === 'i') ? (Math.round(value*10000)/10000) + ' %'
-                      : (target === 'n') ? Math.round(value) + ' 年'
-                      : fmt(value);
+  const computedVars = ['P','S','M','i','n'].filter(v => wasBlank[v] && formulaUsed[v]);
+  const stillBlank = ['P','S','M','i','n'].filter(v => wasBlank[v] && !formulaUsed[v]);
 
-  resultDiv.innerHTML = `
-    <div class="result-box">
-      <div class="result-label">${label}</div>
-      <div class="result-value">${displayValue}</div>
-      <div class="result-formula">${formula}</div>
-    </div>
-  `;
+  if(computedVars.length === 0){
+    resultDiv.innerHTML = errBox('入力された項目だけでは計算できません。n・i を含め、必要な項目を入力してください。');
+    return;
+  }
+
+  const values = {P,S,M,i,n};
+  const labels = {P:'現価 P', S:'終価 S', M:'年価 M', i:'年利率 i', n:'年数 n'};
+
+  let html = '';
+  computedVars.forEach(v => {
+    document.getElementById('f-'+v).classList.add('unknown');
+    const displayValue = (v === 'i') ? (Math.round(values.i*100*10000)/10000) + ' %'
+                        : (v === 'n') ? Math.round(values.n) + ' 年'
+                        : fmt(values[v]);
+    html += `
+      <div class="result-box" style="margin-bottom:10px;">
+        <div class="result-label">${labels[v]}</div>
+        <div class="result-value">${displayValue}</div>
+        <div class="result-formula">${formulaUsed[v]}</div>
+      </div>`;
+  });
+
+  if(stillBlank.length > 0){
+    html += `<div class="error-box" style="margin-top:4px;">${stillBlank.map(v=>labels[v]).join('・')} は情報不足のため計算できませんでした。</div>`;
+  }
+
+  resultDiv.innerHTML = html;
 }
 
 function errBox(msg){
