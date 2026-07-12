@@ -340,6 +340,47 @@
     padding:0;
   }
   .rate-grid .yr-box input:focus{outline:none;}
+  .stage-row{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    margin-bottom:8px;
+  }
+  .stage-row .stage-idx{
+    font-size:11px;
+    color:var(--text-dim);
+    width:34px;
+    flex-shrink:0;
+  }
+  .stage-row input{
+    flex:1;
+    background:#0d151c;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px 10px;
+    color:var(--text);
+    font-size:13px;
+  }
+  .stage-row input:focus{
+    outline:none;
+    border-color:var(--gold-dim);
+  }
+  .stage-row .stage-remove{
+    flex-shrink:0;
+    width:28px;
+    height:28px;
+    border:1px solid var(--line);
+    border-radius:7px;
+    background:transparent;
+    color:var(--text-dim);
+    cursor:pointer;
+    font-size:14px;
+    line-height:1;
+  }
+  .stage-row .stage-remove:hover{
+    color:var(--warn);
+    border-color:var(--warn);
+  }
 </style>
 </head>
 <body>
@@ -400,10 +441,24 @@
       <input type="text" id="S" inputmode="decimal" placeholder="例）1500000">
     </div>
 
+    <div class="field" id="f-staged-toggle">
+      <label><span class="sym">段階的な年価</span></label>
+      <div class="radio-row">
+        <label><input type="checkbox" id="stagedEnabled" onchange="updateModeUI()"> 複数期間で積立/返済額を変える（3段階以上も可）</label>
+      </div>
+    </div>
+
+    <div class="field" id="f-stages" style="display:none;">
+      <label><span class="sym">段階ごとの年数・年価</span><span class="desc">合計 <span id="stagesTotalYears">0</span> 年</span></label>
+      <div id="stagesList"></div>
+      <button type="button" class="gen-btn" onclick="addStage()">＋ 段階を追加</button>
+      <div class="note">例）第1段階：10年・300万円・利率2%、第2段階：20年・150万円・利率4%、のように期間ごとに年価だけでなく年利率も設定できます。</div>
+    </div>
+
     <div class="field" id="f-M">
       <label><span class="sym">年価 M</span><span class="desc">Annuity（毎年の積立額・年金額）</span></label>
       <input type="text" id="M" inputmode="decimal" placeholder="例）100000">
-      <div class="note" id="note-M" style="display:none;">単利・変動金利モードでは M（積立額）は使用しません（元本 P のみ）。</div>
+      <div class="note" id="note-M" style="display:none;">単利・変動金利・段階的年価モードでは M（積立額）は使用しません。</div>
     </div>
 
     <div class="field" id="f-i">
@@ -475,19 +530,82 @@ function updateModeUI(){
   const variable = rateMode === 'variable';
   const simple = interestMode === 'simple';
 
-  document.getElementById('f-i').style.display = variable ? 'none' : '';
+  const stagedAvailable = !variable && !simple;
+  const staged = stagedAvailable && document.getElementById('stagedEnabled').checked;
+
+  document.getElementById('f-i').style.display = (variable || staged) ? 'none' : '';
   document.getElementById('f-variable-rates').style.display = variable ? '' : 'none';
 
-  const mDisabled = variable || simple;
+  // 段階的な年価は「複利×固定金利」でのみ使用可能
+  document.getElementById('f-staged-toggle').style.display = stagedAvailable ? '' : 'none';
+  if(!stagedAvailable) document.getElementById('stagedEnabled').checked = false;
+  document.getElementById('f-stages').style.display = staged ? '' : 'none';
+  document.getElementById('f-n').style.display = staged ? 'none' : '';
+  if(staged && document.getElementById('stagesList').children.length === 0){
+    addStage(); addStage();
+  }
+
+  const mDisabled = variable || simple || staged;
   document.getElementById('M').disabled = mDisabled;
   document.getElementById('note-M').style.display = mDisabled ? '' : 'none';
-  document.getElementById('f-mDirection').style.display = mDisabled ? 'none' : '';
+  document.getElementById('f-M').style.display = staged ? 'none' : '';
+  // 「積立/返済」の方向選択は 単利・変動金利モードでは使わないが、段階モードでは引き続き使う
+  document.getElementById('f-mDirection').style.display = (variable || simple) ? 'none' : '';
   if(mDisabled) document.getElementById('M').value = '';
 
   const taxEnabled = document.getElementById('taxEnabled').checked;
   document.getElementById('tax-rate-row').style.display = taxEnabled ? '' : 'none';
 
   if(variable) generateRateInputs();
+}
+
+function addStage(){
+  const list = document.getElementById('stagesList');
+  const idx = list.children.length + 1;
+  const row = document.createElement('div');
+  row.className = 'stage-row';
+  row.innerHTML = `
+    <span class="stage-idx">第${idx}段階</span>
+    <input type="text" class="stage-years" inputmode="decimal" placeholder="年数" oninput="updateStagesTotal()">
+    <input type="text" class="stage-M" inputmode="decimal" placeholder="年価M（円）">
+    <input type="text" class="stage-i" inputmode="decimal" placeholder="利率%">
+    <button type="button" class="stage-remove" onclick="removeStage(this)" title="この段階を削除">×</button>
+  `;
+  list.appendChild(row);
+  updateStagesTotal();
+}
+
+function removeStage(btn){
+  btn.closest('.stage-row').remove();
+  // 段階番号を振り直す
+  const list = document.getElementById('stagesList');
+  Array.from(list.children).forEach((row, i) => {
+    row.querySelector('.stage-idx').textContent = `第${i+1}段階`;
+  });
+  updateStagesTotal();
+}
+
+function updateStagesTotal(){
+  const years = Array.from(document.querySelectorAll('#stagesList .stage-years'))
+    .map(el => Number(el.value.trim()))
+    .filter(v => !isNaN(v) && v > 0);
+  const total = years.reduce((a,b) => a+b, 0);
+  document.getElementById('stagesTotalYears').textContent = total;
+}
+
+function readStages(){
+  const rows = Array.from(document.querySelectorAll('#stagesList .stage-row'));
+  const stages = [];
+  for(const row of rows){
+    const yearsRaw = row.querySelector('.stage-years').value.trim();
+    const mRaw = row.querySelector('.stage-M').value.trim();
+    const iRaw = row.querySelector('.stage-i').value.trim();
+    if(yearsRaw === '' || mRaw === '' || iRaw === '') return null;
+    const yv = Number(yearsRaw), mv = Number(mRaw), iv = Number(iRaw);
+    if(isNaN(yv) || isNaN(mv) || isNaN(iv) || yv <= 0) return null;
+    stages.push({ n: Math.ceil(yv), M: mv, i: applyTax(iv / 100) });
+  }
+  return stages.length > 0 ? stages : null;
 }
 
 function getTaxDecimal(){
@@ -540,6 +658,8 @@ function resetAll(){
   document.querySelector('input[name="mDirection"][value="deposit"]').checked = true;
   document.getElementById('taxEnabled').checked = false;
   document.getElementById('taxRate').value = '20.315';
+  document.getElementById('stagedEnabled').checked = false;
+  document.getElementById('stagesList').innerHTML = '';
   updateModeUI();
   hideCharts();
 }
@@ -575,6 +695,8 @@ function calculate(){
     calculateVariableRate(interestMode);
   } else if(interestMode === 'simple'){
     calculateSimpleFixed();
+  } else if(document.getElementById('stagedEnabled').checked){
+    calculateStaged();
   } else {
     calculateCompoundFixed();
   }
@@ -591,7 +713,15 @@ function calculateCompoundFixed(){
   let iRaw = (iPercent === null) ? null : iPercent / 100;
   let i = (iRaw === null) ? null : applyTax(iRaw);
   let n = parseVal('n');
-  const mSign = (getRadio('mDirection') === 'repayment') ? -1 : 1;
+  let mSign = (getRadio('mDirection') === 'repayment') ? -1 : 1;
+  let autoRepayment = false;
+  if(S === 0 && mSign === 1){
+    // S=0（完済・満期でゼロ）は年金現価・資本回収の典型パターンなので、自動的に「返済」方向にする
+    mSign = -1;
+    autoRepayment = true;
+    const repaymentRadio = document.querySelector('input[name="mDirection"][value="repayment"]');
+    if(repaymentRadio) repaymentRadio.checked = true;
+  }
 
   const resultDiv = document.getElementById('result');
   const labels = {P:'現価 P', S:'終価 S', M:'年価 M', i:'年利率 i', n:'年数 n'};
@@ -731,6 +861,9 @@ function calculateCompoundFixed(){
   if(defaultedNote.length > 0){
     html += `<div class="note" style="margin-top:6px;">${defaultedNote.join('・')} は未入力のため上記の値として計算しています。</div>`;
   }
+  if(autoRepayment){
+    html += `<div class="note" style="margin-top:6px;">終価 S = 0（完済・満期ゼロ）のため、年価 M を自動的に「返済（出金）」方向として計算しました（年金現価・資本回収係数）。</div>`;
+  }
 
   resultDiv.innerHTML = html;
 
@@ -745,6 +878,97 @@ function calculateCompoundFixed(){
   } else {
     hideCharts();
   }
+}
+
+// ---------- 複利・固定金利・段階的な年価（3段階以上のM切り替えに対応） ----------
+function calculateStaged(){
+  ids.forEach(id => document.getElementById('f-'+id).classList.remove('unknown'));
+  const resultDiv = document.getElementById('result');
+  const labels = {P:'現価 P', S:'終価 S'};
+
+  let P = parseVal('P');
+  let S = parseVal('S');
+  let mSign = (getRadio('mDirection') === 'repayment') ? -1 : 1;
+
+  const stages = readStages();
+  if(!stages){
+    resultDiv.innerHTML = errBox('すべての段階について「年数」「年価M」「年利率i」を入力してください。');
+    hideCharts();
+    return;
+  }
+  if(P === null && S === null){
+    resultDiv.innerHTML = errBox('現価 P か終価 S のどちらかを入力し、求めたい方を空欄にしてください。');
+    hideCharts();
+    return;
+  }
+  if(P !== null && S !== null){
+    resultDiv.innerHTML = errBox('現価 P・終価 S のどちらかを空欄にしてください（両方入力されています）。');
+    hideCharts();
+    return;
+  }
+
+  // S=0（完済・満期ゼロ）かつ積立方向のままなら、自動的に「返済」方向に切り替える
+  let autoRepayment = false;
+  if(S === 0 && mSign === 1){
+    mSign = -1;
+    autoRepayment = true;
+    const repaymentRadio = document.querySelector('input[name="mDirection"][value="repayment"]');
+    if(repaymentRadio) repaymentRadio.checked = true;
+  }
+
+  function forwardSim(P0){
+    let balance = P0;
+    const rows = [{year:0, begin:null, interest:null, deposit:null, end:balance}];
+    let yearCounter = 0;
+    for(const stage of stages){
+      for(let y = 1; y <= stage.n; y++){
+        const begin = balance;
+        const interest = begin * stage.i;
+        const signedM = mSign * stage.M;
+        const end = begin + interest + signedM;
+        yearCounter++;
+        rows.push({year: yearCounter, begin, interest, deposit: signedM, end});
+        balance = end;
+      }
+    }
+    return { end: balance, rows };
+  }
+
+  // balance は P について線形（balance = P・K + C）なので、2点評価だけで閉じた式的に解ける
+  // K は各段階ごとの (1+i)^n の積（段階ごとに利率が違っても成り立つ）
+  const C = forwardSim(0).end;
+  const K = stages.reduce((acc, s) => acc * Math.pow(1 + s.i, s.n), 1);
+
+  let target, value, rows;
+  if(S === null){
+    target = 'S';
+    const sim = forwardSim(P);
+    value = sim.end;
+    rows = sim.rows;
+  } else {
+    target = 'P';
+    value = (S - C) / K;
+    rows = forwardSim(value).rows;
+  }
+
+  document.getElementById('f-'+target).classList.add('unknown');
+
+  let html = `
+    <div class="result-box">
+      <div class="result-label">${labels[target]}</div>
+      <div class="result-value">${fmt(value)}</div>
+      <div class="result-formula">段階的な年価・年利率（${stages.map(s=>`${s.n}年×${fmt(s.M)}円@${(s.i*100).toFixed(3)}%`).join(' → ')}）による${target==='S'?'前方計算':'現価の逆算（Pについて線形なので閉じた式）'}</div>
+    </div>`;
+
+  if(document.getElementById('taxEnabled').checked){
+    html += `<div class="note" style="margin-top:6px;">各段階の年利率を表面利率とみなし、源泉徴収税率 ${(getTaxDecimal()*100).toFixed(3)}% を差し引いた実質利率で計算しています。</div>`;
+  }
+  if(autoRepayment){
+    html += `<div class="note" style="margin-top:6px;">終価 S = 0（完済・満期ゼロ）のため、年価 M を自動的に「返済（出金）」方向として計算しました。</div>`;
+  }
+
+  resultDiv.innerHTML = html;
+  renderTimelineRows(rows, `複利（${stages.length}段階の年価）`);
 }
 
 // ---------- 単利・固定金利（国債の単利償還のような計算） ----------
