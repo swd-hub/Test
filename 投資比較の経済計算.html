@@ -134,6 +134,22 @@
   }
   .theme-toggle input[type="radio"]{ accent-color:var(--gold); width:12px; height:12px; }
   .theme-toggle label:has(input:checked){ border-color:var(--gold); color:var(--text); }
+  .radio-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .radio-row label{
+    flex:1; min-width:170px; display:flex; align-items:center; gap:7px;
+    background:var(--input-bg); border:1px solid var(--line); border-radius:8px;
+    padding:10px 12px; font-size:13px; color:var(--text-dim); cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .radio-row input[type="radio"]{ accent-color:var(--gold); width:15px; height:15px; flex-shrink:0; }
+  .radio-row label:has(input:checked){ border-color:var(--gold); color:var(--text); background:rgba(201,161,90,.08); }
+  .verdict-badge{
+    display:inline-block; border-radius:6px; padding:2px 8px; font-size:11.5px; font-weight:700; margin-left:6px;
+  }
+  .verdict-accept{ background:rgba(76,175,135,.18); color:var(--good); }
+  .verdict-reject{ background:rgba(217,119,87,.15); color:var(--warn); }
+  .summary-line{ font-size:13px; line-height:1.8; margin-bottom:10px; }
+  .summary-line b{ color:var(--gold); }
 </style>
 </head>
 <body>
@@ -156,6 +172,13 @@
         <input type="text" id="globalRate" inputmode="decimal" value="5" placeholder="例）5">
       </div>
     </div>
+    <div class="field">
+      <label><span class="sym">案の種類</span></label>
+      <div class="radio-row">
+        <label><input type="radio" name="compareMode" value="exclusive" checked onchange="calculateAll()"> 相互排他的（この中から1つだけ選ぶ）</label>
+        <label><input type="radio" name="compareMode" value="independent" onchange="calculateAll()"> 独立案（各案を個別に採否判定・複数採用可）</label>
+      </div>
+    </div>
     <div class="note">各投資案は現価法(PW)・年価法(AW)・終価法(FW)いずれも「案ごとの i・n」を使って自己無矛盾に換算しています。i や n が案ごとに異なる場合、3手法の順位が食い違うことがあります（下部の注記を参照）。</div>
   </div>
 
@@ -173,7 +196,7 @@
     <h2>3手法のおさらい</h2>
     <div class="methods-explain">
       <div class="m"><b>現価法（PW）</b><span>PW = −P₀ + Σ CFₖ/(1+i)ᵏ + S/(1+i)ⁿ<br>すべてを「今」の価値に換算。一括評価に向く。</span></div>
-      <div class="m"><b>年価法（AW）</b><span>AW = PW × [i(1+i)ⁿ / ((1+i)ⁿ−1)]<br>「毎年いくら」に均す。耐用年数が違う案の比較に最適。</span></div>
+      <div class="m"><b>年価法（AW）</b><span>AW = PW × [i(1+i)ⁿ / ((1+i)ⁿ−1)]<br>「毎年いくら」に均す。耐用年数や投資効果年数が違う案の比較に最適。</span></div>
       <div class="m"><b>終価法（FW）</b><span>FW = PW × (1+i)ⁿ<br>案の終了時点での将来価値。資産形成の見通しに向く。</span></div>
     </div>
   </div>
@@ -226,7 +249,7 @@ function addCase(prefill){
         <input type="text" class="c-P0" inputmode="decimal" value="${p.P0 ?? ''}" placeholder="例）1000000">
       </div>
       <div class="field">
-        <label><span class="sym">n</span><span>耐用年数（年）</span></label>
+        <label><span class="sym">n</span><span>耐用年数・投資効果（年）</span></label>
         <input type="text" class="c-n" inputmode="decimal" value="${p.n ?? ''}" placeholder="例）10">
       </div>
       <div class="field">
@@ -366,6 +389,11 @@ function buildRankMap(values, names){
   return map;
 }
 
+function getRadio(name){
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : null;
+}
+
 function calculateAll(){
   const cases = readCases();
   const resultArea = document.getElementById('resultArea');
@@ -378,11 +406,55 @@ function calculateAll(){
 
   const invalid = cases.filter(c => !c.n || c.n <= 0 || c.i === null);
   if(invalid.length > 0){
-    resultArea.innerHTML = `<div class="warnbox">「${invalid.map(c=>c.name).join('、')}」の耐用年数(n)または割引率(i)が未入力です。すべての案で n と i（個別入力または共通設定）を指定してください。</div>`;
+    resultArea.innerHTML = `<div class="warnbox">「${invalid.map(c=>c.name).join('、')}」の耐用年数・投資効果年数(n)または割引率(i)が未入力です。すべての案で n と i（個別入力または共通設定）を指定してください。</div>`;
     return;
   }
 
   const results = cases.map(c => ({ c, r: calcCase(c) }));
+  const mode = getRadio('compareMode') || 'exclusive';
+
+  if(mode === 'independent'){
+    let tableRows = '';
+    const accepted = [];
+    const rejected = [];
+    results.forEach(({c,r})=>{
+      const isAccept = r.PW > 0;
+      (isAccept ? accepted : rejected).push(c);
+      tableRows += `
+        <tr>
+          <td>${c.name}</td>
+          <td>${fmtYen(r.PW)}</td>
+          <td>${fmtYenYear(r.AW)}</td>
+          <td>${fmtYen(r.FW)}</td>
+          <td><span class="verdict-badge ${isAccept?'verdict-accept':'verdict-reject'}">${isAccept?'採用':'却下'}</span></td>
+        </tr>
+      `;
+    });
+
+    const totalP0 = accepted.reduce((s,c)=>s+c.P0,0);
+    const summary = accepted.length
+      ? `採用案：<b>${accepted.map(c=>c.name).join('、')}</b>（合計投資額 ${fmtYen(totalP0)}）　／　却下案：${rejected.length?rejected.map(c=>c.name).join('、'):'なし'}`
+      : `採用できる案はありません（すべて PW ≤ 0）。`;
+
+    resultArea.innerHTML = `
+      <div class="card">
+        <h2>比較結果（独立案：個別採否判定）</h2>
+        <div class="summary-line">${summary}</div>
+        <table>
+          <thead>
+            <tr><th>投資案</th><th>現価法 PW</th><th>年価法 AW</th><th>終価法 FW</th><th>判定</th></tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+        <div class="note">独立案では各案を単独でMARR（割引率）と比較し、PW（＝AW・FWも符号は一致）が正であれば採用、負であれば却下します。資金に制約がない限り、正の案はすべて採用できます（資金制約がある場合は、この結果をもとに投資額の合計を見ながら優先順位を検討してください）。</div>
+        <div class="chart-wrap"><canvas id="barChart" height="90"></canvas></div>
+        <div class="chart-wrap"><canvas id="lineChart" height="110"></canvas></div>
+      </div>
+    `;
+
+    renderCharts(results);
+    return;
+  }
 
   const names = results.map(x=>x.c.name);
   const pwRank = buildRankMap(results.map(x=>x.r.PW), names);
@@ -394,7 +466,7 @@ function calculateAll(){
   const is = [...new Set(cases.map(c=>c.i))];
   let warnings = '';
   if(ns.length > 1){
-    warnings += `<div class="warnbox">耐用年数(n)が案ごとに異なります（${ns.join('年 / ')}年）。現価法(PW)・終価法(FW)は単純な絶対額比較になるため、期間の違いを考慮したい場合は年価法(AW)での比較を優先してください。</div>`;
+    warnings += `<div class="warnbox">耐用年数・投資効果年数(n)が案ごとに異なります（${ns.join('年 / ')}年）。現価法(PW)・終価法(FW)は単純な絶対額比較になるため、期間の違いを考慮したい場合は年価法(AW)での比較を優先してください。</div>`;
   }
   if(is.length > 1){
     warnings += `<div class="warnbox">割引率(i)が案ごとに異なります。この場合、PW・AW・FWの順位が一致しないことがあります（各手法は「その案自身のi・n」で換算しているため）。下表で手法ごとの順位を確認してください。</div>`;
