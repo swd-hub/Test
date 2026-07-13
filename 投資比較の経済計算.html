@@ -8,6 +8,7 @@
 <style>
   :root{
     --bg:#0f1720;
+    --bg-glow:#182430;
     --panel:#16212c;
     --panel2:#1c2b38;
     --line:#2a3b4a;
@@ -17,17 +18,39 @@
     --text-dim:#8fa1ad;
     --good:#4caf87;
     --warn:#d97757;
+    --input-bg:#0d151c;
+    --muted:#4c5b66;
+    --card-tint:rgba(255,255,255,.015);
+    --warn-text:#e6b8a3;
+  }
+  :root[data-theme="light"]{
+    --bg:#f3f1ec;
+    --bg-glow:#ffffff;
+    --panel:#ffffff;
+    --panel2:#f7f5f0;
+    --line:#dcd7cc;
+    --gold:#93641f;
+    --gold-dim:#c9a15a;
+    --text:#2a2620;
+    --text-dim:#6b6558;
+    --good:#2f8f66;
+    --warn:#c1573a;
+    --input-bg:#f7f6f2;
+    --muted:#9a9484;
+    --card-tint:rgba(0,0,0,.02);
+    --warn-text:#8a3a22;
   }
   *{box-sizing:border-box;}
   body{
     margin:0;
     font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
     background:
-      radial-gradient(circle at 20% 0%, #182430 0%, transparent 45%),
+      radial-gradient(circle at 20% 0%, var(--bg-glow) 0%, transparent 45%),
       var(--bg);
     color:var(--text);
     min-height:100vh;
     padding:32px 16px 60px;
+    transition:background-color .2s, color .2s;
   }
   .wrap{ max-width:920px; margin:0 auto; }
   header{ text-align:center; margin-bottom:28px; }
@@ -48,7 +71,7 @@
   .field label{ display:flex; justify-content:space-between; align-items:baseline; font-size:12px; color:var(--text-dim); margin-bottom:6px; }
   .field label .sym{ color:var(--gold); font-weight:600; font-size:13px; }
   .field input, .field textarea{
-    width:100%; background:#0d151c; border:1px solid var(--line); border-radius:8px;
+    width:100%; background:var(--input-bg); border:1px solid var(--line); border-radius:8px;
     padding:10px 11px; font-size:14px; color:var(--text);
     transition:border-color .15s, box-shadow .15s; font-family:inherit;
   }
@@ -56,10 +79,10 @@
   .field input:focus, .field textarea:focus{
     outline:none; border-color:var(--gold-dim); box-shadow:0 0 0 3px rgba(201,161,90,.12);
   }
-  .field input::placeholder, .field textarea::placeholder{ color:#4c5b66; }
+  .field input::placeholder, .field textarea::placeholder{ color:var(--muted); }
   .case-block{
     border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;
-    background:rgba(255,255,255,.015); position:relative;
+    background:var(--card-tint); position:relative;
   }
   .case-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
   .case-head input.name{
@@ -93,20 +116,32 @@
   .rank-3{ background:rgba(217,119,87,.15); color:var(--warn); }
   .warnbox{
     background:rgba(217,119,87,.1); border:1px solid rgba(217,119,87,.3);
-    border-radius:10px; padding:12px 14px; font-size:12.5px; color:#e6b8a3; margin-bottom:16px; line-height:1.7;
+    border-radius:10px; padding:12px 14px; font-size:12.5px; color:var(--warn-text); margin-bottom:16px; line-height:1.7;
   }
-  .formula{ font-family:"SF Mono",Consolas,monospace; font-size:12px; color:var(--text-dim); background:#0d151c; border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-top:8px; overflow-x:auto; white-space:nowrap; }
+  .formula{ font-family:"SF Mono",Consolas,monospace; font-size:12px; color:var(--text-dim); background:var(--input-bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-top:8px; overflow-x:auto; white-space:nowrap; }
   canvas{ max-width:100%; }
   .chart-wrap{ margin-top:10px; }
   .hidden{ display:none; }
   .methods-explain{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px; margin-top:8px; }
-  .methods-explain .m{ background:#0d151c; border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .methods-explain .m{ background:var(--input-bg); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
   .methods-explain .m b{ color:var(--gold); font-size:13px; display:block; margin-bottom:4px; }
   .methods-explain .m span{ font-size:12px; color:var(--text-dim); line-height:1.6; }
+  .theme-toggle{ display:flex; justify-content:flex-end; gap:6px; margin-bottom:14px; }
+  .theme-toggle label{
+    display:flex; align-items:center; gap:5px; font-size:11.5px; color:var(--text-dim);
+    background:var(--input-bg); border:1px solid var(--line); border-radius:20px;
+    padding:5px 12px; cursor:pointer; transition:border-color .15s, color .15s, background .15s;
+  }
+  .theme-toggle input[type="radio"]{ accent-color:var(--gold); width:12px; height:12px; }
+  .theme-toggle label:has(input:checked){ border-color:var(--gold); color:var(--text); }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="theme-toggle">
+    <label><input type="radio" name="themeMode" value="dark" onchange="setTheme('dark')"> ダーク</label>
+    <label><input type="radio" name="themeMode" value="light" onchange="setTheme('light')"> ライト</label>
+  </div>
   <header>
     <div class="eyebrow">Comparative Economic Analysis</div>
     <h1>投資比較の経済計算</h1>
@@ -147,6 +182,30 @@
 <script>
 let caseCounter = 0;
 let charts = {};
+
+// ---------- ダークモード / ライトモード切替 ----------
+function getCssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function hexToRgba(hex, alpha){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16);
+  const g = parseInt(h.substring(2,4),16);
+  const b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function setTheme(mode){
+  document.documentElement.setAttribute('data-theme', mode);
+  localStorage.setItem('investCalcTheme', mode);
+  const radio = document.querySelector(`input[name="themeMode"][value="${mode}"]`);
+  if(radio) radio.checked = true;
+  if(charts.bar || charts.line) calculateAll();
+}
+function initTheme(){
+  const saved = localStorage.getItem('investCalcTheme') || 'dark';
+  setTheme(saved);
+}
+initTheme();
 
 function addCase(prefill){
   caseCounter++;
@@ -379,6 +438,12 @@ function renderCharts(results){
   const awData = results.map(x=>x.r.AW);
   const fwData = results.map(x=>x.r.FW);
 
+  const text = getCssVar('--text');
+  const textDim = getCssVar('--text-dim');
+  const gridColor = hexToRgba(getCssVar('--line'), .5);
+  const gold = getCssVar('--gold');
+  const good = getCssVar('--good');
+
   if(charts.bar) charts.bar.destroy();
   const barCtx = document.getElementById('barChart').getContext('2d');
   charts.bar = new Chart(barCtx, {
@@ -386,24 +451,24 @@ function renderCharts(results){
     data:{
       labels,
       datasets:[
-        { label:'現価法 PW（円）', data:pwData, backgroundColor:'#c9a15a' },
-        { label:'年価法 AW（円/年）', data:awData, backgroundColor:'#4caf87' },
-        { label:'終価法 FW（円）', data:fwData, backgroundColor:'#8fa1ad' }
+        { label:'現価法 PW（円）', data:pwData, backgroundColor:gold },
+        { label:'年価法 AW（円/年）', data:awData, backgroundColor:good },
+        { label:'終価法 FW（円）', data:fwData, backgroundColor:textDim }
       ]
     },
     options:{
       responsive:true,
-      plugins:{ legend:{ labels:{ color:'#e8edf1' } }, tooltip:{ callbacks:{ label:(ctx)=> ctx.dataset.label + ': ' + Math.round(ctx.raw).toLocaleString('ja-JP') } } },
+      plugins:{ legend:{ labels:{ color:text } }, tooltip:{ callbacks:{ label:(ctx)=> ctx.dataset.label + ': ' + Math.round(ctx.raw).toLocaleString('ja-JP') } } },
       scales:{
-        x:{ ticks:{ color:'#8fa1ad' }, grid:{ color:'#2a3b4a' } },
-        y:{ ticks:{ color:'#8fa1ad' }, grid:{ color:'#2a3b4a' } }
+        x:{ ticks:{ color:textDim }, grid:{ color:gridColor } },
+        y:{ ticks:{ color:textDim }, grid:{ color:gridColor } }
       }
     }
   });
 
   const maxN = Math.max(...results.map(x=>x.r.n));
   const yearLabels = Array.from({length:maxN+1}, (_,k)=>k + '年目');
-  const colors = ['#c9a15a','#4caf87','#d97757','#7aa8c9','#b98fd6','#e0c15a'];
+  const colors = [gold, good, getCssVar('--warn'), '#7aa8c9', '#b98fd6', '#e0c15a'];
   const lineDatasets = results.map((x,idx)=>{
     const data = yearLabels.map((_,k)=> k <= x.r.n ? x.r.cumulative[k] : null);
     return {
@@ -423,10 +488,10 @@ function renderCharts(results){
     data:{ labels:yearLabels, datasets:lineDatasets },
     options:{
       responsive:true,
-      plugins:{ legend:{ labels:{ color:'#e8edf1' } } },
+      plugins:{ legend:{ labels:{ color:text } } },
       scales:{
-        x:{ ticks:{ color:'#8fa1ad' }, grid:{ color:'#2a3b4a' } },
-        y:{ ticks:{ color:'#8fa1ad' }, grid:{ color:'#2a3b4a' } }
+        x:{ ticks:{ color:textDim }, grid:{ color:gridColor } },
+        y:{ ticks:{ color:textDim }, grid:{ color:gridColor } }
       }
     }
   });

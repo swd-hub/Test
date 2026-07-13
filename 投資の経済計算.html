@@ -8,6 +8,7 @@
 <style>
   :root{
     --bg:#0f1720;
+    --bg-glow:#182430;
     --panel:#16212c;
     --panel2:#1c2b38;
     --line:#2a3b4a;
@@ -17,17 +18,39 @@
     --text-dim:#8fa1ad;
     --good:#4caf87;
     --warn:#d97757;
+    --input-bg:#0d151c;
+    --muted:#4b5a65;
+    --unknown-bg:#1a1409;
+    --warn-text:#f0b8a4;
+  }
+  :root[data-theme="light"]{
+    --bg:#f3f1ec;
+    --bg-glow:#ffffff;
+    --panel:#ffffff;
+    --panel2:#f7f5f0;
+    --line:#dcd7cc;
+    --gold:#93641f;
+    --gold-dim:#c9a15a;
+    --text:#2a2620;
+    --text-dim:#6b6558;
+    --good:#2f8f66;
+    --warn:#c1573a;
+    --input-bg:#f7f6f2;
+    --muted:#8a8474;
+    --unknown-bg:#fff6df;
+    --warn-text:#8a3a22;
   }
   *{box-sizing:border-box;}
   body{
     margin:0;
     font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
     background:
-      radial-gradient(circle at 20% 0%, #182430 0%, transparent 45%),
+      radial-gradient(circle at 20% 0%, var(--bg-glow) 0%, transparent 45%),
       var(--bg);
     color:var(--text);
     min-height:100vh;
     padding:32px 16px 60px;
+    transition:background-color .2s, color .2s;
   }
   .wrap{
     max-width:640px;
@@ -84,7 +107,7 @@
   }
   .field input{
     width:100%;
-    background:#0d151c;
+    background:var(--input-bg);
     border:1px solid var(--line);
     border-radius:8px;
     padding:11px 12px;
@@ -98,11 +121,11 @@
     box-shadow:0 0 0 3px rgba(201,161,90,.12);
   }
   .field input::placeholder{
-    color:#4b5a65;
+    color:var(--muted);
   }
   .field.unknown input{
     border-color:var(--gold);
-    background:#1a1409;
+    background:var(--unknown-bg);
   }
   .rate-row{
     display:flex;
@@ -190,7 +213,7 @@
     background:rgba(217,119,87,.08);
     border-radius:10px;
     padding:16px 18px;
-    color:#f0b8a4;
+    color:var(--warn-text);
     font-size:13.5px;
     line-height:1.7;
   }
@@ -198,7 +221,7 @@
     text-align:center;
     margin-top:24px;
     font-size:11px;
-    color:#4b5a65;
+    color:var(--muted);
   }
   .section-title{
     font-size:13px;
@@ -234,7 +257,7 @@
     white-space:nowrap;
   }
   table.cross th{
-    background:#0d151c;
+    background:var(--input-bg);
     color:var(--gold);
     font-weight:600;
     padding:9px 12px;
@@ -273,7 +296,7 @@
     display:flex;
     align-items:center;
     gap:7px;
-    background:#0d151c;
+    background:var(--input-bg);
     border:1px solid var(--line);
     border-radius:8px;
     padding:10px 12px;
@@ -321,7 +344,7 @@
     gap:8px;
   }
   .rate-grid .yr-box{
-    background:#0d151c;
+    background:var(--input-bg);
     border:1px solid var(--line);
     border-radius:8px;
     padding:6px 8px;
@@ -354,7 +377,7 @@
   }
   .stage-row input{
     flex:1;
-    background:#0d151c;
+    background:var(--input-bg);
     border:1px solid var(--line);
     border-radius:8px;
     padding:8px 10px;
@@ -381,10 +404,42 @@
     color:var(--warn);
     border-color:var(--warn);
   }
+  .theme-toggle{
+    display:flex;
+    justify-content:flex-end;
+    gap:6px;
+    margin-bottom:14px;
+  }
+  .theme-toggle label{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-size:11.5px;
+    color:var(--text-dim);
+    background:var(--input-bg);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:5px 12px;
+    cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .theme-toggle input[type="radio"]{
+    accent-color:var(--gold);
+    width:12px;
+    height:12px;
+  }
+  .theme-toggle label:has(input:checked){
+    border-color:var(--gold);
+    color:var(--text);
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="theme-toggle">
+    <label><input type="radio" name="themeMode" value="dark" onchange="setTheme('dark')"> ダーク</label>
+    <label><input type="radio" name="themeMode" value="light" onchange="setTheme('light')"> ライト</label>
+  </div>
   <header>
     <div class="eyebrow">Compound Interest &amp; Annuity</div>
     <h1>投資の経済計算</h1>
@@ -519,6 +574,30 @@
 <script>
 const ids = ['P','S','M','i','n'];
 let chartInstance = null;
+
+// ---------- ダークモード / ライトモード切替 ----------
+function getCssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function hexToRgba(hex, alpha){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16);
+  const g = parseInt(h.substring(2,4),16);
+  const b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function setTheme(mode){
+  document.documentElement.setAttribute('data-theme', mode);
+  localStorage.setItem('investCalcTheme', mode);
+  const radio = document.querySelector(`input[name="themeMode"][value="${mode}"]`);
+  if(radio) radio.checked = true;
+  if(chartInstance) calculate();
+}
+function initTheme(){
+  const saved = localStorage.getItem('investCalcTheme') || 'dark';
+  setTheme(saved);
+}
+initTheme();
 
 function getRadio(name){
   return document.querySelector(`input[name="${name}"]:checked`).value;
@@ -1170,6 +1249,9 @@ function renderTimelineRows(rows, modeLabel){
 
     if(chartInstance) chartInstance.destroy();
     const ctx = document.getElementById('balanceChart').getContext('2d');
+    const gold = getCssVar('--gold');
+    const textDim = getCssVar('--text-dim');
+    const gridColor = getCssVar('--line');
     chartInstance = new Chart(ctx, {
       type: 'line',
       data: {
@@ -1177,23 +1259,23 @@ function renderTimelineRows(rows, modeLabel){
         datasets: [{
           label: `残高（${modeLabel}）`,
           data: balances,
-          borderColor: '#c9a15a',
-          backgroundColor: 'rgba(201,161,90,.15)',
+          borderColor: gold,
+          backgroundColor: hexToRgba(gold, .15),
           fill: true,
           tension: 0.25,
           pointRadius: 3,
-          pointBackgroundColor: '#c9a15a'
+          pointBackgroundColor: gold
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { labels: { color: '#8fa1ad' } }
+          legend: { labels: { color: textDim } }
         },
         scales: {
-          x: { ticks: { color: '#8fa1ad' }, grid: { color: 'rgba(42,59,74,.5)' } },
-          y: { ticks: { color: '#8fa1ad' }, grid: { color: 'rgba(42,59,74,.5)' } }
+          x: { ticks: { color: textDim }, grid: { color: hexToRgba(gridColor, .5) } },
+          y: { ticks: { color: textDim }, grid: { color: hexToRgba(gridColor, .5) } }
         }
       }
     });
