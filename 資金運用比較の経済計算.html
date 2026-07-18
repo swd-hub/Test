@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>資金運用比較の経済計算</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1720;
+    --bg-glow:#182430;
+    --panel:#16212c;
+    --panel2:#1c2b38;
+    --line:#2a3b4a;
+    --gold:#c9a15a;
+    --gold-dim:#8a723f;
+    --text:#e8edf1;
+    --text-dim:#8fa1ad;
+    --good:#4caf87;
+    --warn:#d97757;
+    --input-bg:#0d151c;
+    --muted:#4c5b66;
+    --card-tint:rgba(255,255,255,.015);
+    --warn-text:#e6b8a3;
+  }
+  :root[data-theme="light"]{
+    --bg:#f3f1ec;
+    --bg-glow:#ffffff;
+    --panel:#ffffff;
+    --panel2:#f7f5f0;
+    --line:#dcd7cc;
+    --gold:#93641f;
+    --gold-dim:#c9a15a;
+    --text:#2a2620;
+    --text-dim:#6b6558;
+    --good:#2f8f66;
+    --warn:#c1573a;
+    --input-bg:#f7f6f2;
+    --muted:#9a9484;
+    --card-tint:rgba(0,0,0,.02);
+    --warn-text:#8a3a22;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
+    font-size:24px;
+    background:
+      radial-gradient(circle at 20% 0%, var(--bg-glow) 0%, transparent 45%),
+      var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    padding:32px 16px 60px;
+    transition:background-color .2s, color .2s;
+  }
+  .wrap{ max-width:920px; margin:0 auto; }
+  header{ text-align:center; margin-bottom:28px; }
+  .eyebrow{ letter-spacing:.25em; font-size:18px; color:var(--gold); text-transform:uppercase; }
+  h1{ font-size:43.5px; margin:8px 0 6px; font-weight:600; letter-spacing:.02em; }
+  .sub{ color:var(--text-dim); font-size:22.5px; line-height:1.7; }
+  .card{
+    background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px;
+    box-shadow:0 20px 40px -20px rgba(0,0,0,.6);
+    margin-bottom:20px;
+  }
+  .card h2{ font-size:27px; margin:0 0 14px; color:var(--gold); letter-spacing:.04em; }
+  .row{ display:flex; flex-wrap:wrap; gap:12px; }
+  .field{ flex:1 1 150px; margin-bottom:14px; }
+  .field label{ display:flex; justify-content:space-between; align-items:baseline; font-size:21px; color:var(--text-dim); margin-bottom:6px; }
+  .field label .sym{ color:var(--gold); font-weight:600; font-size:22.5px; }
+  .field input, .field textarea{
+    width:100%; background:var(--input-bg); border:1px solid var(--line); border-radius:8px;
+    padding:11px 12px; font-size:24px; color:var(--text);
+    transition:border-color .15s, box-shadow .15s; font-family:inherit;
+  }
+  .field textarea{ resize:vertical; min-height:44px; }
+  .field input:focus, .field textarea:focus{
+    outline:none; border-color:var(--gold-dim); box-shadow:0 0 0 3px rgba(201,161,90,.12);
+  }
+  .field input::placeholder, .field textarea::placeholder{ color:var(--muted); }
+  .case-block{
+    border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px;
+    background:var(--card-tint); position:relative;
+  }
+  .case-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
+  .case-head input.name{
+    background:transparent; border:none; border-bottom:1px solid var(--line);
+    color:var(--gold); font-size:27px; font-weight:600; padding:6px 2px; flex:1;
+  }
+  .case-head input.name:focus{ outline:none; border-color:var(--gold); }
+  .btn{
+    border:none; border-radius:8px; padding:11px 18px; font-size:22.5px; font-weight:600;
+    cursor:pointer; transition:opacity .15s, transform .1s; letter-spacing:.02em;
+  }
+  .btn:active{ transform:scale(.97); }
+  .btn-primary{ background:linear-gradient(180deg,var(--gold),var(--gold-dim)); color:#1a1208; }
+  .btn-ghost{ background:transparent; border:1px solid var(--line); color:var(--text-dim); }
+  .btn-danger{ background:transparent; border:1px solid #5a2f28; color:var(--warn); padding:7px 12px; font-size:19.5px; }
+  .btn-add{ background:transparent; border:1px dashed var(--gold-dim); color:var(--gold); width:100%; padding:12px; }
+  .note{ font-size:20px; color:var(--text-dim); line-height:1.7; margin-top:4px; }
+  .actions{ display:flex; gap:10px; margin:6px 0 4px; }
+  .actions .btn-primary{ flex:1; }
+  table{ width:100%; border-collapse:collapse; font-size:23px; margin-top:6px; }
+  th,td{ padding:11px 10px; text-align:right; border-bottom:1px solid var(--line); }
+  th:first-child, td:first-child{ text-align:left; }
+  th{ color:var(--text-dim); font-weight:600; font-size:20px; letter-spacing:.02em; }
+  td.best{ color:var(--good); font-weight:700; }
+  .rank-badge{
+    display:inline-block; min-width:20px; text-align:center; border-radius:6px;
+    padding:2px 6px; font-size:19px; font-weight:700; margin-left:6px;
+  }
+  .rank-1{ background:rgba(76,175,135,.18); color:var(--good); }
+  .rank-2{ background:rgba(201,161,90,.15); color:var(--gold); }
+  .rank-3{ background:rgba(217,119,87,.15); color:var(--warn); }
+  .warnbox{
+    background:rgba(217,119,87,.1); border:1px solid rgba(217,119,87,.3);
+    border-radius:10px; padding:14px 16px; font-size:22px; color:var(--warn-text); margin-bottom:16px; line-height:1.75;
+  }
+  .formula{ font-family:"SF Mono",Consolas,monospace; font-size:20px; color:var(--text-dim); background:var(--input-bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-top:8px; overflow-x:auto; white-space:nowrap; }
+  canvas{ max-width:100%; }
+  .chart-wrap{ margin-top:10px; }
+  .hidden{ display:none; }
+  .methods-explain{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px; margin-top:8px; }
+  .methods-explain .m{ background:var(--input-bg); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .methods-explain .m b{ color:var(--gold); font-size:22.5px; display:block; margin-bottom:4px; }
+  .methods-explain .m span{ font-size:21px; color:var(--text-dim); line-height:1.7; }
+  .theme-toggle{ display:flex; justify-content:flex-end; gap:6px; margin-bottom:14px; }
+  .theme-toggle label{
+    display:flex; align-items:center; gap:5px; font-size:20px; color:var(--text-dim);
+    background:var(--input-bg); border:1px solid var(--line); border-radius:20px;
+    padding:5px 12px; cursor:pointer; transition:border-color .15s, color .15s, background .15s;
+  }
+  .theme-toggle input[type="radio"]{ accent-color:var(--gold); width:12px; height:12px; }
+  .theme-toggle label:has(input:checked){ border-color:var(--gold); color:var(--text); }
+  .radio-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .radio-row label{
+    flex:1; min-width:170px; display:flex; align-items:center; gap:7px;
+    background:var(--input-bg); border:1px solid var(--line); border-radius:8px;
+    padding:11px 13px; font-size:22.5px; color:var(--text-dim); cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .radio-row input[type="radio"]{ accent-color:var(--gold); width:15px; height:15px; flex-shrink:0; }
+  .radio-row label:has(input:checked){ border-color:var(--gold); color:var(--text); background:rgba(201,161,90,.08); }
+  .verdict-badge{
+    display:inline-block; border-radius:6px; padding:3px 9px; font-size:19.5px; font-weight:700; margin-left:6px;
+  }
+  .verdict-accept{ background:rgba(76,175,135,.18); color:var(--good); }
+  .verdict-reject{ background:rgba(217,119,87,.15); color:var(--warn); }
+  .summary-line{ font-size:22.5px; line-height:1.85; margin-bottom:10px; }
+  .summary-line b{ color:var(--gold); }
+  .rate-row{ display:flex; gap:8px; align-items:center; }
+  .rate-row .c-i{ flex:1; }
+  .rate-row .c-i:disabled{ opacity:.5; }
+  .common-toggle{
+    display:flex; align-items:center; gap:4px; font-size:20px; color:var(--text-dim);
+    background:var(--input-bg); border:1px solid var(--line); border-radius:8px;
+    padding:10px 12px; cursor:pointer; white-space:nowrap; flex-shrink:0;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .common-toggle input[type="checkbox"]{ accent-color:var(--gold); width:13px; height:13px; }
+  .common-toggle:has(input:checked){ border-color:var(--gold-dim); color:var(--gold); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="theme-toggle">
+    <label><input type="radio" name="themeMode" value="dark" onchange="setTheme('dark')"> ダーク</label>
+    <label><input type="radio" name="themeMode" value="light" onchange="setTheme('light')"> ライト</label>
+  </div>
+  <header>
+    <div class="eyebrow">Comparative Economic Analysis</div>
+    <h1>資金運用比較の経済計算</h1>
+    <div class="sub">複数の投資案を、現価法（PW）・年価法（AW）・終価法（FW）の3手法で同時に比較します。</div>
+  </header>
+
+  <div class="card">
+    <h2>共通設定</h2>
+    <div class="field">
+      <label><span class="sym">案の種類</span></label>
+      <div class="radio-row">
+        <label><input type="radio" name="compareMode" value="exclusive" checked onchange="calculateAll()"> 相互排他的（この中から1つだけ選ぶ）</label>
+        <label><input type="radio" name="compareMode" value="independent" onchange="calculateAll()"> 独立案（各案を個別に採否判定・複数採用可）</label>
+      </div>
+    </div>
+    <div class="note">案A（最初の案）の各入力項目にある「共通」にチェックを入れると、その値が他のすべての案に自動的にコピーされます（他の案の該当欄はロックされ、案Aの値を編集すると連動して更新されます）。各投資案は現価法(PW)・年価法(AW)・終価法(FW)いずれも「案ごとの i・n」を使って自己無矛盾に換算しています。i や n が案ごとに異なる場合、3手法の順位が食い違うことがあります（下部の注記を参照）。</div>
+  </div>
+
+  <div id="casesContainer"></div>
+
+  <button class="btn btn-add" onclick="addCase()">＋ 投資案を追加</button>
+
+  <div class="actions">
+    <button class="btn btn-primary" onclick="calculateAll()">比較計算を実行</button>
+  </div>
+
+  <div id="resultArea"></div>
+
+  <div class="card">
+    <h2>3手法のおさらい</h2>
+    <div class="methods-explain">
+      <div class="m"><b>現価法（PW）</b><span>PW = −P₀ + Σ CFₖ/(1+i)ᵏ + S/(1+i)ⁿ<br>すべてを「今」の価値に換算。一括評価に向く。</span></div>
+      <div class="m"><b>年価法（AW）</b><span>AW = PW × [i(1+i)ⁿ / ((1+i)ⁿ−1)]<br>「毎年いくら」に均す。耐用年数や投資効果年数が違う案の比較に最適。</span></div>
+      <div class="m"><b>終価法（FW）</b><span>FW = PW × (1+i)ⁿ<br>案の終了時点での将来価値。資産形成の見通しに向く。</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let caseCounter = 0;
+let charts = {};
+
+// ---------- ダークモード / ライトモード切替 ----------
+function getCssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function hexToRgba(hex, alpha){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16);
+  const g = parseInt(h.substring(2,4),16);
+  const b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function setTheme(mode){
+  document.documentElement.setAttribute('data-theme', mode);
+  localStorage.setItem('investCalcTheme', mode);
+  const radio = document.querySelector(`input[name="themeMode"][value="${mode}"]`);
+  if(radio) radio.checked = true;
+  if(charts.bar || charts.line) calculateAll();
+}
+function initTheme(){
+  const saved = localStorage.getItem('investCalcTheme') || 'dark';
+  setTheme(saved);
+}
+initTheme();
+
+function idToLetters(n){
+  let s = '';
+  while(n > 0){
+    n--;
+    s = String.fromCharCode(65 + (n % 26)) + s;
+    n = Math.floor(n / 26);
+  }
+  return s;
+}
+
+function fieldRowHtml(key, sym, desc, value, placeholder, isMaster){
+  const checkbox = isMaster
+    ? `<label class="common-toggle"><input type="checkbox" data-field="${key}" onchange="onMasterFieldToggle(this)"> 共通</label>`
+    : '';
+  const oninput = isMaster ? `onMasterFieldInput(this)` : `calculateAll()`;
+  return `
+    <div class="field">
+      <label><span class="sym">${sym}</span><span>${desc}</span></label>
+      <div class="rate-row">
+        <input type="text" class="c-${key}" data-field="${key}" inputmode="decimal" value="${value ?? ''}" placeholder="${placeholder}" oninput="${oninput}">
+        ${checkbox}
+      </div>
+    </div>
+  `;
+}
+
+function addCase(prefill){
+  caseCounter++;
+  const id = caseCounter;
+  const container = document.getElementById('casesContainer');
+  const isMaster = (container.children.length === 0);
+  const div = document.createElement('div');
+  div.className = 'case-block' + (isMaster ? ' case-master' : '');
+  div.id = 'case-' + id;
+  const p = prefill || {};
+  div.innerHTML = `
+    <div class="case-head">
+      <input type="text" class="name" value="${p.name || ('案' + idToLetters(id))}" placeholder="案の名前">
+      <button class="btn btn-danger" onclick="removeCase(${id})">削除</button>
+    </div>
+    <div class="row">
+      ${fieldRowHtml('P0', 'P₀', '初期投資額（現価・円）', p.P0, '例）1000000', isMaster)}
+      ${fieldRowHtml('n', 'n', '耐用年数・投資効果（年）', p.n, '例）10', isMaster)}
+      ${fieldRowHtml('i', 'i', '割引率（%）', p.i, '例）5', isMaster)}
+    </div>
+    <div class="row">
+      ${fieldRowHtml('M', 'M', '年間キャッシュフロー（年価・円、均等の場合）', p.M, '例）200000（費用なら負の値）', isMaster)}
+      ${fieldRowHtml('S', 'S', '残存価値・売却額（終価・円、任意）', p.S, '例）100000', isMaster)}
+    </div>
+    <div class="field">
+      <label><span class="sym">CFₖ</span><span>年ごとの個別キャッシュフロー（任意・カンマ区切りでn個。指定時はMより優先）</span></label>
+      <textarea class="c-CF" placeholder="例）50000,80000,80000,120000,150000">${p.CF || ''}</textarea>
+    </div>
+  `;
+  container.appendChild(div);
+  syncAllFieldsFromMaster();
+}
+
+function syncFieldToOthers(masterBlock, fieldName, checked, value){
+  document.querySelectorAll('.case-block').forEach(b=>{
+    if(b === masterBlock) return;
+    const el = b.querySelector(`[data-field="${fieldName}"]`);
+    if(!el) return;
+    if(checked){
+      el.value = value;
+      el.disabled = true;
+    } else {
+      el.disabled = false;
+    }
+  });
+}
+
+function syncAllFieldsFromMaster(){
+  const masterBlock = document.querySelector('.case-block.case-master');
+  if(!masterBlock) return;
+  ['P0','n','i','M','S'].forEach(key=>{
+    const cb = masterBlock.querySelector(`.common-toggle input[data-field="${key}"]`);
+    const input = masterBlock.querySelector(`[data-field="${key}"]`);
+    if(!cb || !input) return;
+    syncFieldToOthers(masterBlock, key, cb.checked, input.value);
+  });
+}
+
+function onMasterFieldToggle(cb){
+  const fieldName = cb.dataset.field;
+  const masterBlock = cb.closest('.case-block');
+  const masterInput = masterBlock.querySelector(`[data-field="${fieldName}"]`);
+  syncFieldToOthers(masterBlock, fieldName, cb.checked, masterInput.value);
+  calculateAll();
+}
+
+function onMasterFieldInput(input){
+  const fieldName = input.dataset.field;
+  const masterBlock = input.closest('.case-block');
+  const cb = masterBlock.querySelector(`.common-toggle input[data-field="${fieldName}"]`);
+  if(cb && cb.checked){
+    syncFieldToOthers(masterBlock, fieldName, true, input.value);
+  }
+  calculateAll();
+}
+
+function removeCase(id){
+  const el = document.getElementById('case-' + id);
+  if(el) el.remove();
+}
+
+function parseVal(v){
+  if(v === null || v === undefined) return null;
+  const s = String(v).trim();
+  if(s === '') return null;
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+function fmt(num){
+  if(num === null || num === undefined || isNaN(num)) return '—';
+  const sign = num < 0 ? '−' : '';
+  return sign + Math.round(Math.abs(num)).toLocaleString('ja-JP') + ' 円';
+}
+function fmtYen(num){ return fmt(num); }
+function fmtYenYear(num){
+  if(num === null || num === undefined || isNaN(num)) return '—';
+  const sign = num < 0 ? '−' : '';
+  return sign + Math.round(Math.abs(num)).toLocaleString('ja-JP') + ' 円/年';
+}
+
+function readCases(){
+  const blocks = document.querySelectorAll('.case-block');
+  const cases = [];
+  blocks.forEach(b=>{
+    const name = b.querySelector('.name').value.trim() || '無名の案';
+    const P0 = parseVal(b.querySelector('.c-P0').value) || 0;
+    const n = parseVal(b.querySelector('.c-n').value);
+    const i = parseVal(b.querySelector('.c-i').value);
+    const M = parseVal(b.querySelector('.c-M').value) || 0;
+    const S = parseVal(b.querySelector('.c-S').value) || 0;
+    const cfRaw = b.querySelector('.c-CF').value.trim();
+    let CF = null;
+    if(cfRaw !== ''){
+      CF = cfRaw.split(',').map(s=>parseFloat(s.trim())).filter(x=>!isNaN(x));
+    }
+    cases.push({ id:b.id, name, P0, n, i, M, S, CF });
+  });
+  return cases;
+}
+
+function calcCase(c){
+  const i = (c.i || 0) / 100;
+  const n = c.n;
+  const P0 = c.P0;
+  const S = c.S || 0;
+  const hasIrregular = c.CF && c.CF.length === n && n > 0;
+  let PW = -P0;
+  const yearlyDiscounted = [-P0]; // index 0 = year0
+
+  if(hasIrregular){
+    for(let k=1;k<=n;k++){
+      const cfK = c.CF[k-1];
+      const disc = cfK / Math.pow(1+i, k);
+      PW += disc;
+      yearlyDiscounted.push(disc);
+    }
+    const discS = S / Math.pow(1+i, n);
+    PW += discS;
+    yearlyDiscounted[n] += discS;
+  } else {
+    const M = c.M || 0;
+    for(let k=1;k<=n;k++){
+      const disc = M / Math.pow(1+i, k);
+      PW += disc;
+      yearlyDiscounted.push(disc);
+    }
+    const discS = S / Math.pow(1+i, n);
+    PW += discS;
+    yearlyDiscounted[n] += discS;
+  }
+
+  const FVfactor = Math.pow(1+i, n);
+  const FW = PW * FVfactor;
+  let CRF;
+  if(Math.abs(i) < 1e-12){
+    CRF = n > 0 ? 1/n : 0;
+  } else {
+    CRF = (i * Math.pow(1+i, n)) / (Math.pow(1+i, n) - 1);
+  }
+  const AW = PW * CRF;
+
+  // cumulative discounted cashflow for chart
+  const cumulative = [];
+  let running = 0;
+  for(let k=0;k<=n;k++){
+    running += yearlyDiscounted[k];
+    cumulative.push(running);
+  }
+
+  return { PW, AW, FW, cumulative, n, i };
+}
+
+function rankClass(rank){
+  if(rank === 1) return 'rank-1';
+  if(rank === 2) return 'rank-2';
+  if(rank === 3) return 'rank-3';
+  return '';
+}
+
+function buildRankMap(values, names){
+  // values: array of numbers (higher = better). returns map name->rank
+  const sorted = names.map((name,idx)=>({name, v:values[idx]})).sort((a,b)=>b.v-a.v);
+  const map = {};
+  sorted.forEach((item, idx)=>{ map[item.name] = idx+1; });
+  return map;
+}
+
+function getRadio(name){
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : null;
+}
+
+function calculateAll(){
+  const cases = readCases();
+  const resultArea = document.getElementById('resultArea');
+  resultArea.innerHTML = '';
+
+  if(cases.length === 0){
+    resultArea.innerHTML = '<div class="warnbox">比較する投資案がありません。「＋ 投資案を追加」から入力してください。</div>';
+    return;
+  }
+
+  const invalid = cases.filter(c => !c.n || c.n <= 0 || c.i === null);
+  if(invalid.length > 0){
+    resultArea.innerHTML = `<div class="warnbox">「${invalid.map(c=>c.name).join('、')}」の耐用年数・投資効果年数(n)または割引率(i)が未入力です。すべての案で n と i（個別入力または共通設定）を指定してください。</div>`;
+    return;
+  }
+
+  const results = cases.map(c => ({ c, r: calcCase(c) }));
+  const mode = getRadio('compareMode') || 'exclusive';
+
+  if(mode === 'independent'){
+    let tableRows = '';
+    const accepted = [];
+    const rejected = [];
+    results.forEach(({c,r})=>{
+      const isAccept = r.PW > 0;
+      (isAccept ? accepted : rejected).push(c);
+      tableRows += `
+        <tr>
+          <td>${c.name}</td>
+          <td>${fmtYen(r.PW)}</td>
+          <td>${fmtYenYear(r.AW)}</td>
+          <td>${fmtYen(r.FW)}</td>
+          <td><span class="verdict-badge ${isAccept?'verdict-accept':'verdict-reject'}">${isAccept?'採用':'却下'}</span></td>
+        </tr>
+      `;
+    });
+
+    const totalP0 = accepted.reduce((s,c)=>s+c.P0,0);
+    const summary = accepted.length
+      ? `採用案：<b>${accepted.map(c=>c.name).join('、')}</b>（合計投資額 ${fmtYen(totalP0)}）　／　却下案：${rejected.length?rejected.map(c=>c.name).join('、'):'なし'}`
+      : `採用できる案はありません（すべて PW ≤ 0）。`;
+
+    resultArea.innerHTML = `
+      <div class="card">
+        <h2>比較結果（独立案：個別採否判定）</h2>
+        <div class="summary-line">${summary}</div>
+        <table>
+          <thead>
+            <tr><th>投資案</th><th>現価法 PW</th><th>年価法 AW</th><th>終価法 FW</th><th>判定</th></tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+        <div class="note">独立案では各案を単独でMARR（割引率）と比較し、PW（＝AW・FWも符号は一致）が正であれば採用、負であれば却下します。資金に制約がない限り、正の案はすべて採用できます（資金制約がある場合は、この結果をもとに投資額の合計を見ながら優先順位を検討してください）。</div>
+        <div class="chart-wrap"><canvas id="barChart" height="90"></canvas></div>
+        <div class="chart-wrap"><canvas id="lineChart" height="110"></canvas></div>
+      </div>
+    `;
+
+    renderCharts(results);
+    return;
+  }
+
+  const names = results.map(x=>x.c.name);
+  const pwRank = buildRankMap(results.map(x=>x.r.PW), names);
+  const awRank = buildRankMap(results.map(x=>x.r.AW), names);
+  const fwRank = buildRankMap(results.map(x=>x.r.FW), names);
+
+  // check for consistency warnings
+  const ns = [...new Set(cases.map(c=>c.n))];
+  const is = [...new Set(cases.map(c=>c.i))];
+  let warnings = '';
+  if(ns.length > 1){
+    warnings += `<div class="warnbox">耐用年数・投資効果年数(n)が案ごとに異なります（${ns.join('年 / ')}年）。現価法(PW)・終価法(FW)は単純な絶対額比較になるため、期間の違いを考慮したい場合は年価法(AW)での比較を優先してください。</div>`;
+  }
+  if(is.length > 1){
+    warnings += `<div class="warnbox">割引率(i)が案ごとに異なります。この場合、PW・AW・FWの順位が一致しないことがあります（各手法は「その案自身のi・n」で換算しているため）。下表で手法ごとの順位を確認してください。</div>`;
+  }
+
+  let tableRows = '';
+  results.forEach(({c,r})=>{
+    const pwR = pwRank[c.name], awR = awRank[c.name], fwR = fwRank[c.name];
+    tableRows += `
+      <tr>
+        <td>${c.name}</td>
+        <td class="${pwR===1?'best':''}">${fmtYen(r.PW)}<span class="rank-badge ${rankClass(pwR)}">${pwR}位</span></td>
+        <td class="${awR===1?'best':''}">${fmtYenYear(r.AW)}<span class="rank-badge ${rankClass(awR)}">${awR}位</span></td>
+        <td class="${fwR===1?'best':''}">${fmtYen(r.FW)}<span class="rank-badge ${rankClass(fwR)}">${fwR}位</span></td>
+      </tr>
+    `;
+  });
+
+  resultArea.innerHTML = `
+    ${warnings}
+    <div class="card">
+      <h2>比較結果</h2>
+      <table>
+        <thead>
+          <tr><th>投資案</th><th>現価法 PW</th><th>年価法 AW</th><th>終価法 FW</th></tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <div class="note">各値が大きいほど有利。同じ案の中で PW・AW・FW は必ず一致した優劣になりますが、n や i が案ごとに異なる場合は手法間で順位が変わることがあります（上の注記を参照）。</div>
+      <div class="chart-wrap"><canvas id="barChart" height="90"></canvas></div>
+      <div class="chart-wrap"><canvas id="lineChart" height="110"></canvas></div>
+    </div>
+  `;
+
+  renderCharts(results);
+}
+
+function renderCharts(results){
+  const labels = results.map(x=>x.c.name);
+  const pwData = results.map(x=>x.r.PW);
+  const awData = results.map(x=>x.r.AW);
+  const fwData = results.map(x=>x.r.FW);
+
+  const text = getCssVar('--text');
+  const textDim = getCssVar('--text-dim');
+  const gridColor = hexToRgba(getCssVar('--line'), .5);
+  const gold = getCssVar('--gold');
+  const good = getCssVar('--good');
+
+  if(charts.bar) charts.bar.destroy();
+  const barCtx = document.getElementById('barChart').getContext('2d');
+  charts.bar = new Chart(barCtx, {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        { label:'現価法 PW（円）', data:pwData, backgroundColor:gold },
+        { label:'年価法 AW（円/年）', data:awData, backgroundColor:good },
+        { label:'終価法 FW（円）', data:fwData, backgroundColor:textDim }
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{ legend:{ labels:{ color:text } }, tooltip:{ callbacks:{ label:(ctx)=> ctx.dataset.label + ': ' + Math.round(ctx.raw).toLocaleString('ja-JP') } } },
+      scales:{
+        x:{ ticks:{ color:textDim }, grid:{ color:gridColor } },
+        y:{ ticks:{ color:textDim }, grid:{ color:gridColor } }
+      }
+    }
+  });
+
+  const maxN = Math.max(...results.map(x=>x.r.n));
+  const yearLabels = Array.from({length:maxN+1}, (_,k)=>k + '年目');
+  const colors = [gold, good, getCssVar('--warn'), '#7aa8c9', '#b98fd6', '#e0c15a'];
+  const lineDatasets = results.map((x,idx)=>{
+    const data = yearLabels.map((_,k)=> k <= x.r.n ? x.r.cumulative[k] : null);
+    return {
+      label: x.c.name + '（累積現在価値）',
+      data,
+      borderColor: colors[idx % colors.length],
+      backgroundColor: 'transparent',
+      spanGaps:false,
+      tension:0.15
+    };
+  });
+
+  if(charts.line) charts.line.destroy();
+  const lineCtx = document.getElementById('lineChart').getContext('2d');
+  charts.line = new Chart(lineCtx, {
+    type:'line',
+    data:{ labels:yearLabels, datasets:lineDatasets },
+    options:{
+      responsive:true,
+      plugins:{ legend:{ labels:{ color:text } } },
+      scales:{
+        x:{ ticks:{ color:textDim }, grid:{ color:gridColor } },
+        y:{ ticks:{ color:textDim }, grid:{ color:gridColor } }
+      }
+    }
+  });
+}
+
+// 初期表示：サンプル2案
+addCase({ name:'案A（低コスト・短寿命）', P0:1000000, n:5, i:5, M:280000, S:0 });
+addCase({ name:'案B（高コスト・長寿命）', P0:2200000, n:10, i:5, M:320000, S:150000 });
+</script>
+</body>
+</html>
