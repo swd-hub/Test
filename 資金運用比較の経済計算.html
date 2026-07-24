@@ -162,6 +162,22 @@
   }
   .common-toggle input[type="checkbox"]{ accent-color:var(--gold); width:13px; height:13px; }
   .common-toggle:has(input:checked){ border-color:var(--gold-dim); color:var(--gold); }
+  .cf-mode-toggle{ display:flex; gap:8px; margin:4px 0 14px; }
+  .btn-mode{
+    flex:1; border:1px solid var(--line); background:var(--input-bg); color:var(--text-dim);
+    border-radius:8px; padding:11px 14px; font-size:21px; font-weight:600; cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s; font-family:inherit;
+  }
+  .btn-mode.active{ border-color:var(--gold); color:var(--text); background:rgba(201,161,90,.12); }
+  .cf-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; margin-top:8px; }
+  .cf-item{ display:flex; flex-direction:column; gap:4px; }
+  .cf-item label{ font-size:17.5px; color:var(--text-dim); }
+  .cf-item input{
+    width:100%; background:var(--input-bg); border:1px solid var(--line); border-radius:6px;
+    padding:9px 9px; font-size:20px; color:var(--text); font-family:inherit;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .cf-item input:focus{ outline:none; border-color:var(--gold-dim); box-shadow:0 0 0 3px rgba(201,161,90,.12); }
 </style>
 </head>
 <body>
@@ -271,6 +287,8 @@ function addCase(prefill){
   div.className = 'case-block' + (isMaster ? ' case-master' : '');
   div.id = 'case-' + id;
   const p = prefill || {};
+  const initMode = (p.CF && p.CF.length) ? 'CF' : 'M';
+  div.dataset.cfmode = initMode;
   div.innerHTML = `
     <div class="case-head">
       <input type="text" class="name" value="${p.name || ('案' + idToLetters(id))}" placeholder="案の名前">
@@ -280,18 +298,79 @@ function addCase(prefill){
       ${fieldRowHtml('P0', 'P₀', '初期投資額（現価・円）', p.P0, '例）1000000', isMaster)}
       ${fieldRowHtml('n', 'n', '耐用年数・投資効果（年）', p.n, '例）10', isMaster)}
       ${fieldRowHtml('i', 'i', '割引率（%）', p.i, '例）5', isMaster)}
-    </div>
-    <div class="row">
-      ${fieldRowHtml('M', 'M', '年間キャッシュフロー（年価・円、均等の場合）', p.M, '例）200000（費用なら負の値）', isMaster)}
       ${fieldRowHtml('S', 'S', '残存価値・売却額（終価・円、任意）', p.S, '例）100000', isMaster)}
     </div>
-    <div class="field">
-      <label><span class="sym">CFₖ</span><span>年ごとの個別キャッシュフロー（任意・カンマ区切りでn個。指定時はMより優先）</span></label>
-      <textarea class="c-CF" placeholder="例）50000,80000,80000,120000,150000">${p.CF || ''}</textarea>
+    <div class="cf-mode-toggle">
+      <button type="button" class="btn-mode ${initMode==='M'?'active':''}" data-mode="M" onclick="setCFMode(${id},'M')">均等（M）で入力</button>
+      <button type="button" class="btn-mode ${initMode==='CF'?'active':''}" data-mode="CF" onclick="setCFMode(${id},'CF')">年ごと（CFₖ）で入力</button>
+    </div>
+    <div class="row cf-mode-M ${initMode==='CF'?'hidden':''}" id="cfModeM-${id}">
+      ${fieldRowHtml('M', 'M', '年間キャッシュフロー（年価・円、毎年同額）', p.M, '例）200000（費用なら負の値）', isMaster)}
+    </div>
+    <div class="field cf-mode-CF ${initMode==='M'?'hidden':''}" id="cfModeCF-${id}">
+      <label><span class="sym">CFₖ</span><span>年ごとの個別キャッシュフロー（円）。耐用年数(n)の数だけ入力欄が自動で並びます</span></label>
+      <div class="cf-grid" id="cfGrid-${id}"></div>
     </div>
   `;
   container.appendChild(div);
+
+  const nInput = div.querySelector('.c-n');
+  if(nInput) nInput.addEventListener('input', ()=> rebuildCFGridIfNeeded(id));
+
+  if(initMode === 'CF'){
+    buildCFGrid(id, p.CF);
+  }
+
   syncAllFieldsFromMaster();
+}
+
+function getN(id){
+  const el = document.querySelector('#case-'+id+' .c-n');
+  return el ? parseVal(el.value) : null;
+}
+
+function setCFMode(id, mode){
+  const block = document.getElementById('case-'+id);
+  if(!block) return;
+  block.dataset.cfmode = mode;
+  block.querySelectorAll('.btn-mode').forEach(b=>{
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  const mBlock = document.getElementById('cfModeM-'+id);
+  const cfBlock = document.getElementById('cfModeCF-'+id);
+  if(mBlock) mBlock.classList.toggle('hidden', mode !== 'M');
+  if(cfBlock) cfBlock.classList.toggle('hidden', mode !== 'CF');
+  if(mode === 'CF') buildCFGrid(id);
+  calculateAll();
+}
+
+function rebuildCFGridIfNeeded(id){
+  const block = document.getElementById('case-'+id);
+  if(block && block.dataset.cfmode === 'CF'){
+    buildCFGrid(id);
+  }
+}
+
+function buildCFGrid(id, prefillValues){
+  const grid = document.getElementById('cfGrid-'+id);
+  if(!grid) return;
+  const n = getN(id);
+  const current = (prefillValues && prefillValues.length)
+    ? prefillValues
+    : Array.from(grid.querySelectorAll('input')).map(inp=>inp.value);
+  const count = (n && n > 0) ? Math.min(Math.floor(n), 100) : 0;
+  let html = '';
+  for(let k=1;k<=count;k++){
+    const raw = current[k-1];
+    const val = (raw === undefined || raw === null) ? '' : raw;
+    html += `
+      <div class="cf-item">
+        <label>${k}年目</label>
+        <input type="text" inputmode="decimal" class="c-CF-item" data-idx="${k}" value="${val}" oninput="calculateAll()">
+      </div>
+    `;
+  }
+  grid.innerHTML = count > 0 ? html : '<div class="note">耐用年数(n)を入力すると、年ごとの入力欄が表示されます。</div>';
 }
 
 function syncFieldToOthers(masterBlock, fieldName, checked, value){
@@ -304,6 +383,9 @@ function syncFieldToOthers(masterBlock, fieldName, checked, value){
       el.disabled = true;
     } else {
       el.disabled = false;
+    }
+    if(fieldName === 'n'){
+      rebuildCFGridIfNeeded(b.id.replace('case-',''));
     }
   });
 }
@@ -370,12 +452,14 @@ function readCases(){
     const P0 = parseVal(b.querySelector('.c-P0').value) || 0;
     const n = parseVal(b.querySelector('.c-n').value);
     const i = parseVal(b.querySelector('.c-i').value);
-    const M = parseVal(b.querySelector('.c-M').value) || 0;
     const S = parseVal(b.querySelector('.c-S').value) || 0;
-    const cfRaw = b.querySelector('.c-CF').value.trim();
-    let CF = null;
-    if(cfRaw !== ''){
-      CF = cfRaw.split(',').map(s=>parseFloat(s.trim())).filter(x=>!isNaN(x));
+    const cfmode = b.dataset.cfmode || 'M';
+    let M = 0, CF = null;
+    if(cfmode === 'CF'){
+      const items = b.querySelectorAll('.c-CF-item');
+      CF = Array.from(items).map(inp => parseVal(inp.value) ?? 0);
+    } else {
+      M = parseVal(b.querySelector('.c-M').value) || 0;
     }
     cases.push({ id:b.id, name, P0, n, i, M, S, CF });
   });
