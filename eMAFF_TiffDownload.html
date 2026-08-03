@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>操作誘導シミュレーター（eMAFF農地ナビ版）</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            user-select: none; /* 文字の誤選択を防ぐ */
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+        .header {
+            border-left: 6px solid #0078d4;
+            padding-left: 15px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+            color: #0078d4;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 26px;
+            color: #666;
+        }
+        /* 説明パネル */
+        .info-panel {
+            background-color: #f0f4f8;
+            border: 1px solid #d0dfee;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 30px;
+            line-height: 1.6;
+            font-weight: bold;
+        }
+        /* 紙芝居の舞台 */
+        .stage-wrapper {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #stage {
+            position: relative;
+            display: inline-block;
+            background-color: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+            overflow: hidden;
+            max-width: 100%;
+        }
+        #stage:hover {
+            box-shadow: 0 0 12px rgba(0, 120, 212, 0.3);
+        }
+        #screen-img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            margin: 0 auto;
+        }
+        /* 下部コントロール */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        .step-badge {
+            background-color: #0078d4;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .reset-btn {
+            padding: 8px 16px;
+            background-color: #ffffff;
+            border: 1px solid #cccccc;
+            color: #333333;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .reset-btn:hover {
+            background-color: #f5f5f5;
+            border-color: #999999;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>紙芝居シミュレーター</h1>
+        <p>※eMAFF農地ナビから農地情報を取得する手順を示します。</p>
+    </div>
+
+    <!-- eMAFF農地ナビへのリンク -->
+    <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+        <a href="https://map.maff.go.jp/" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: #2d5016; color: white; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; text-decoration: none; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); transition: background 0.2s;" onmouseover="this.style.background='#1f3a0f'" onmouseout="this.style.background='#2d5016'" title="eMAFF農地ナビを新しいタブで開く">
+            🌾 eMAFF農地ナビ を開く
+        </a>
+        <span style="font-size: 13px; color: #666;">（全国農地情報サービス）</span>
+    </div>
+
+    <!-- 現在の手順の説明が表示されるパネル -->
+    <div id="info-text" class="info-panel">
+        eMAFF農地ナビからほ場データを得る方法の説明。
+    </div>
+
+    <!-- 画面をクリックしてめくるエリア -->
+    <div class="stage-wrapper">
+        <div id="stage" onclick="nextStep()" title="画面をクリックすると次の手順に進みます">
+            <img id="screen-img" src="" alt="操作画面">
+        </div>
+    </div>
+
+    <!-- カウンターとリセットボタン -->
+    <div class="controls">
+        <button class="reset-btn" id="prev-btn" onclick="prevStep()" style="visibility: hidden;">← 前へ</button>
+        <div class="step-badge">
+            進捗: <span id="step-text">1</span>
+        </div>
+        <button class="reset-btn" onclick="resetSim()">最初からやり直す</button>
+    </div>
+</div>
+
+<script>
+// ===================================================
+// 【ここを設定】画像フォルダ内の画像ファイル名と、その説明文
+// ===================================================
+const scenario = [
+    {
+        image: "../説明画面/eMAFF画面/１．eMAFF農地ナビ画面.png",
+        description: "【ステップ １：eMAFF農地ナビ】<br>・真上の「eMAFF農地ナビ を開く」ボタンをマウスでクリックしてください。農地ナビが起動します。そのあとこの画面に戻ってください。<br>・この画像内をクリックしながら、示される手順を進んでください。"
+    },
+    {
+        image: "../説明画面/eMAFF画面/２．条件から探す.png",
+        description: "【ステップ 2：検索条件】<br>・「条件から探す」をクリックで選択してください。"
+    },
+    {
+        image: "../説明画面/eMAFF画面/３．所在地番の参考.png",
+        description: "【ステップ 3：所在地番の参考】<br>・所在地番の参考ボタンを選択してください。"
+    },
+    {
+        image: "../説明画面/eMAFF画面/４．島根県.png",
+        description: "【ステップ 4：都道府県選択】<br>・島根県を選択してください。ただし、クリックするのは条件を選択ボタンではありません。"
+    },
+    {
+        image: "../説明画面/eMAFF画面/５．出雲市.png",
+        description: "【ステップ 5：市町村選択】<br>・出雲市を選択してください。"
+    },
+    {
+        image: "../説明画面/eMAFF画面/６．斐川町中州.png",
+        description: "【ステップ 6：大字選択】<br>・斐川町中州などの大字を選択してください。"
+    },
+    {
+        image: "../説明画面/eMAFF画面/７．所在地番で検索.png",
+        description: "【ステップ 7：所在地番検索】<br>・所在地番で検索のボタンを選択してください。"
+    },
+    {
+        image: "../説明画面/eMAFF画面/８．所在・地番.png",
+        description: "【ステップ 8：地番入力】<br>・農地の地番を選択してください。<br>・地図の中央に選択した農地が表示されます。"
+    },
+    {
+        image: "../説明画面/eMAFF画面/９．ズーム.png",
+        description: "【ステップ 9：ズーム操作】<br>・このままでは農地が小さすぎるので、地図のズーム操作を行ってください。<br>・データをダウンロード（取得）したい農地を大きく表示させてください。"
+    },
+    {
+        image: "../説明画面/eMAFF画面/１０．ダウンロード.png",
+        description: "【ステップ 10：データダウンロード】<br>・いよいよ農地データをダウンロードです。<br>・ダウンロードボタンをクリックしてください。<br>・ほ場の情報（ピン）とほ場の輪郭（ポリゴン）の２種類のファイルがダウンロードされます。"
+    },
+    {
+        image: "../説明画面/eMAFF画面/１１．eMAFFデータ保存フォルダ.png",
+        description: "【ステップ 11：データ保存】ダウンロードしたファイルはこのフォルダに保存してください。"
+    }
+];
+
+let currentStep = 0;
+
+function render() {
+    const currentData = scenario[currentStep];
+    
+    // 画像の切り替え
+    document.getElementById("screen-img").src = currentData.image;
+    
+    // 説明文の切り替え
+    document.getElementById("info-text").innerHTML = currentData.description;
+    
+    // ステップ番号の表示更新
+    document.getElementById("step-text").textContent = (currentStep + 1) + " / " + scenario.length;
+    
+    // 戻るボタンの表示制御（ステップ2以降で表示）
+    const prevBtn = document.getElementById("prev-btn");
+    prevBtn.style.visibility = currentStep > 0 ? "visible" : "hidden";
+    
+    // 最後の画像に達したときの案内
+    if (currentStep === scenario.length - 1) {
+        setTimeout(() => {
+            alert("【予行演習完了！】\n\n手順のイメージはバッチリです！\n既存の機能を削除する心配はありません。\nマウスを左側の「本物」の画面に戻し、今覚えた通りの手順で、もしくは同時進行で操作を行ってください。");
+        }, 300);
+    }
+}
+
+function nextStep() {
+    // 最後のステップより前なら進める
+    if (currentStep < scenario.length - 1) {
+        currentStep++;
+        render();
+    }
+}
+
+function prevStep() {
+    // 最初のステップより後ろなら戻る
+    if (currentStep > 0) {
+        currentStep--;
+        render();
+    }
+}
+
+function resetSim() {
+    currentStep = 0;
+    render();
+}
+
+// 起動時に最初の画面を表示
+window.onload = function() {
+    render();
+};
+</script>
+
+</body>
+</html>

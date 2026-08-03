@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>操作誘導シミュレーター（説明付き紙芝居）</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            user-select: none; /* 文字の誤選択を防ぐ */
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+        .header {
+            border-left: 6px solid #0078d4;
+            padding-left: 15px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+            color: #0078d4;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 26px;
+            color: #666;
+        }
+        /* 説明パネル */
+        .info-panel {
+            background-color: #f0f4f8;
+            border: 1px solid #d0dfee;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 30px;
+            line-height: 1.6;
+            font-weight: bold;
+        }
+        /* 紙芝居の舞台 */
+        .stage-wrapper {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #stage {
+            position: relative;
+            display: inline-block;
+            background-color: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+            overflow: hidden;
+            max-width: 100%;
+        }
+        #stage:hover {
+            box-shadow: 0 0 12px rgba(0, 120, 212, 0.3);
+        }
+        #screen-img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            margin: 0 auto;
+        }
+        /* 下部コントロール */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        .step-badge {
+            background-color: #0078d4;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .reset-btn {
+            padding: 8px 16px;
+            background-color: #ffffff;
+            border: 1px solid #cccccc;
+            color: #333333;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .reset-btn:hover {
+            background-color: #f5f5f5;
+            border-color: #999999;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>紙芝居シミュレーター</h1>
+        <p>※コペルニクスブラウザから植生指数用データを取得する手順を示します。</p>
+    </div>
+
+    <!-- コペルニクスブラウザへのリンク -->
+    <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+        <a href="https://browser.dataspace.copernicus.eu/?zoom=13&lat=35.43865&lng=132.83853&themeId=AGRICULTURE&visualizationUrl=U2FsdGVkX1%2FlT63bSH8isQuHS04O6vjKDrjs5zwdjTtaIh9kBU4eRnj7ATjhcidGfQ%2BWw7QK7sJ9pi1jqShMr%2BaxrrzGZUA67IiUb6lGNl%2BQqwvpRtpPdHdpQlZIw9Dc&datasetId=S2_L2A_CDAS&fromTime=2026-03-28T00%3A00%3A00.000Z&toTime=2026-03-28T23%3A59%3A59.999Z&layerId=1_TRUE-COLOR&demSource3D=%22MAPZEN%22&cloudCoverage=30&dateMode=SINGLE" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: #0f4c81; color: white; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; text-decoration: none; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); transition: background 0.2s;" onmouseover="this.style.background='#0a3560'" onmouseout="this.style.background='#0f4c81'" title="Copernicus Browserを新しいタブで開く">
+            🌍 Copernicus Browser を開く
+        </a>
+        <span style="font-size: 13px; color: #666;">（Izumo/Hikawa地域、農業テーマ）</span>
+    </div>
+
+    <!-- 現在の手順の説明が表示されるパネル -->
+    <div id="info-text" class="info-panel">
+        コペルニクスブラウザから植生指数用データを得る方法の説明。
+    </div>
+
+    <!-- 画面をクリックしてめくるエリア -->
+    <div class="stage-wrapper">
+        <div id="stage" onclick="nextStep()" title="画面をクリックすると次の手順に進みます">
+            <img id="screen-img" src="" alt="操作画面">
+        </div>
+    </div>
+
+    <!-- カウンターとリセットボタン -->
+    <div class="controls">
+        <button class="reset-btn" id="prev-btn" onclick="prevStep()" style="visibility: hidden;">← 前へ</button>
+        <div class="step-badge">
+            進捗: <span id="step-text">1</span>
+        </div>
+        <button class="reset-btn" onclick="resetSim()">最初からやり直す</button>
+    </div>
+</div>
+
+<script>
+// ===================================================
+// 【ここを設定】画像フォルダ内の画像ファイル名と、その説明文
+// ===================================================
+const scenario = [
+    {
+        image: "../説明画面/CB画像/１．CB画面.png",
+        description: "【ステップ1：コペルニクスブラウザを開く】<br>• 上の「Copernicus Browserを開く」ボタンをクリックし、起動後この画面に戻ってください。<br>• 下の画像の黄色矢印が指す位置をクリックしてください。<br>• コペルニクスブラウザ側でも同じ位置をクリックしてください。<br>• 両画面を見比べながらクリック操作を続けてください。"
+    },
+    {
+        image: "../説明画面/CB画像/２．ログイン画面.png",
+        description: "【ステップ2：ログイン】<br>• データ取得にはログインが必要です。<br>• まずログインしてください。"
+    },
+    {
+        image: "../説明画面/CB画像/３．最新データ.png",
+        description: "【ステップ3：最新の雲の少ない画像を表示】<br>• 緑のボタンをクリックしてください。<br>• 上空から見た最新のカラー画像が表示されます。"
+    },
+    {
+        image: "../説明画面/CB画像/４．ダウンロードイメージアイコン.png",
+        description: "【ステップ4：ダウンロード画面を開く】<br>• Downloadアイコンをクリックしてください。<br>• ダウンロードするファイルを選ぶ画面が表示されます。"
+    },
+    {
+        image: "../説明画面/CB画像/５．分析データ.png",
+        description: "【ステップ5：分析用データを選択】<br>• 画面上部の3タブのうち中央の「Analytical（分析向け）」をクリックしてください。"
+    },
+    {
+        image: "../説明画面/CB画像/６．ダウンロード設定.png",
+        description: "【ステップ6：波長データを選択】<br>• 最初からチェックのついている「True Color」（左上）のチェックを外してください。<br>• 右列のB02・B03・B04・B08にチェックを入れてください。<br>• 矢印が指す「Show more」をクリックし、B11にもチェックを入れてください。"
+    },
+    {
+        image: "../説明画面/CB画像/７．B11バンド.png",
+        description: "【ステップ7：波長の確認】<br>• 形式はTiff 32bit floatです。<br>• B02・B03・B04・B08・B11の5波長にチェックが入っていることを確認してください。<br>• これらは光の波長（色）ごとに切り出した画像データで、各植生指数の計算に使います。"
+    },
+    {
+        image: "../説明画面/CB画像/８．ダウンロードボタンクリック.png",
+        description: "【ステップ8：ダウンロード実行】<br>• 「Download」ボタンをクリックしてください。"
+    },
+    {
+        image: "../説明画面/CB画像/９．ダウンロード中.png",
+        description: "【ステップ9：ダウンロード中】<br>• この間、進行中を示す印が表示されます。そのままお待ちください。<br>• 5つの波長ファイルを格納した1つのZIPファイルがダウンロードされます。"
+    },
+    {
+        image: "../説明画面/CB画像/１０．CBデータ保存フォルダ.png",
+        description: "【ステップ10：ファイルの保存】<br>• ZIPファイルを開き、中の波長ファイルをこのフォルダに保存してください。"
+    },
+    {
+        image: "../説明画面/CB画像/１１．日付変更.png",
+        description: "【番外1：過去の画像を探す】<br>• 日付をクリックすると、衛星が上空を通過した日のカレンダーが表示されます。"
+    },
+    {
+        image: "../説明画面/CB画像/１２．日付選択.png",
+        description: "【番外2：日付を選ぶ】<br>• 黒枠の日は雲量30%以下です（0〜100%の範囲で変更可能）。<br>• 日付をクリックするとその日の地表画像に切り替わります。<br>• ほ場上空に雲がないことを確認してから5つのファイルをダウンロードしてください。"
+    },
+        {
+        image: "../説明画面/CB画像/１３．Sentinel1データ.png",
+        description: "【番外4：マイクロ波データ（Sentinel-1）の設定】<br>• この画面の通りに設定すると、雲を透過するマイクロ波データを取得できます。<br>• ただし作物に雨や朝露が付着しているとデータが乱れるため、その場合は分析対象から除外してください。"
+    },
+    {
+        image: "../説明画面/CB画像/１４．VH＆VVデータ.png",
+        description: "【番外5：VH・VVデータのダウンロード】<br>• この画面の設定でダウンロードしてください。"
+    },
+    {
+        image: "../説明画面/CB画像/１５．地図と一致しない例.png",
+        description: "【番外3：地図とのズレに注意】<br>• 解析ツールで地図との重ね合わせがずれている日は分析対象から除外してください。"
+    },
+];
+
+let currentStep = 0;
+
+function render() {
+    const currentData = scenario[currentStep];
+    
+    // 画像の切り替え
+    document.getElementById("screen-img").src = currentData.image;
+    
+    // 説明文の切り替え
+    document.getElementById("info-text").innerHTML = currentData.description;
+    
+    // ステップ番号の表示更新
+    document.getElementById("step-text").textContent = (currentStep + 1) + " / " + scenario.length;
+    
+    // 戻るボタンの表示制御（ステップ2以降で表示）
+    const prevBtn = document.getElementById("prev-btn");
+    prevBtn.style.visibility = currentStep > 0 ? "visible" : "hidden";
+    
+    // 最後の画像に達したときの案内
+    if (currentStep === scenario.length - 1) {
+        setTimeout(() => {
+            alert("【予行演習完了！】\n\nファイル取得の手順がわかりましたか？\nマウスをコペルニクスブラウザの画面に移して今覚えた手順で、もしくは同時進行によって、ファイル取得をしてください。");
+        }, 300);
+    }
+}
+
+function nextStep() {
+    // 最後のステップより前なら進める
+    if (currentStep < scenario.length - 1) {
+        currentStep++;
+        render();
+    }
+}
+
+function prevStep() {
+    // 最初のステップより後ろなら戻る
+    if (currentStep > 0) {
+        currentStep--;
+        render();
+    }
+}
+
+function resetSim() {
+    currentStep = 0;
+    render();
+}
+
+// 起動時に最初の画面を表示
+window.onload = function() {
+    render();
+};
+</script>
+
+</body>
+</html>
