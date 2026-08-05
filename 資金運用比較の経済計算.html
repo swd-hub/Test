@@ -201,7 +201,7 @@
         <label><input type="radio" name="compareMode" value="independent" onchange="calculateAll()"> 独立案（各案を個別に採否判定・複数採用可）</label>
       </div>
     </div>
-    <div class="note">案A（最初の案）の各入力項目にある「共通」にチェックを入れると、その値が他のすべての案に自動的にコピーされます（他の案の該当欄はロックされ、案Aの値を編集すると連動して更新されます）。各投資案は現価法(PW)・年価法(AW)・終価法(FW)いずれも「案ごとの i・n」を使って自己無矛盾に換算しています。i や n が案ごとに異なる場合、3手法の順位が食い違うことがあります（下部の注記を参照）。</div>
+    <div class="note">案A（最初の案）の各入力項目にある「共通」にチェックを入れると、その値が他のすべての案に自動的にコピーされます。均等（M）入力時：据え置き g 年間は元利据置（CF=0）または元金据置（利子のみ支払）を選択できます。i や n が案ごとに異なる場合、3手法の順位が食い違うことがあります（下部の注記を参照）。</div>
   </div>
 
   <div id="casesContainer"></div>
@@ -306,6 +306,14 @@ function addCase(prefill){
     </div>
     <div class="row cf-mode-M ${initMode==='CF'?'hidden':''}" id="cfModeM-${id}">
       ${fieldRowHtml('M', 'M', '年間キャッシュフロー（年価・円、毎年同額）', p.M, '例）200000（費用なら負の値）', isMaster)}
+      ${fieldRowHtml('g', 'g', '据え置き（年）― 元本返済・収益開始まで', p.g, '例）0', isMaster)}
+    </div>
+    <div class="field cf-mode-M grace-mode-row ${initMode==='CF'?'hidden':''}" id="graceModeRow-${id}">
+      <label><span class="sym">据え置き中</span>${isMaster ? `<label class="common-toggle" style="margin-left:auto;"><input type="checkbox" data-field="graceMode" onchange="onMasterGraceModeToggle(this)"> 共通</label>` : ''}</label>
+      <div class="radio-row">
+        <label><input type="radio" name="graceMode-${id}" value="full" ${p.graceInterestOnly?'':'checked'} onchange="${isMaster?'onMasterGraceModeChange(this)':'calculateAll()'}"> 元利据置（支払なし）</label>
+        <label><input type="radio" name="graceMode-${id}" value="interest" ${p.graceInterestOnly?'checked':''} onchange="${isMaster?'onMasterGraceModeChange(this)':'calculateAll()'}"> 元金据置（利子のみ支払）</label>
+      </div>
     </div>
     <div class="field cf-mode-CF ${initMode==='M'?'hidden':''}" id="cfModeCF-${id}">
       <label><span class="sym">CFₖ</span><span>年ごとの個別キャッシュフロー（円）。耐用年数(n)の数だけ入力欄が自動で並びます</span></label>
@@ -338,8 +346,10 @@ function setCFMode(id, mode){
   });
   const mBlock = document.getElementById('cfModeM-'+id);
   const cfBlock = document.getElementById('cfModeCF-'+id);
+  const graceRow = document.getElementById('graceModeRow-'+id);
   if(mBlock) mBlock.classList.toggle('hidden', mode !== 'M');
   if(cfBlock) cfBlock.classList.toggle('hidden', mode !== 'CF');
+  if(graceRow) graceRow.classList.toggle('hidden', mode !== 'M');
   if(mode === 'CF') buildCFGrid(id);
   calculateAll();
 }
@@ -390,15 +400,51 @@ function syncFieldToOthers(masterBlock, fieldName, checked, value){
   });
 }
 
+function syncGraceModeToOthers(masterBlock, checked, value){
+  document.querySelectorAll('.case-block').forEach(b=>{
+    if(b === masterBlock) return;
+    const caseId = b.id.replace('case-','');
+    const radios = b.querySelectorAll(`input[name="graceMode-${caseId}"]`);
+    if(!radios.length) return;
+    radios.forEach(r=>{
+      r.disabled = checked;
+      if(checked && r.value === value) r.checked = true;
+    });
+  });
+}
+
 function syncAllFieldsFromMaster(){
   const masterBlock = document.querySelector('.case-block.case-master');
   if(!masterBlock) return;
-  ['P0','n','i','M','S'].forEach(key=>{
+  ['P0','n','i','M','S','g'].forEach(key=>{
     const cb = masterBlock.querySelector(`.common-toggle input[data-field="${key}"]`);
     const input = masterBlock.querySelector(`[data-field="${key}"]`);
     if(!cb || !input) return;
     syncFieldToOthers(masterBlock, key, cb.checked, input.value);
   });
+  const masterId = masterBlock.id.replace('case-','');
+  const masterGraceCb = masterBlock.querySelector('.common-toggle input[data-field="graceMode"]');
+  const masterGrace = masterBlock.querySelector(`input[name="graceMode-${masterId}"]:checked`);
+  if(masterGraceCb && masterGrace){
+    syncGraceModeToOthers(masterBlock, masterGraceCb.checked, masterGrace.value);
+  }
+}
+
+function onMasterGraceModeToggle(cb){
+  const masterBlock = cb.closest('.case-block');
+  const masterId = masterBlock.id.replace('case-','');
+  const masterGrace = masterBlock.querySelector(`input[name="graceMode-${masterId}"]:checked`);
+  syncGraceModeToOthers(masterBlock, cb.checked, masterGrace ? masterGrace.value : 'full');
+  calculateAll();
+}
+
+function onMasterGraceModeChange(radio){
+  const masterBlock = radio.closest('.case-block');
+  const cb = masterBlock.querySelector('.common-toggle input[data-field="graceMode"]');
+  if(cb && cb.checked){
+    syncGraceModeToOthers(masterBlock, true, radio.value);
+  }
+  calculateAll();
 }
 
 function onMasterFieldToggle(cb){
@@ -461,9 +507,30 @@ function readCases(){
     } else {
       M = parseVal(b.querySelector('.c-M').value) || 0;
     }
-    cases.push({ id:b.id, name, P0, n, i, M, S, CF });
+    const gRaw = b.querySelector('.c-g') ? b.querySelector('.c-g').value : '';
+    const gParsed = parseVal(gRaw);
+    const g = (gParsed === null || gParsed < 0) ? 0 : Math.floor(gParsed);
+    const caseId = b.id.replace('case-','');
+    const graceRadio = b.querySelector(`input[name="graceMode-${caseId}"]:checked`);
+    const graceInterestOnly = graceRadio ? graceRadio.value === 'interest' : false;
+    cases.push({ id:b.id, name, P0, n, i, M, S, CF, g, graceInterestOnly });
   });
   return cases;
+}
+
+function cashflowAtYear(c, k){
+  if(c.CF && c.CF.length === c.n && c.n > 0){
+    return c.CF[k - 1];
+  }
+  const g = c.g || 0;
+  if(k <= g){
+    if(c.graceInterestOnly && g > 0){
+      const i = (c.i || 0) / 100;
+      return -(c.P0 * i); // 元金据置：借入 P₀ に対する利子支払（キャッシュアウト）
+    }
+    return 0;
+  }
+  return c.M || 0;
 }
 
 function calcCase(c){
@@ -475,27 +542,15 @@ function calcCase(c){
   let PW = -P0;
   const yearlyDiscounted = [-P0]; // index 0 = year0
 
-  if(hasIrregular){
-    for(let k=1;k<=n;k++){
-      const cfK = c.CF[k-1];
-      const disc = cfK / Math.pow(1+i, k);
-      PW += disc;
-      yearlyDiscounted.push(disc);
-    }
-    const discS = S / Math.pow(1+i, n);
-    PW += discS;
-    yearlyDiscounted[n] += discS;
-  } else {
-    const M = c.M || 0;
-    for(let k=1;k<=n;k++){
-      const disc = M / Math.pow(1+i, k);
-      PW += disc;
-      yearlyDiscounted.push(disc);
-    }
-    const discS = S / Math.pow(1+i, n);
-    PW += discS;
-    yearlyDiscounted[n] += discS;
+  for(let k=1;k<=n;k++){
+    const cfK = hasIrregular ? c.CF[k-1] : cashflowAtYear(c, k);
+    const disc = cfK / Math.pow(1+i, k);
+    PW += disc;
+    yearlyDiscounted.push(disc);
   }
+  const discS = S / Math.pow(1+i, n);
+  PW += discS;
+  yearlyDiscounted[n] += discS;
 
   const FVfactor = Math.pow(1+i, n);
   const FW = PW * FVfactor;
@@ -551,6 +606,17 @@ function calculateAll(){
   const invalid = cases.filter(c => !c.n || c.n <= 0 || c.i === null);
   if(invalid.length > 0){
     resultArea.innerHTML = `<div class="warnbox">「${invalid.map(c=>c.name).join('、')}」の耐用年数・投資効果年数(n)または割引率(i)が未入力です。すべての案で n と i（個別入力または共通設定）を指定してください。</div>`;
+    return;
+  }
+
+  const invalidGrace = cases.filter(c => {
+    const g = c.g || 0;
+    if(g < 0 || g > c.n) return true;
+    if(!c.CF && c.M && g >= c.n) return true;
+    return false;
+  });
+  if(invalidGrace.length > 0){
+    resultArea.innerHTML = `<div class="warnbox">「${invalidGrace.map(c=>c.name).join('、')}」の据え置き g が不正です（0 ≦ g ≦ n、M がある場合は g &lt; n）。</div>`;
     return;
   }
 

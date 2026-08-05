@@ -570,6 +570,16 @@
       </div>
     </div>
 
+    <div class="field" id="f-g">
+      <label><span class="sym">据え置き g</span><span class="desc">元本返済・積立（M）を開始するまでの年数</span></label>
+      <input type="text" id="g" inputmode="decimal" placeholder="例）0（据え置きなし）" value="">
+      <div class="radio-row" style="margin-top:8px;">
+        <label><input type="radio" name="graceMode" value="full" checked> 元利据置（支払なし・利息も複利）</label>
+        <label><input type="radio" name="graceMode" value="interest"> 元金据置（利子のみ支払・元本据置）</label>
+      </div>
+      <div class="note">例）借入 10 年・据え置き 2 年（g=2）→ 最初 2 年は元本返済なし、3 年目から年価 M を返済。<strong>元金据置</strong>を選ぶと据え置き中は毎年「期首残高×利率」の利子のみ支払い、元本は増減しません。</div>
+    </div>
+
     <div class="field" id="f-variable-rates" style="display:none;">
       <label><span class="sym">年別金利</span><span class="desc">国債の変動金利のように年ごとに設定（複数入力）</span></label>
       <button type="button" class="gen-btn" onclick="generateRateInputs()">年数 n 分の金利入力欄を再生成</button>
@@ -584,7 +594,7 @@
     <div id="result"></div>
 
     <div class="hint">
-      ・「複利」×「固定金利」：求めたい項目を空欄にしてください。現価P・年価Mは空欄なら0、年数nは空欄なら1年として自動計算します（S = P(1+i)ⁿ + M[(1+i)ⁿ−1]/i）。<br>
+      ・「複利」×「固定金利」：求めたい項目を空欄にしてください。据え置き g は空欄なら 0 年。元利据置なら S = P(1+i)ⁿ ± M[(1+i)ⁿ⁻ᵍ−1]/i、元金据置なら S = P(1+i)ⁿ⁻ᵍ ± M[(1+i)ⁿ⁻ᵍ−1]/i。<br>
       ・「単利」×「固定金利」：P・S・i・n のうち 3 つを入力し、残り 1 つを求めます（M は不使用）。<br>
       ・「変動金利（国債型）」：P と n を入力し、年ごとの金利を入力すると、S は前方計算のみで求まります。<br>
       ・年利率は「3」と入力すると 3%（=0.03）として計算します。
@@ -665,6 +675,12 @@ function updateModeUI(){
   if(!stagedAvailable) document.getElementById('stagedEnabled').checked = false;
   document.getElementById('f-stages').style.display = staged ? '' : 'none';
   document.getElementById('f-n').style.display = staged ? 'none' : '';
+  document.getElementById('f-g').style.display = (stagedAvailable && !staged) ? '' : 'none';
+  if(!stagedAvailable || staged){
+    document.getElementById('g').value = '';
+    const fullGrace = document.querySelector('input[name="graceMode"][value="full"]');
+    if(fullGrace) fullGrace.checked = true;
+  }
   if(staged && document.getElementById('stagesList').children.length === 0){
     addStage(); addStage();
   }
@@ -784,6 +800,9 @@ function resetAll(){
   document.getElementById('taxRate').value = '20.315';
   document.getElementById('stagedEnabled').checked = false;
   document.getElementById('stagesList').innerHTML = '';
+  document.getElementById('g').value = '';
+  const fullGraceReset = document.querySelector('input[name="graceMode"][value="full"]');
+  if(fullGraceReset) fullGraceReset.checked = true;
   updateModeUI();
   hideCharts();
 }
@@ -793,6 +812,32 @@ function parseVal(id){
   if(raw === '') return null;
   const num = Number(raw);
   return isNaN(num) ? null : num;
+}
+
+function parseGraceYears(){
+  const raw = document.getElementById('g').value.trim();
+  if(raw === '') return 0;
+  const v = Number(raw);
+  return (isNaN(v) || v < 0) ? null : Math.floor(v);
+}
+
+function annuityFactor(iv, periods){
+  if(periods <= 0) return 0;
+  if(iv === 0) return periods;
+  return (Math.pow(1 + iv, periods) - 1) / iv;
+}
+
+function isGraceInterestOnly(){
+  return getRadio('graceMode') === 'interest';
+}
+
+// 据え置き g 年後から M を n−g 回行う場合の終価
+// interestOnly=true（元金据置）: 据え置き中は利子のみ支払い、元本は据置 → 返済開始時残高 = P
+// interestOnly=false（元利据置）: 据え置き中は支払なし → 返済開始時残高 = P(1+i)^g
+function fvWithGrace(Pv, Mv, iv, nv, gv, sign, interestOnly){
+  const payPeriods = Math.max(0, nv - gv);
+  const basePow = interestOnly ? payPeriods : nv;
+  return Pv * Math.pow(1 + iv, basePow) + sign * Mv * annuityFactor(iv, payPeriods);
 }
 
 function fmt(num){
@@ -838,6 +883,8 @@ function calculateCompoundFixed(){
   let iRaw = (iPercent === null) ? null : iPercent / 100;
   let i = (iRaw === null) ? null : applyTax(iRaw);
   let n = parseVal('n');
+  let g = parseGraceYears();
+  const graceInterestOnly = isGraceInterestOnly();
   let mSign = (getRadio('mDirection') === 'repayment') ? -1 : 1;
   let autoRepayment = false;
   if(S === 0 && mSign === 1){
@@ -871,6 +918,21 @@ function calculateCompoundFixed(){
   if(target !== 'P' && P === null){ defaultedNote.push('現価P（0）'); P = 0; }
   if(target !== 'M' && M === null){ defaultedNote.push('年価M（0）'); M = 0; }
   if(target !== 'n' && n === null){ defaultedNote.push('年数n（1年）'); n = 1; }
+  if(g === null){
+    resultDiv.innerHTML = errBox('据え置き g は 0 以上の整数で入力してください。');
+    hideCharts();
+    return;
+  }
+  if(n !== null && g > n){
+    resultDiv.innerHTML = errBox(`据え置き g（${g}年）は年数 n（${n}年）以下にしてください。`);
+    hideCharts();
+    return;
+  }
+  if(n !== null && M !== 0 && g >= n){
+    resultDiv.innerHTML = errBox(`年価 M がある場合、据え置き g は年数 n より短くしてください（返済・積立期間が必要です）。`);
+    hideCharts();
+    return;
+  }
 
   if(target === 'S' && i === null){
     resultDiv.innerHTML = errBox('終価 S を求めるには、年利率 i が必要です。');
@@ -893,33 +955,34 @@ function calculateCompoundFixed(){
     return;
   }
 
-  // S = P・(1+i)ⁿ + (符号)M・[(1+i)ⁿ−1] / i
-  // 「積立（入金）」なら M は元本にプラス、「返済（出金）」なら M は元本からマイナス（資本回収係数など）
-  const fv = (Pv, Mv, iv, nv) => {
-    const A = Math.pow(1 + iv, nv);
-    return Pv * A + mSign * Mv * (A - 1) / iv;
-  };
+  // S = P・(1+i)^base ± M・[(1+i)ⁿ⁻ᵍ−1]/i　（base = n または n−g、据え置き方式による）
+  const fv = (Pv, Mv, iv, nv, gv) => fvWithGrace(Pv, Mv, iv, nv, gv ?? g, mSign, graceInterestOnly);
 
-  // n は代数的に完全な閉じた式が存在する：
-  //   S = P・(1+i)ⁿ + (符号)M・[(1+i)ⁿ−1]/i
-  //   ⇔ S + (符号)M/i = (1+i)ⁿ・(P + (符号)M/i)
-  //   ⇔ n = ln( (S + (符号)M/i) / (P + (符号)M/i) ) / ln(1+i)
-  function solveN_closedForm(Sv, Pv, Mv, iv){
+  function solveN_closedForm(Sv, Pv, Mv, iv, gv){
+    if(gv > 0){
+      const f = nv => fv(Pv, Mv, iv, nv, gv) - Sv;
+      let lo = Math.max(gv + (Mv !== 0 ? 1e-9 : 0), 1e-9);
+      let hi = Math.max(lo + 1, 100);
+      while(f(hi) < 0 && hi < 500) hi *= 2;
+      if(f(hi) < 0 && Sv > Pv * Math.pow(1 + iv, hi)) return null;
+      for(let k = 0; k < 100; k++){
+        const mid = (lo + hi) / 2;
+        if(f(mid) < 0) lo = mid; else hi = mid;
+      }
+      return (lo + hi) / 2;
+    }
     const sM = mSign * Mv;
     if(iv === 0){
-      // i=0のときは S = P + (符号)M・n の一次式
       if(sM === 0) return null;
       return (Sv - Pv) / sM;
     }
     const A = (Sv + sM/iv) / (Pv + sM/iv);
-    if(A <= 0) return null; // 対数が定義できない
+    if(A <= 0) return null;
     return Math.log(A) / Math.log(1 + iv);
   }
 
-  // i は M=0（元本の一括複利のみ）の場合に限り閉じた式で求まる： i = (S/P)^(1/n) − 1
-  // P・Mが両方絡む場合、(1+i)ⁿ と M/i の両方にiが現れるため代数的には解けず、数値計算（二分法）が必要
-  function solveI_numeric(Sv, Pv, Mv, nv){
-    const f = iv => fv(Pv, Mv, iv, nv) - Sv;
+  function solveI_numeric(Sv, Pv, Mv, nv, gv){
+    const f = iv => fv(Pv, Mv, iv, nv, gv) - Sv;
     let lo = 1e-9, hi = 5;
     if(f(lo) > 0) return 0;
     if(f(hi) < 0) hi = 50;
@@ -931,40 +994,56 @@ function calculateCompoundFixed(){
   }
 
   let value = null, formula = '';
+  const payPeriods = Math.max(0, n - g);
+  const basePow = graceInterestOnly ? payPeriods : n;
+  const graceTypeLabel = graceInterestOnly ? '元金据置' : '元利据置';
+  const graceNote = g > 0 ? `（${graceTypeLabel} ${g} 年後、${payPeriods} 年間 M を適用）` : '';
 
   if(target === 'P'){
-    const A = Math.pow(1 + i, n);
-    value = (S - mSign * M * (A - 1) / i) / A;
+    value = (S - mSign * M * annuityFactor(i, payPeriods)) / Math.pow(1 + i, basePow);
     formula = mSign === 1
-      ? 'P = [S − M・((1+i)ⁿ−1)/i] / (1+i)ⁿ'
-      : 'P = [S + M・((1+i)ⁿ−1)/i] / (1+i)ⁿ　【Mは返済（元本からマイナス）】';
+      ? `P = [S − M・((1+i)ⁿ⁻ᵍ−1)/i] / (1+i)^${basePow}${graceNote}`
+      : `P = [S + M・((1+i)ⁿ⁻ᵍ−1)/i] / (1+i)^${basePow}${graceNote}　【Mは返済】`;
   } else if(target === 'S'){
-    value = fv(P, M, i, n);
+    value = fv(P, M, i, n, g);
     formula = mSign === 1
-      ? 'S = P・(1+i)ⁿ + M・[(1+i)ⁿ−1] / i　【元本の複利成長＋積立の年金終価】'
-      : 'S = P・(1+i)ⁿ − M・[(1+i)ⁿ−1] / i　【元本の複利成長－返済額の累計（資本回収）】';
+      ? `S = P・(1+i)^${basePow} + M・[(1+i)ⁿ⁻ᵍ−1] / i${graceNote}`
+      : `S = P・(1+i)^${basePow} − M・[(1+i)ⁿ⁻ᵍ−1] / i${graceNote}`;
   } else if(target === 'M'){
-    const A = Math.pow(1 + i, n);
-    value = mSign * (S - P * A) * i / (A - 1);
+    const af = annuityFactor(i, payPeriods);
+    if(af === 0){
+      resultDiv.innerHTML = errBox('据え置き g が年数 n と同じため、年価 M を求められません（返済・積立期間がありません）。');
+      hideCharts();
+      return;
+    }
+    value = mSign * (S - P * Math.pow(1 + i, basePow)) * i / (Math.pow(1 + i, payPeriods) - 1);
     formula = mSign === 1
-      ? 'M = (S − P・(1+i)ⁿ)・i / [(1+i)ⁿ−1]　【減債基金・積立方向】'
-      : 'M = (P・(1+i)ⁿ − S)・i / [(1+i)ⁿ−1]　【資本回収係数・返済方向】';
+      ? `M = (S − P・(1+i)^${basePow})・i / [(1+i)ⁿ⁻ᵍ−1]${graceNote}`
+      : `M = (P・(1+i)^${basePow} − S)・i / [(1+i)ⁿ⁻ᵍ−1]${graceNote}　【資本回収係数・返済方向】`;
   } else if(target === 'n'){
-    const solved = solveN_closedForm(S, P, M, i);
+    const solved = solveN_closedForm(S, P, M, i, g);
     if(solved === null || !isFinite(solved)){
       resultDiv.innerHTML = errBox('この条件では年数 n を求められません（S が小さすぎる、または利率がマイナスなど）。入力値をご確認ください。');
       hideCharts();
       return;
     }
     value = Math.ceil(solved);
-    formula = 'n = ln[ (S+M/i) / (P+M/i) ] / ln(1+i)　【数式変形による閉じた式】';
+    formula = g > 0
+      ? `S = P(1+i)^${basePow} ± M[(1+i)ⁿ⁻ᵍ−1]/i を満たす n を数値計算（${graceTypeLabel} g=${g}年）`
+      : 'n = ln[ (S+M/i) / (P+M/i) ] / ln(1+i)　【数式変形による閉じた式】';
   } else if(target === 'i'){
-    if(M === 0){
+    if(M === 0 && g === 0){
       value = (Math.pow(S / P, 1 / n) - 1) * 100;
-      formula = 'i = (S/P)^(1/n) − 1　【数式変形による閉じた式（M=0の一括複利）】';
+      formula = 'i = (S/P)^(1/n) − 1　【M=0 の一括複利】';
+    } else if(M === 0 && g > 0 && graceInterestOnly){
+      value = (Math.pow(S / P, 1 / payPeriods) - 1) * 100;
+      formula = `i = (S/P)^(1/(n−g)) − 1　【M=0・元金据置 g=${g}年】`;
+    } else if(M === 0 && g > 0){
+      value = (Math.pow(S / P, 1 / n) - 1) * 100;
+      formula = `i = (S/P)^(1/n) − 1　【M=0・元利据置 g=${g}年】`;
     } else {
-      value = solveI_numeric(S, P, M, n) * 100;
-      formula = 'S = P・(1+i)ⁿ + M・[(1+i)ⁿ−1]/i を満たす i を数値計算（二分法）で算出　※P・M両方が絡む場合、iは代数的に解けないため';
+      value = solveI_numeric(S, P, M, n, g) * 100;
+      formula = `S = P(1+i)^${basePow} ± M[(1+i)ⁿ⁻ᵍ−1]/i を満たす i を数値計算（二分法）${graceNote}`;
     }
   }
 
@@ -989,6 +1068,14 @@ function calculateCompoundFixed(){
   if(autoRepayment){
     html += `<div class="note" style="margin-top:6px;">終価 S = 0（完済・満期ゼロ）のため、年価 M を自動的に「返済（出金）」方向として計算しました（年金現価・資本回収係数）。</div>`;
   }
+  if(g > 0){
+    const noteN = (target === 'n') ? Math.ceil(value) : n;
+    const notePay = Math.max(0, noteN - g);
+    const graceDesc = graceInterestOnly
+      ? `最初の ${g} 年は元金据置（利子のみ支払い・元本据置）`
+      : `最初の ${g} 年は元利据置（支払なし・利息複利）`;
+    html += `<div class="note" style="margin-top:6px;">${graceDesc}、${g + 1} 年目から ${noteN} 年目まで ${notePay} 年間 M を適用しています。</div>`;
+  }
 
   resultDiv.innerHTML = html;
 
@@ -996,9 +1083,10 @@ function calculateCompoundFixed(){
   const finalM = (target === 'M') ? value : M;
   const finalI = (target === 'i') ? value/100 : i;
   const finalN = (target === 'n') ? value : n;
+  const finalG = g;
 
   if(finalP !== null && finalI !== null && finalN !== null && finalN > 0){
-    const rows = buildCompoundRows(finalP, mSign * (finalM || 0), finalI, Math.ceil(finalN));
+    const rows = buildCompoundRows(finalP, mSign * (finalM || 0), finalI, Math.ceil(finalN), finalG, graceInterestOnly);
     renderTimelineRows(rows, '複利（固定金利）');
   } else {
     hideCharts();
@@ -1241,15 +1329,23 @@ function calculateVariableRate(interestMode){
 }
 
 // ---------- 共通：複利・単利（固定）の年次内訳を組み立て ----------
-function buildCompoundRows(P, M, i, n){
+function buildCompoundRows(P, M, i, n, graceYears, interestOnlyGrace){
+  const g = graceYears || 0;
+  const interestOnly = !!interestOnlyGrace;
   const rows = [];
   let balance = P;
   rows.push({year:0, begin:null, interest:null, deposit:null, end:balance});
   for(let y = 1; y <= n; y++){
     const begin = balance;
     const interest = begin * i;
-    const end = begin + interest + M;
-    rows.push({year:y, begin, interest, deposit:M, end});
+    let deposit;
+    if(y <= g){
+      deposit = interestOnly ? -interest : 0;
+    } else {
+      deposit = M;
+    }
+    const end = begin + interest + deposit;
+    rows.push({year:y, begin, interest, deposit, end});
     balance = end;
   }
   return rows;
