@@ -380,6 +380,7 @@
     // ★修正：13ヶ月を標準とする
     const standardLabels = ["11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月"];
     let customLabels = null;
+    let dateRangeLabel = "";
     const FIXED_COLORS = [ 
         '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
         '#9966FF', '#FF9F40', '#333333', '#1f77b4', 
@@ -471,6 +472,23 @@
         ];
 
         customLabels = null;
+        dateRangeLabel = "";
+        // ★追加：取引月の年月範囲（令和表記）を抽出してグラフタイトルに使う
+        for (let k = 0; k < Math.min(10, lines.length); k++) {
+            const dateLine = lines[k];
+            const dateMatch = dateLine.match(/令和\s*(\d+)\s*年\s*(\d+)\s*月\s*\d+\s*日\s*[～\-~]\s*令和\s*(\d+)\s*年\s*(\d+)\s*月\s*\d+\s*日/);
+            if (dateMatch) {
+                const toSeireki = function(reiwaYear) {
+                    return 2018 + parseInt(reiwaYear, 10); // 令和1年=2019年
+                };
+                const startYear = toSeireki(dateMatch[1]);
+                const startMonth = parseInt(dateMatch[2], 10);
+                const endYear = toSeireki(dateMatch[3]);
+                const endMonth = parseInt(dateMatch[4], 10);
+                dateRangeLabel = startYear + '年' + startMonth + '月～' + endYear + '年' + endMonth + '月';
+                break;
+            }
+        }
         // ★修正：13ヶ月を抽出
         for (let j = 0; j < Math.min(10, lines.length); j++) {
             const line = lines[j].trim();
@@ -801,7 +819,7 @@
                     },
                     title: { 
                         display: true, 
-                        text: getMetricLabel(metric) + ' (' + getGenderLabel(gender) + ') 推移',
+                        text: getChartTitle(metric, gender),
                         font: { size: TITLE_FONT_SIZE }
                     },
                     legend: {
@@ -914,6 +932,12 @@
         });
     }
     
+    function getChartTitle(metric, gender) {
+        let title = getMetricLabel(metric) + ' (' + getGenderLabel(gender) + ') 推移';
+        if (dateRangeLabel) title += '（' + dateRangeLabel + '）';
+        return title;
+    }
+
     function getMetricLabel(m) {
         const labels = { 
             count: "取引頭数", 
@@ -958,7 +982,7 @@
 
         const metric = document.querySelector('input[name="metric"]:checked').value;
         const gender = document.querySelector('input[name="gender"]:checked').value;
-        const title = getMetricLabel(metric) + ' (' + getGenderLabel(gender) + ') 推移';
+        const title = getChartTitle(metric, gender);
 
         const printTitle = document.getElementById('printTitle');
         const printCanvas = document.getElementById('printCanvas');
