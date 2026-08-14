@@ -8,6 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>月別肉用子牛取引状況（黒毛和種） 可視化ツール</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
     body { font-family: "Helvetica Neue", Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
     
@@ -39,7 +40,6 @@
         gap: 0;
         overflow: hidden;
     }
-
     .left-panel {
         flex: 0 0 30%;
         background: white;
@@ -89,6 +89,70 @@
         padding: 5px; 
         resize: both;
         box-sizing: border-box; 
+    }
+
+    .excel-file-radio-container {
+        margin-top: 8px;
+    }
+    .excel-file-radio-item {
+        display: flex;
+        align-items: center;
+        padding: 6px 8px;
+        margin-bottom: 4px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: white;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+    .excel-file-radio-item:hover {
+        background: #f5f9ff;
+        border-color: #99c2ff;
+    }
+    .excel-file-radio-item input[type="radio"] {
+        width: auto;
+        margin: 0 8px 0 0;
+        cursor: pointer;
+    }
+    .excel-file-radio-item .file-range-label {
+        font-weight: bold;
+        color: #0056b3;
+        margin-right: 8px;
+    }
+    .excel-file-radio-item .file-name-sub {
+        font-size: 0.75rem;
+        color: #888;
+    }
+    .excel-file-remove-btn {
+        margin-left: auto;
+        background: transparent;
+        border: none;
+        color: #dc3545;
+        font-size: 1rem;
+        cursor: pointer;
+        width: auto;
+        padding: 0 4px;
+        line-height: 1;
+    }
+    .excel-file-remove-btn:hover {
+        color: #a71d2a;
+    }
+
+    .excel-click-trigger {
+        font-size: 0.85rem;
+        color: #007bff;
+        margin-top: 10px;
+        margin-bottom: 5px;
+        padding: 8px 10px;
+        border: 1px dashed #007bff;
+        border-radius: 5px;
+        background: #f0f7ff;
+        cursor: pointer;
+        transition: background-color 0.2s, border-color 0.2s;
+    }
+    .excel-click-trigger:hover {
+        background: #e0f0ff;
+        border-color: #0056b3;
     }
 
     .controls { margin-bottom: 15px; padding: 10px; background: #eef; border-radius: 5px; }
@@ -227,8 +291,10 @@
 
     #marketTable th:nth-child(2),
     #marketTable th:nth-child(3),
+    #marketTable th:nth-child(4),
     #marketTable td:nth-child(2),
-    #marketTable td:nth-child(3) {
+    #marketTable td:nth-child(3),
+    #marketTable td:nth-child(4) {
         text-align: left;
     }
 
@@ -303,17 +369,21 @@
     <div class="resizable-container">
         <div class="left-panel" id="leftPanel">
             <h2>1. データ入力</h2>
-            <p>エクセルシートの表をコピーして上書きしてください。</p>
+            <p>Excelファイル（.xlsx / .xls）を選択すると「Sheet1」を自動で読み込みます。複数ファイルを選択・追加でき、☑を入れたファイルのデータをまとめてグラフに表示します。</p>
+            <input type="file" id="excelFileInput" accept=".xlsx,.xls" multiple style="display:none;">
+            <div id="excelFileStatus" class="auto-process-indicator"></div>
+            <div id="excelFileRadioContainer" class="excel-file-radio-container"></div>
+            <p id="excelClickTrigger" class="excel-click-trigger">📂 または、エクセルシートの表をコピーして下に貼り付けることもできます。（クリックしてExcelファイルを選択）</p>
             <textarea id="dataInput" placeholder="Excelの全データを貼り付け..."></textarea>
             <div id="autoProcessMessage" class="auto-process-indicator"></div>
 
             <div id="marketSelectionContainer">
                 <div class="selection-header">
                     <h2 style="margin-right: 10px;">2. 市場を選択</h2>
-                    <span id="selectionCount" class="selection-count">(0/7)</span>
+                    <span id="selectionCount" class="selection-count">(0)</span>
                 </div>
                 <button onclick="deselectAllMarkets()" class="deselect-button">全解除</button>
-                <p style="font-size:0.85rem; margin-top:10px; margin-bottom:10px;">以下から比較したい市場を選んでください（最大7つ）</p>
+                <p style="font-size:0.85rem; margin-top:10px; margin-bottom:10px;">以下から比較したい市場を選んでください</p>
                 
                 <div id="marketTableContainer">
                     <table id="marketTable">
@@ -322,6 +392,7 @@
                                 <th style="width: 35px;">☐</th>
                                 <th>都道府県</th>
                                 <th>市場名</th>
+                                <th>期間</th>
                             </tr>
                         </thead>
                         <tbody id="marketTableBody">
@@ -357,6 +428,11 @@
                     <label class="radio-label"><input type="radio" name="gender" value="female" onchange="updateChartOnly()"> 雌</label>
                     <label class="radio-label"><input type="radio" name="gender" value="male" onchange="updateChartOnly()"> 雄</label>
                 </div>
+                <div class="control-group">
+                    <label>縦軸下限値:</label>
+                    <input type="number" id="yAxisMin" placeholder="自動" style="width: 80px; padding: 4px; margin-left: 10px;" onchange="updateChartOnly()">
+                    <span style="font-size: 0.85rem; color: #666; margin-left: 5px;">（空白で自動）</span>
+                </div>
             </div>
 
             <canvas id="myChart"></canvas>
@@ -376,10 +452,169 @@
     let marketPointStyleMap = {}; 
     let extractedMonths = [];
     let isResizing = false;
+    let initializedFileLabels = new Set();
     
-    // ★修正：13ヶ月を標準とする
-    const standardLabels = ["11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月"];
+    // ★修正：4月始まりの12ヶ月を標準とする
+    const standardLabels = ["4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月", "1月", "2月", "3月"];
+
+    function normalizeMonthLabel(monthText) {
+        if (monthText === null || monthText === undefined) return null;
+
+        if (typeof monthText === 'object') {
+            if (monthText && typeof monthText.month === 'number' && monthText.month >= 1 && monthText.month <= 12) {
+                return {
+                    year: (typeof monthText.year === 'number') ? monthText.year : null,
+                    month: monthText.month
+                };
+            }
+            return null;
+        }
+
+        if (typeof monthText === 'number' && Number.isFinite(monthText)) {
+            const month = Math.round(monthText);
+            if (month >= 1 && month <= 12) {
+                return { year: null, month: month };
+            }
+            return null;
+        }
+
+        const text = String(monthText).trim();
+        if (!text) return null;
+
+        const fullMatch = text.match(/(\d{4})[年/\-\s]*(\d{1,2})\s*月/);
+        if (fullMatch) {
+            const year = parseInt(fullMatch[1], 10);
+            const month = parseInt(fullMatch[2], 10);
+            if (month >= 1 && month <= 12) {
+                return { year: year, month: month };
+            }
+            return null;
+        }
+
+        const monthMatch = text.match(/(\d{1,2})\s*月/);
+        if (!monthMatch) return null;
+        const month = parseInt(monthMatch[1], 10);
+        if (month >= 1 && month <= 12) {
+            return { year: null, month: month };
+        }
+        return null;
+    }
+
+    function canonicalMonthSequence(months) {
+        if (!Array.isArray(months) || months.length === 0) return [];
+
+        const normalized = months
+            .map(function(month) {
+                return normalizeMonthLabel(month);
+            })
+            .filter(function(month) {
+                return month !== null;
+            });
+
+        if (normalized.length === 0) return [];
+
+        const monthNumbers = normalized.map(function(month) {
+            return month.month;
+        });
+        const uniqueNumbers = Array.from(new Set(monthNumbers));
+        const fiscalOrder = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
+        const cycleMatch = fiscalOrder.filter(function(month) {
+            return uniqueNumbers.includes(month);
+        });
+
+        if (cycleMatch.length >= Math.min(uniqueNumbers.length, 6)) {
+            return cycleMatch.map(function(month) {
+                return String(month) + "月";
+            });
+        }
+
+        return uniqueNumbers.slice().sort(function(a, b) { return a - b; }).map(function(month) {
+            return String(month) + "月";
+        });
+    }
+
+    function alignSeriesToFiscalAxis(fileMonths, rawValues) {
+        const months = Array.isArray(fileMonths) ? fileMonths : [];
+        const values = Array.isArray(rawValues) ? rawValues : [];
+        const lookup = {};
+        const maxLength = Math.min(months.length, values.length);
+
+        // ★列（月）が重複している場合は、より後ろの列＝より新しいデータとして上書きする
+        // （例：13ヶ月表示で先頭と末尾がどちらも「11月」の場合、末尾＝新しい方の値を採用）。
+        // ただし後ろの列が欠測（null/undefined）の場合は、既にある新しい値を消さないよう上書きしない。
+        for (let i = 0; i < maxLength; i++) {
+            const monthInfo = normalizeMonthLabel(months[i]);
+            if (!monthInfo) continue;
+
+            const monthKey = monthInfo.year !== null
+                ? String(monthInfo.year) + '-' + String(monthInfo.month).padStart(2, '0')
+                : String(monthInfo.month);
+
+            const value = values[i];
+            if (value === null || value === undefined) {
+                if (!Object.prototype.hasOwnProperty.call(lookup, monthKey)) {
+                    lookup[monthKey] = value;
+                }
+                continue;
+            }
+
+            lookup[monthKey] = value;
+        }
+
+        // ★右端（最新）の月を特定
+        let newestMonth = null;
+        for (let i = maxLength - 1; i >= 0; i--) {
+            const monthInfo = normalizeMonthLabel(months[i]);
+            if (monthInfo && monthInfo.month) {
+                newestMonth = monthInfo.month;
+                break;
+            }
+        }
+
+        const fiscalOrder = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
+        const alignedValues = fiscalOrder.map(function(monthNumber) {
+            // ★最新月より後の月（古いデータ）はnullを返す
+            if (newestMonth !== null) {
+                // 4月から最新月までの範囲かチェック
+                // 例：最新月が8月の場合、4,5,6,7,8はOK、9,10,11,12,1,2,3はNG
+                let isInRange = false;
+                if (newestMonth >= 4) {
+                    // 最新月が4月以降の場合：4月～最新月までが有効
+                    isInRange = (monthNumber >= 4 && monthNumber <= newestMonth);
+                } else {
+                    // 最新月が1月～3月の場合：4月～12月 と 1月～最新月 が有効
+                    isInRange = (monthNumber >= 4) || (monthNumber <= newestMonth);
+                }
+                if (!isInRange) {
+                    return null;
+                }
+            }
+
+            let targetValue = null;
+
+            for (const key in lookup) {
+                if (!Object.prototype.hasOwnProperty.call(lookup, key)) continue;
+
+                const match = key.match(/^(\d{4})-(\d{2})$/);
+                if (match) {
+                    const monthFromKey = parseInt(match[2], 10);
+                    if (monthFromKey === monthNumber) {
+                        targetValue = lookup[key];
+                    }
+                } else if (parseInt(key, 10) === monthNumber) {
+                    targetValue = lookup[key];
+                }
+            }
+
+            return targetValue;
+        });
+
+        return alignedValues;
+    }
+
     let customLabels = null;
+    let dateRangeLabel = "";
+    let selectedMarketKeys = null; // ユーザーが選択した市場（ファイル＋市場名）を保持（切替時も維持するため）
     const FIXED_COLORS = [ 
         '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
         '#9966FF', '#FF9F40', '#333333', '#1f77b4', 
@@ -441,16 +676,43 @@
         checkboxes.forEach(function(checkbox) {
             checkbox.checked = false;
         });
+        selectedMarketKeys = [];
         updateSelectionCount();
         updateChart();
     }
 
-    function parseAndSetupUI() {
-        const text = document.getElementById('dataInput').value;
+    function getMarketKey(market) {
+        const name = market.name;
+        const isTotal = ["総合計", "合計", "総計"].some(function(t) {
+            return name.includes(t);
+        });
+        const cleanName = isTotal ? "合計" : name;
+        return (market.prefecture || '全国') + '::' + cleanName;
+    }
+
+    function extractDateRangeLabel(text) {
         const lines = text.split('\n');
-        parsedAllMarkets = [];
-        extractedMonths = [];
-        
+        for (let k = 0; k < Math.min(10, lines.length); k++) {
+            const dateMatch = lines[k].match(/令和\s*(\d+)\s*年\s*(\d+)\s*月\s*\d+\s*日\s*[～\-~]\s*令和\s*(\d+)\s*年\s*(\d+)\s*月\s*\d+\s*日/);
+            if (dateMatch) {
+                const toSeireki = function(reiwaYear) {
+                    return 2018 + parseInt(reiwaYear, 10); // 令和1年=2019年
+                };
+                const startYear = toSeireki(dateMatch[1]);
+                const startMonth = parseInt(dateMatch[2], 10);
+                const endYear = toSeireki(dateMatch[3]);
+                const endMonth = parseInt(dateMatch[4], 10);
+                return startYear + '年' + String(startMonth).padStart(2, '0') + '月～' + endYear + '年' + String(endMonth).padStart(2, '0') + '月';
+            }
+        }
+        return "";
+    }
+
+    function parseSheetText(text) {
+        const lines = text.split('\n');
+        const markets = [];
+        let months = [];
+
         let currentMarket = null;
         let currentMetric = null;
         let currentPrefecture = "";
@@ -470,25 +732,36 @@
             "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"
         ];
 
-        customLabels = null;
+        const dateRange = extractDateRangeLabel(text);
+        let leadingDropCount = 0;
+
         // ★修正：13ヶ月を抽出
         for (let j = 0; j < Math.min(10, lines.length); j++) {
             const line = lines[j].trim();
             if (line.includes("月") && !line.match(/^(\s*\d[\s\d]*){5,}/)) {
                 let parts = line.split(/\s+/).filter(function(part) {
-                    return part.includes("月");
+                    return part.match(/^\d+\s*月$/);
                 });
-                if (parts.length >= 13) {
+                if (parts.length >= 12) {
                     const totalIndex = parts.findIndex(function(p) {
                         return p.includes("合計") || p.includes("平均") || p.includes("総計");
                     });
                     if (totalIndex !== -1) {
-                        // 合計の前までを抽出（13ヶ月）
-                        customLabels = parts.slice(0, totalIndex);
-                        extractedMonths = customLabels.slice();
+                        months = parts.slice(0, totalIndex);
                     } else {
-                        customLabels = parts.slice(0, 13); 
-                        extractedMonths = customLabels.slice();
+                        months = parts; 
+                    }
+                    // 月のみにする（例：令和5年11月や2024年11月→11月、11月→11月）
+                    months = months.map(function(m) {
+                        const match = m.match(/(\d+)月/);
+                        return match ? match[1] + "月" : m;
+                    });
+                    // ★列は右（末尾）ほど新しいデータ。軸は4月始まり12ヶ月固定なので、
+                    // 直近12ヶ月に収まらない古い列（先頭側の余剰列）は読み込み対象から除外する。
+                    // 例：13列（先頭と末尾が同じ月）の場合は先頭1列を切り捨てる。
+                    leadingDropCount = Math.max(0, months.length - 12);
+                    if (leadingDropCount > 0) {
+                        months = months.slice(leadingDropCount);
                     }
                     break;
                 }
@@ -503,9 +776,7 @@
 
             const numberCount = (cleanLine.match(/\d+/g) || []).length;
 
-            let isNationalMarker = false;
             if (cleanLine.includes("全国") || cleanLine.includes("合計") || cleanLine.includes("総計")) {
-                isNationalMarker = true;
                 currentPrefecture = "";
             } else {
                 for (let p = 0; p < prefectures.length; p++) {
@@ -543,7 +814,7 @@
                     prefecture: currentPrefecture,
                     data: { count: {}, price: {}, weight: {}, age: {}, unitPrice: {} }
                 };
-                parsedAllMarkets.push(currentMarket);
+                markets.push(currentMarket);
                 currentMetric = null; 
                 continue;
             }
@@ -573,13 +844,39 @@
                         .filter(function(n) {
                             return n !== undefined;
                         });
-                    
+
+                    // ★月ヘッダー側で切り捨てた先頭の古い列数ぶん、値の配列も先頭を揃えて切り捨てる
+                    // （monthsとnumbersのインデックス対応を保つため）。
+                    if (leadingDropCount > 0) {
+                        numbers = numbers.slice(leadingDropCount);
+                    }
+
                     if (numbers.length > 0) {
                         currentMarket.data[currentMetric][gender] = numbers;
                     }
                 }
             }
         }
+
+        return { markets: markets, months: months, dateRangeLabel: dateRange };
+    }
+
+    function parseAndSetupUI() {
+        const text = document.getElementById('dataInput').value;
+        const result = parseSheetText(text);
+
+        parsedAllMarkets = result.markets.map(function(m) {
+            m.fileId = 'manual';
+            m.fileLabel = result.dateRangeLabel;
+            return m;
+        });
+        // ★元データの列順のまま保持する（並べ替えるとグラフ整列用のindex対応が崩れるため）
+        extractedMonths = Array.isArray(result.months) ? result.months : [];
+        customLabels = extractedMonths.length > 0 ? extractedMonths : null;
+        dateRangeLabel = result.dateRangeLabel;
+
+        selectedMarketKeys = null; // 新規データ貼り付け時は選択をデフォルトに戻す
+        initializedFileLabels.clear();
 
         if (parsedAllMarkets.length === 0) {
             document.getElementById('marketSelectionContainer').style.display = 'none';
@@ -591,10 +888,9 @@
 
     function createMarketTable() {
         const monthHeaderRow = document.querySelector('#marketTable thead tr');
-        // ★修正：13ヶ月を表示
-        const displayMonths = extractedMonths.length > 0 ? extractedMonths : standardLabels;
+        const displayMonths = standardLabels;
         
-        while (monthHeaderRow.children.length > 3) {
+        while (monthHeaderRow.children.length > 4) {
             monthHeaderRow.removeChild(monthHeaderRow.lastChild);
         }
         
@@ -606,31 +902,91 @@
 
         updateMarketTableBody();
         document.getElementById('marketSelectionContainer').style.display = 'block';
-        setDefaultCheckboxes();
+        restoreOrDefaultCheckboxes();
     }
 
-    function setDefaultCheckboxes() {
-        const defaultTargets = ["島根中央家畜市場", "西部家畜市場", "総合計"];
+    function getCheckedMarketKeys() {
+        const checkboxes = document.querySelectorAll('input[name="marketSelect"]:checked');
+        return Array.from(checkboxes).map(function(cb) {
+            const idx = parseInt(cb.value);
+            return parsedAllMarkets[idx] ? getMarketKey(parsedAllMarkets[idx]) : null;
+        }).filter(Boolean);
+    }
+
+    function countMatchingMarketKeys(keys) {
+        return parsedAllMarkets.filter(function(m) {
+            return keys.includes(getMarketKey(m));
+        }).length;
+    }
+
+    function applySelectedMarketKeys() {
         const checkboxes = document.querySelectorAll('input[name="marketSelect"]');
-        
         let checkedCount = 0;
         checkboxes.forEach(function(checkbox) {
-            const marketIndex = parseInt(checkbox.value);
-            const market = parsedAllMarkets[marketIndex];
-            
-            const shouldCheck = defaultTargets.some(function(target) {
-                return market.name.includes(target);
-            });
-            if (shouldCheck && checkedCount < 3) {
+            const idx = parseInt(checkbox.value);
+            const market = parsedAllMarkets[idx];
+            const shouldCheck = market && selectedMarketKeys.includes(getMarketKey(market));
+            if (shouldCheck) {
                 checkbox.checked = true;
                 checkedCount++;
             } else {
                 checkbox.checked = false;
             }
         });
-
         updateSelectionCount();
         updateChart();
+    }
+
+    // ★変更：地域の市場選択をファイル切替後も優先して維持する。
+    // 選択済みの市場が新しいデータに1つも存在しない場合のみ、初期デフォルト選択にフォールバックする。
+    function restoreOrDefaultCheckboxes() {
+        const checkboxes = document.querySelectorAll('input[name="marketSelect"]');
+        
+        if (selectedMarketKeys !== null) {
+            checkboxes.forEach(function(checkbox) {
+                const marketIndex = parseInt(checkbox.value);
+                const market = parsedAllMarkets[marketIndex];
+                if (!market) return;
+                
+                const key = getMarketKey(market);
+                checkbox.checked = selectedMarketKeys.includes(key);
+            });
+        } else {
+            const defaultTargets = ["島根中央家畜市場", "西部家畜市場", "総合計", "合計", "総計"];
+            checkboxes.forEach(function(checkbox) {
+                const marketIndex = parseInt(checkbox.value);
+                const market = parsedAllMarkets[marketIndex];
+                if (!market) return;
+                
+                const shouldCheck = defaultTargets.some(function(target) {
+                    return market.name.includes(target);
+                });
+                checkbox.checked = shouldCheck;
+            });
+        }
+        
+        selectedMarketKeys = getCheckedMarketKeys();
+        updateSelectionCount();
+        updateChart();
+    }
+
+    function setDefaultCheckboxes() {
+        const defaultTargets = ["島根中央家畜市場", "西部家畜市場", "総合計", "合計", "総計"];
+        const checkboxes = document.querySelectorAll('input[name="marketSelect"]');
+        
+        checkboxes.forEach(function(checkbox) {
+            const marketIndex = parseInt(checkbox.value);
+            const market = parsedAllMarkets[marketIndex];
+            if (!market) return;
+            
+            const shouldCheck = defaultTargets.some(function(target) {
+                return market.name.includes(target);
+            });
+            checkbox.checked = shouldCheck;
+        });
+
+        selectedMarketKeys = null; // デフォルトに戻すため、手動選択状態をクリア
+        restoreOrDefaultCheckboxes();
     }
 
     function updateMarketTableBody() {
@@ -639,8 +995,7 @@
         
         const metric = document.querySelector('input[name="metric"]:checked').value;
         const gender = document.querySelector('input[name="gender"]:checked').value;
-        // ★修正：13ヶ月を表示
-        const displayMonths = extractedMonths.length > 0 ? extractedMonths : standardLabels;
+        const displayMonths = standardLabels;
 
         parsedAllMarkets.forEach(function(market, index) {
             const row = document.createElement('tr');
@@ -665,11 +1020,21 @@
             nameCell.textContent = market.name;
             row.appendChild(nameCell);
 
+            const periodCell = document.createElement('td');
+            periodCell.textContent = market.fileLabel || '';
+            periodCell.style.fontSize = '0.8rem';
+            periodCell.style.color = '#666';
+            row.appendChild(periodCell);
+
             const metricData = market.data[metric] && market.data[metric][gender] ? market.data[metric][gender] : [];
+            const fileMonths = (market.fileId === 'manual')
+                ? extractedMonths
+                : (loadedExcelFiles.find(function(f) { return f.id === market.fileId; }) || {}).months || [];
+            const alignedValues = alignSeriesToFiscalAxis(fileMonths, metricData);
 
             displayMonths.forEach(function(month, idx) {
                 const dataCell = document.createElement('td');
-                const value = metricData[idx];
+                const value = alignedValues[idx];
                 if (value !== null && value !== undefined) {
                     let formattedValue;
                     if (metric === 'count') {
@@ -695,20 +1060,14 @@
     }
 
     function handleCheckboxChange(e) {
-        const checkedBoxes = document.querySelectorAll('input[name="marketSelect"]:checked');
-        
-        if (checkedBoxes.length > 7 && e.target.checked) {
-            alert("比較できる市場は最大7つまでです。");
-            e.target.checked = false;
-        }
-        
+        selectedMarketKeys = getCheckedMarketKeys();
         updateSelectionCount();
         updateChart();
     }
 
     function updateSelectionCount() {
         const checkedBoxes = document.querySelectorAll('input[name="marketSelect"]:checked');
-        document.getElementById('selectionCount').textContent = '(' + checkedBoxes.length + '/7)';
+        document.getElementById('selectionCount').textContent = '(' + checkedBoxes.length + ')';
     }
 
     function updateChartOnly() {
@@ -720,14 +1079,13 @@
                                     .map(function(cb) {
                                         return parseInt(cb.value);
                                     });
-        const targetIndices = checkedIndices.slice(0, 7);
+        const targetIndices = checkedIndices;
 
         const ctx = document.getElementById('myChart').getContext('2d');
         const metric = document.querySelector('input[name="metric"]:checked').value;
         const gender = document.querySelector('input[name="gender"]:checked').value;
         
-        // ★修正：13ヶ月を表示
-        const finalLabels = customLabels || standardLabels;
+        const finalLabels = standardLabels;
 
         const LINE_THICKNESS = 4;
         const POINT_RADIUS = 7;
@@ -742,45 +1100,78 @@
 
         targetIndices.forEach(function(idx, i) {
             const market = parsedAllMarkets[idx];
+            if (!market) return;
             if (!market.data[metric] || !market.data[metric][gender]) return;
 
+            const marketKey = getMarketKey(market);
+            const datasetLabel = market.fileLabel
+                ? market.name + '（' + market.fileLabel + '）'
+                : market.name;
+            const uniqueKey = marketKey + '::' + (market.fileLabel || '');
+
             let marketColor;
-            if (marketColorMap[market.name]) {
-                marketColor = marketColorMap[market.name];
+            if (marketColorMap[uniqueKey]) {
+                marketColor = marketColorMap[uniqueKey];
             } else {
-                marketColor = FIXED_COLORS[nextColorIndex % FIXED_COLORS.length];
-                marketColorMap[market.name] = marketColor; 
+                if (nextColorIndex < FIXED_COLORS.length) {
+                    marketColor = FIXED_COLORS[nextColorIndex];
+                } else {
+                    const hue = (nextColorIndex * 137.5) % 360;
+                    marketColor = 'hsl(' + hue + ', 70%, 50%)';
+                }
+                marketColorMap[uniqueKey] = marketColor; 
                 nextColorIndex++; 
             }
             
             let marketPointStyle;
-            if (marketPointStyleMap[market.name]) {
-                marketPointStyle = marketPointStyleMap[market.name];
+            if (marketPointStyleMap[uniqueKey]) {
+                marketPointStyle = marketPointStyleMap[uniqueKey];
             } else {
                 const currentStyleIndex = Object.keys(marketPointStyleMap).length;
                 marketPointStyle = POINT_STYLES[currentStyleIndex % POINT_STYLES.length];
-                marketPointStyleMap[market.name] = marketPointStyle;
+                marketPointStyleMap[uniqueKey] = marketPointStyle;
             }
 
             const marketPointBackgroundColor = 'white';
 
-            let dataValues = market.data[metric][gender];
-            if (dataValues.length > finalLabels.length) dataValues = dataValues.slice(0, finalLabels.length);
+            let fileMonths = [];
+            if (market.fileId === 'manual') {
+                fileMonths = extractedMonths;
+            } else {
+                const fileEntry = loadedExcelFiles.find(function(f) { return f.id === market.fileId; });
+                fileMonths = (fileEntry && fileEntry.months) ? fileEntry.months : [];
+            }
+            // ★注意：ここでcanonicalMonthSequenceによる並べ替えは行わない。
+            // fileMonthsは元データの列順のまま、rawValuesと同じインデックスで対応させる必要がある。
+
+            const rawValues = market.data[metric][gender] || [];
+            const alignedValues = alignSeriesToFiscalAxis(fileMonths, rawValues);
+            const scatterData = finalLabels.map(function(labelMonth, labelIndex) {
+                const value = alignedValues[labelIndex];
+                if (value === null || value === undefined || Number.isNaN(value)) {
+                    return null;
+                }
+                return { x: labelMonth, y: value };
+            }).filter(function(point) {
+                return point !== null;
+            });
 
             datasets.push({
-                label: market.name,
-                data: dataValues,
+                label: datasetLabel,
+                data: scatterData,
                 borderColor: marketColor,
-                backgroundColor: marketColor, 
+                backgroundColor: marketColor,
                 borderWidth: LINE_THICKNESS,
-                spanGaps: true, 
-                tension: 0.1,
+                showLine: true,
+                lineTension: 0,
+                spanGaps: true,
                 fill: false,
                 pointStyle: marketPointStyle,
-                pointRadius: POINT_RADIUS,          
-                pointBorderWidth: POINT_BORDER_WIDTH, 
-                pointBorderColor: marketColor,        
-                pointBackgroundColor: marketPointBackgroundColor 
+                pointRadius: POINT_RADIUS,
+                pointBorderWidth: POINT_BORDER_WIDTH,
+                pointBorderColor: marketColor,
+                pointBackgroundColor: marketPointBackgroundColor,
+                parsing: false
             });
         });
 
@@ -789,50 +1180,39 @@
         let yLabel = getUnitLabel(metric);
 
         myChart = new Chart(ctx, {
-            type: 'line',
-            data: { labels: finalLabels, datasets: datasets },
+            type: 'scatter',
+            data: { datasets: datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
-                interaction: { mode: 'index', intersect: false },
+                interaction: { mode: 'nearest', intersect: false },
                 plugins: {
                     customCanvasBackgroundColor: {
                         color: 'white'
                     },
                     title: { 
                         display: true, 
-                        text: getMetricLabel(metric) + ' (' + getGenderLabel(gender) + ') 推移',
+                        text: getChartTitle(metric, gender),
                         font: { size: TITLE_FONT_SIZE }
                     },
                     legend: {
+                        position: 'bottom',
                         labels: {
                             font: { size: LEGEND_FONT_SIZE },
-                            usePointStyle: true,
-                            generateLabels: function(chart) {
-                                const data = chart.data;
-                                if (data.datasets.length) {
-                                    return data.datasets.map(function(dataset, i) {
-                                        return {
-                                            text: dataset.label,
-                                            pointStyle: dataset.pointStyle, 
-                                            fillStyle: dataset.pointBackgroundColor || dataset.backgroundColor, 
-                                            strokeStyle: dataset.pointBorderColor || dataset.borderColor,    
-                                            lineWidth: dataset.pointBorderWidth || 1,                        
-                                            hidden: !chart.isDatasetVisible(i),
-                                            index: i
-                                        };
-                                    });
-                                }
-                                return [];
-                            }
+                            usePointStyle: true
                         }
                     },
                     tooltip: {
                         callbacks: {
+                            title: function(context) {
+                                if (!context || !context[0]) return '';
+                                return context[0].label || context[0].parsed.x || '';
+                            },
                             label: function(context) {
                                 let label = context.dataset.label || '';
                                 if (label) label += ': ';
-                                if (context.parsed.y !== null) label += new Intl.NumberFormat('ja-JP').format(context.parsed.y) + yLabel;
+                                const yValue = context.parsed && context.parsed.y !== undefined ? context.parsed.y : null;
+                                if (yValue !== null) label += new Intl.NumberFormat('ja-JP').format(yValue) + yLabel;
                                 else label += 'データなし (NA)';
                                 return label;
                             }
@@ -841,7 +1221,7 @@
                 },
                 scales: { 
                     y: { 
-                        beginAtZero: true, 
+                        beginAtZero: false,
                         title: { 
                             display: true, 
                             text: "",
@@ -849,9 +1229,26 @@
                         },
                         ticks: {
                             font: { size: AXIS_TICKS_FONT_SIZE }
-                        }
+                        },
+                        min: (function() {
+                            const minInput = document.getElementById('yAxisMin');
+                            if (minInput && minInput.value !== '') {
+                                const parsed = parseFloat(minInput.value);
+                                if (!isNaN(parsed)) {
+                                    return parsed;
+                                }
+                            }
+                            return undefined;
+                        })()
                     },
                     x: {
+                        type: 'category',
+                        labels: finalLabels,
+                        title: {
+                            display: true,
+                            text: '月',
+                            font: { size: AXIS_TITLE_FONT_SIZE }
+                        },
                         ticks: {
                             font: { size: AXIS_TICKS_FONT_SIZE }
                         }
@@ -879,19 +1276,22 @@
     function updateMarketTableDataOnly() {
         const metric = document.querySelector('input[name="metric"]:checked').value;
         const gender = document.querySelector('input[name="gender"]:checked').value;
-        // ★修正：13ヶ月を表示
-        const displayMonths = extractedMonths.length > 0 ? extractedMonths : standardLabels;
+        const displayMonths = standardLabels;
         const tableRows = document.querySelectorAll('#marketTableBody tr');
 
         tableRows.forEach(function(row, marketIndex) {
             const market = parsedAllMarkets[marketIndex];
             const metricData = market.data[metric] && market.data[metric][gender] ? market.data[metric][gender] : [];
+            const fileMonths = (market.fileId === 'manual')
+                ? extractedMonths
+                : (loadedExcelFiles.find(function(f) { return f.id === market.fileId; }) || {}).months || [];
+            const alignedValues = alignSeriesToFiscalAxis(fileMonths, metricData);
             
             const cells = row.querySelectorAll('td');
             displayMonths.forEach(function(month, dataIdx) {
-                const cellIndex = dataIdx + 3;
+                const cellIndex = dataIdx + 4;
                 if (cells[cellIndex]) {
-                    const value = metricData[dataIdx];
+                    const value = alignedValues[dataIdx];
                     if (value !== null && value !== undefined) {
                         let formattedValue;
                         if (metric === 'count') {
@@ -914,6 +1314,12 @@
         });
     }
     
+    function getChartTitle(metric, gender) {
+        let title = getMetricLabel(metric) + ' (' + getGenderLabel(gender) + ') 推移';
+        if (dateRangeLabel) title += '（' + dateRangeLabel + '）';
+        return title;
+    }
+
     function getMetricLabel(m) {
         const labels = { 
             count: "取引頭数", 
@@ -958,7 +1364,7 @@
 
         const metric = document.querySelector('input[name="metric"]:checked').value;
         const gender = document.querySelector('input[name="gender"]:checked').value;
-        const title = getMetricLabel(metric) + ' (' + getGenderLabel(gender) + ') 推移';
+        const title = getChartTitle(metric, gender);
 
         const printTitle = document.getElementById('printTitle');
         const printCanvas = document.getElementById('printCanvas');
@@ -976,10 +1382,236 @@
         }, 100);
     }
 
+    let loadedExcelFiles = []; // { id, name, tsv, dateRangeLabel, sheetName, sheetFallback, checked, markets, months }
+    let excelFileIdCounter = 0;
+
+    function readExcelFileAsWorkbook(file) {
+        return new Promise(function(resolve, reject) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    resolve(workbook);
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            reader.onerror = function() {
+                reject(new Error('ファイルの読み込みに失敗しました'));
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    function handleExcelFileSelection(fileList) {
+        const files = Array.from(fileList || []);
+        if (files.length === 0) return;
+
+        const statusEl = document.getElementById('excelFileStatus');
+        statusEl.textContent = '読み込み中...（' + files.length + '件）';
+
+        const tasks = files.map(function(file) {
+            return readExcelFileAsWorkbook(file)
+                .then(function(workbook) {
+                    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                        return { file: file, error: 'シートが見つかりませんでした' };
+                    }
+                    const sheetName = workbook.SheetNames.includes('Sheet1')
+                        ? 'Sheet1'
+                        : workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const tsv = XLSX.utils.sheet_to_csv(worksheet, { FS: '\t', blankrows: true });
+                    const parsed = parseSheetText(tsv);
+
+                    return {
+                        file: file,
+                        sheetName: sheetName,
+                        sheetFallback: sheetName !== 'Sheet1',
+                        tsv: tsv,
+                        dateRangeLabel: parsed.dateRangeLabel,
+                        markets: parsed.markets,
+                        months: parsed.months
+                    };
+                })
+                .catch(function(err) {
+                    return { file: file, error: err.message };
+                });
+        });
+
+        Promise.all(tasks).then(function(results) {
+            let errorCount = 0;
+            selectedMarketKeys = null; // 新規ファイル読み込み時は選択をデフォルトに戻す
+            initializedFileLabels.clear();
+
+            results.forEach(function(result, idx) {
+                if (result.error) {
+                    errorCount++;
+                    return;
+                }
+                // 同名ファイルがあれば置き換え、なければ追加
+                const existingIndex = loadedExcelFiles.findIndex(function(f) {
+                    return f.name === result.file.name;
+                });
+                const fileId = existingIndex !== -1 ? loadedExcelFiles[existingIndex].id : ++excelFileIdCounter;
+
+                const taggedMarkets = result.markets.map(function(m) {
+                    m.fileId = fileId;
+                    m.fileLabel = result.dateRangeLabel;
+                    return m;
+                });
+
+                const isFirst = (loadedExcelFiles.length === 0 && idx === 0);
+
+                const entry = {
+                    id: fileId,
+                    name: result.file.name,
+                    tsv: result.tsv,
+                    dateRangeLabel: result.dateRangeLabel,
+                    sheetName: result.sheetName,
+                    sheetFallback: result.sheetFallback,
+                    markets: taggedMarkets,
+                    months: result.months,
+                    checked: isFirst
+                };
+                if (existingIndex !== -1) {
+                    loadedExcelFiles[existingIndex] = entry;
+                } else {
+                    loadedExcelFiles.push(entry);
+                }
+            });
+
+            renderExcelFileCheckboxes();
+            rebuildFromCheckedFiles();
+
+            if (errorCount > 0) {
+                statusEl.textContent = '⚠ ' + errorCount + '件の読み込みに失敗しました';
+            } else {
+                statusEl.textContent = '✓ ' + results.length + '件のファイルを読み込みました';
+                setTimeout(function() {
+                    statusEl.textContent = '';
+                }, 4000);
+            }
+        });
+    }
+
+    function toggleExcelFile(id, checked) {
+        const entry = loadedExcelFiles.find(function(f) { return f.id === id; });
+        if (!entry) return;
+        entry.checked = checked;
+        rebuildFromCheckedFiles();
+    }
+
+    function removeExcelFile(id) {
+        loadedExcelFiles = loadedExcelFiles.filter(function(f) { return f.id !== id; });
+        renderExcelFileCheckboxes();
+        rebuildFromCheckedFiles();
+    }
+
+    // ★追加：チェックされている全ファイルのデータを結合し、市場一覧・グラフを再構築する
+    function rebuildFromCheckedFiles() {
+        const checkedFiles = loadedExcelFiles.filter(function(f) { return f.checked; });
+        const textarea = document.getElementById('dataInput');
+
+        if (checkedFiles.length === 0) {
+            parsedAllMarkets = [];
+            extractedMonths = [];
+            customLabels = null;
+            dateRangeLabel = "";
+            document.getElementById('marketSelectionContainer').style.display = 'none';
+            if (myChart) {
+                myChart.destroy();
+                myChart = null;
+            }
+            return;
+        }
+
+        let combined = [];
+        checkedFiles.forEach(function(f) {
+            combined = combined.concat(f.markets);
+        });
+
+        parsedAllMarkets = combined;
+        extractedMonths = (checkedFiles[0].months && checkedFiles[0].months.length > 0) ? checkedFiles[0].months : [];
+        customLabels = extractedMonths.length > 0 ? extractedMonths : null;
+        dateRangeLabel = checkedFiles.length === 1 ? checkedFiles[0].dateRangeLabel : "";
+
+        if (checkedFiles.length === 1) {
+            textarea.value = checkedFiles[0].tsv;
+        } else {
+            textarea.value = '🔗 ' + checkedFiles.length + '件のファイルを結合表示中：\n' +
+                checkedFiles.map(function(f) {
+                    return '・' + (f.dateRangeLabel || '（日付範囲不明）') + '（' + f.name + '）';
+                }).join('\n');
+        }
+
+        if (parsedAllMarkets.length === 0) {
+            document.getElementById('marketSelectionContainer').style.display = 'none';
+            return;
+        }
+
+        createMarketTable();
+    }
+
+    function renderExcelFileCheckboxes() {
+        const container = document.getElementById('excelFileRadioContainer');
+        container.innerHTML = '';
+
+        loadedExcelFiles.forEach(function(entry) {
+            const item = document.createElement('label');
+            item.className = 'excel-file-radio-item';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'excelFileSelect';
+            checkbox.value = entry.id;
+            checkbox.checked = !!entry.checked;
+            checkbox.addEventListener('change', function() {
+                toggleExcelFile(entry.id, checkbox.checked);
+            });
+
+            const textWrap = document.createElement('span');
+            const rangeLabel = document.createElement('span');
+            rangeLabel.className = 'file-range-label';
+            rangeLabel.textContent = entry.dateRangeLabel || '（日付範囲不明）';
+            textWrap.appendChild(rangeLabel);
+
+            const nameSub = document.createElement('span');
+            nameSub.className = 'file-name-sub';
+            nameSub.textContent = entry.name + (entry.sheetFallback ? '（' + entry.sheetName + '）' : '');
+            textWrap.appendChild(nameSub);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'excel-file-remove-btn';
+            removeBtn.textContent = '✕';
+            removeBtn.title = 'このファイルを削除';
+            removeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                removeExcelFile(entry.id);
+            });
+
+            item.appendChild(checkbox);
+            item.appendChild(textWrap);
+            item.appendChild(removeBtn);
+            container.appendChild(item);
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const textarea = document.getElementById('dataInput');
         
         setupResizer();
+
+        document.getElementById('excelFileInput').addEventListener('change', function(e) {
+            handleExcelFileSelection(e.target.files);
+            e.target.value = ''; // 同じファイルを連続選択できるようにリセット
+        });
+
+        document.getElementById('excelClickTrigger').addEventListener('click', function() {
+            document.getElementById('excelFileInput').click();
+        });
         
         textarea.addEventListener('paste', function() {
             clearTimeout(autoProcessTimeout);
@@ -996,6 +1628,11 @@
 
         textarea.addEventListener('input', function() {
             clearTimeout(autoProcessTimeout);
+            
+            // 結合表示中の案内テキストである場合は自動パースをスキップする
+            if (textarea.value.trim().startsWith('🔗')) {
+                return;
+            }
             
             autoProcessTimeout = setTimeout(function() {
                 if (textarea.value.trim().length > 10) {
