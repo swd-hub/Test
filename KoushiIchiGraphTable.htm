@@ -8,6 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>月別肉用子牛取引状況（黒毛和種） 可視化ツール</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
     body { font-family: "Helvetica Neue", Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
     
@@ -250,6 +251,39 @@
         margin-top: 5px;
     }
 
+    .file-input-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+    .file-select-btn {
+        display: inline-block;
+        padding: 8px 14px;
+        background-color: #17a2b8;
+        color: white;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 13.5px;
+        font-weight: bold;
+        transition: background-color 0.2s;
+        white-space: nowrap;
+    }
+    .file-select-btn:hover {
+        background-color: #138496;
+    }
+    .excel-file-name {
+        font-size: 12.5px;
+        color: #555;
+        word-break: break-all;
+    }
+    .excel-sheet-select {
+        font-size: 13px;
+        padding: 4px 6px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    }
+
 @media print {
 
     .header-container h1,
@@ -303,7 +337,16 @@
     <div class="resizable-container">
         <div class="left-panel" id="leftPanel">
             <h2>1. データ入力</h2>
-            <p>エクセルシートの表をコピーして上書きしてください。</p>
+
+            <div class="file-input-row">
+                <label for="excelFileInput" class="file-select-btn">📂 Excelファイルを選択（.xlsx / .xls）</label>
+                <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none;">
+                <span id="excelFileName" class="excel-file-name"></span>
+                <select id="excelSheetSelect" class="excel-sheet-select" style="display:none;"></select>
+            </div>
+            <div id="excelMessage" class="auto-process-indicator"></div>
+
+            <p style="margin-top:14px;">または、エクセルシートの表をコピーして下に貼り付け：</p>
             <textarea id="dataInput" placeholder="Excelの全データを貼り付け..."></textarea>
             <div id="autoProcessMessage" class="auto-process-indicator"></div>
 
@@ -388,6 +431,71 @@
     const POINT_STYLES = [ 'circle', 'rect', 'triangle', 'cross', 'star', 'crossRot', 'rectRot' ];
 
     let autoProcessTimeout = null;
+    let currentWorkbook = null;
+
+    function handleExcelFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const excelMessage = document.getElementById('excelMessage');
+        const excelFileName = document.getElementById('excelFileName');
+        const sheetSelect = document.getElementById('excelSheetSelect');
+
+        excelFileName.textContent = file.name;
+        excelMessage.textContent = '読込中...';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                currentWorkbook = XLSX.read(data, { type: 'array' });
+
+                sheetSelect.innerHTML = '';
+                currentWorkbook.SheetNames.forEach(function(name) {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    sheetSelect.appendChild(opt);
+                });
+
+                if (currentWorkbook.SheetNames.length > 1) {
+                    sheetSelect.style.display = 'inline-block';
+                } else {
+                    sheetSelect.style.display = 'none';
+                }
+
+                loadSheetIntoTextarea(currentWorkbook.SheetNames[0]);
+            } catch (err) {
+                excelMessage.textContent = '✗ 読み込みに失敗しました（ファイル形式をご確認ください）';
+                console.error(err);
+            }
+        };
+        reader.onerror = function() {
+            excelMessage.textContent = '✗ ファイルの読み込みでエラーが発生しました';
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function loadSheetIntoTextarea(sheetName) {
+        if (!currentWorkbook) return;
+        const worksheet = currentWorkbook.Sheets[sheetName];
+        if (!worksheet) return;
+
+        const tsv = XLSX.utils.sheet_to_csv(worksheet, {
+            FS: '\t',
+            blankrows: false,
+            rawNumbers: true
+        });
+
+        document.getElementById('dataInput').value = tsv;
+        parseAndSetupUI();
+
+        const excelMessage = document.getElementById('excelMessage');
+        excelMessage.textContent = '✓ 「' + sheetName + '」シートを読み込みました';
+        setTimeout(function() {
+            excelMessage.textContent = '';
+        }, 3000);
+    }
 
     function setupResizer() {
         const resizer = document.getElementById('resizer');
@@ -980,7 +1088,12 @@
         const textarea = document.getElementById('dataInput');
         
         setupResizer();
-        
+
+        document.getElementById('excelFileInput').addEventListener('change', handleExcelFile);
+        document.getElementById('excelSheetSelect').addEventListener('change', function(e) {
+            loadSheetIntoTextarea(e.target.value);
+        });
+
         textarea.addEventListener('paste', function() {
             clearTimeout(autoProcessTimeout);
             document.getElementById('autoProcessMessage').textContent = '処理中...';
