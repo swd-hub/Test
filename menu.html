@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>社会人のためのデータサイエンス入門</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EEF0EC;
+    --paper: #F7F8F5;
+    --ink: #16213B;
+    --ink-soft: #4A5468;
+    --accent: #1F7A6C;
+    --accent-soft: #CFE3DE;
+    --amber: #D9A441;
+    --line: #D7DBD3;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-attachment: fixed;
+    color: var(--ink);
+    font-family: "Noto Sans JP", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 40px 16px 80px;
+  }
+
+  .page {
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  header {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 32px 28px 26px;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  header::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 5px;
+    background: linear-gradient(180deg, var(--accent), var(--amber));
+  }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: "Noto Serif JP", serif;
+    font-weight: 700;
+    font-size: 26px;
+    line-height: 1.45;
+    margin: 0 0 10px;
+    color: var(--ink);
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.7;
+  }
+
+  /* sparkline divider between weeks */
+  .week-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 34px 0 14px;
+  }
+  .week-divider:first-of-type { margin-top: 0; }
+
+  .week-num {
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--ink);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    padding: 3px 9px;
+    white-space: nowrap;
+  }
+
+  .week-line {
+    flex: 1;
+    height: 6px;
+    background-image: repeating-linear-gradient(
+      90deg,
+      var(--line) 0 4px,
+      transparent 4px 9px
+    );
+    position: relative;
+  }
+  .week-line::after {
+    content: "";
+    position: absolute;
+    right: 0; top: 50%;
+    width: 6px; height: 6px;
+    background: var(--amber);
+    border-radius: 50%;
+    transform: translateY(-50%);
+  }
+
+  ul {
+    list-style: none;
+    margin: 0 0 4px;
+    padding: 0;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  li + li { border-top: 1px solid var(--line); }
+
+  a {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 15px 18px;
+    color: var(--ink);
+    text-decoration: none;
+    transition: background 0.15s ease, padding-left 0.15s ease;
+  }
+
+  a .idx {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    flex-shrink: 0;
+    min-width: 34px;
+  }
+
+  a .label {
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+
+  a .arrow {
+    margin-left: auto;
+    font-family: "JetBrains Mono", monospace;
+    color: var(--line);
+    transition: color 0.15s ease, transform 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  a:hover {
+    background: var(--accent-soft);
+    padding-left: 24px;
+  }
+  a:hover .arrow {
+    color: var(--accent);
+    transform: translateX(3px);
+  }
+  a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  footer {
+    text-align: center;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+    letter-spacing: 0.08em;
+    margin-top: 40px;
+    opacity: 0.7;
+  }
+
+  @media (max-width: 420px) {
+    header { padding: 26px 20px 22px; }
+    h1 { font-size: 22px; }
+    a { padding: 13px 14px; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="eyebrow">Data Science Course</div>
+    <h1>社会人のための<br>データサイエンス入門</h1>
+    <div class="subtitle">各項目をクリックすると、対応する教材PDFが開きます。</div>
+  </header>
+
+  <div class="week-divider"><span class="week-num">WEEK 1</span><span class="week-line"></span></div>
+  <ul>
+    <li><a href="教材/Week1-1.pdf" target="_blank"><span class="idx">1-1</span><span class="label">大人がデータサイエンスを学ぶべき理由</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week1-2.pdf" target="_blank"><span class="idx">1-2</span><span class="label">データから見る経済</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week1-3.pdf" target="_blank"><span class="idx">1-3</span><span class="label">見えないものを可視化する</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week1-4.pdf" target="_blank"><span class="idx">1-4</span><span class="label">ビジネスで活躍するためのデータサイエンス〜製品の品質管理〜</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week1-5.pdf" target="_blank"><span class="idx">1-5</span><span class="label">ビジネスで活躍するためのデータサイエンス〜顧客分析編〜</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week1-6.pdf" target="_blank"><span class="idx">1-6</span><span class="label">統計リテラシーとは何か</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week1-7.pdf" target="_blank"><span class="idx">1-7</span><span class="label">統計が導く未来のかたち</span><span class="arrow">→</span></a></li>
+  </ul>
+
+  <div class="week-divider"><span class="week-num">WEEK 2</span><span class="week-line"></span></div>
+  <ul>
+    <li><a href="教材/Week2-1.pdf" target="_blank"><span class="idx">2-1</span><span class="label">データの種類</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week2-2.pdf" target="_blank"><span class="idx">2-2</span><span class="label">代表値〜平均・中央・最頻値</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week2-3.pdf" target="_blank"><span class="idx">2-3</span><span class="label">ヒストグラムと相対度数</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week2-4.pdf" target="_blank"><span class="idx">2-4</span><span class="label">四分位・パーセンタイル・箱ひげ図</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week2-5.pdf" target="_blank"><span class="idx">2-5</span><span class="label">分散・標準偏差</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week2-6.pdf" target="_blank"><span class="idx">2-6</span><span class="label">相関関係</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week2-7.pdf" target="_blank"><span class="idx">2-7</span><span class="label">回帰分析</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week2-8.pdf" target="_blank"><span class="idx">2-8</span><span class="label">標本分布</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week2-9.pdf" target="_blank"><span class="idx">2-9</span><span class="label">信頼区間</span><span class="arrow">→</span></a></li>
+  </ul>
+
+  <div class="week-divider"><span class="week-num">WEEK 3</span><span class="week-line"></span></div>
+  <ul>
+    <li><a href="教材/Week3-1.pdf" target="_blank"><span class="idx">3-1</span><span class="label">統計表の見方</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week3-2.pdf" target="_blank"><span class="idx">3-2</span><span class="label">比率の見方（1）―クロスセクションデータ―</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week3-3.pdf" target="_blank"><span class="idx">3-3</span><span class="label">比率の見方（2）―使い方と注意点―</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week3-4.pdf" target="_blank"><span class="idx">3-4</span><span class="label">時系列データの見方（1）</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week3-5.pdf" target="_blank"><span class="idx">3-5</span><span class="label">時系列データの見方（2）</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week3-6.pdf" target="_blank"><span class="idx">3-6</span><span class="label">グラフの選び方（1）</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week3-7.pdf" target="_blank"><span class="idx">3-7</span><span class="label">グラフの選び方（2）</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week3-8.pdf" target="_blank"><span class="idx">3-8</span><span class="label">グラフを作る時・読む時の注意点</span><span class="arrow">→</span></a></li>
+  </ul>
+
+  <div class="week-divider"><span class="week-num">WEEK 4</span><span class="week-line"></span></div>
+  <ul>
+    <li><a href="教材/Week4-1.pdf" target="_blank"><span class="idx">4-1</span><span class="label">公的統計とはどのようなものか</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week4-2.pdf" target="_blank"><span class="idx">4-2</span><span class="label">主要な公的統計を眺めてみよう</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week4-3.pdf" target="_blank"><span class="idx">4-3</span><span class="label">e-Statを使ってみよう</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week4-4.pdf" target="_blank"><span class="idx">4-4</span><span class="label">e-Statで分析してみよう</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week4-5.pdf" target="_blank"><span class="idx">4-5</span><span class="label">jSTAT MAPの基本機能とレポート出力</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week4-6.pdf" target="_blank"><span class="idx">4-6</span><span class="label">jSTAT MAPへのデータインポートと応用</span><span class="arrow">→</span></a></li>
+    <li><a href="教材/Week4-7.pdf" target="_blank"><span class="idx">4-7</span><span class="label">総まとめ</span><span class="arrow">→</span></a></li>
+  </ul>
+
+  <footer>教材フォルダ内の各PDFにリンクしています</footer>
+
+</div>
+</body>
+</html>
