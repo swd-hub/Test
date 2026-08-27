@@ -360,10 +360,29 @@
         color: #555;
         margin: 0 0 4px 0;
         font-weight: 600;
+        flex: 0 0 auto;
+        white-space: nowrap;
     }
     
     .keyword-item input[type="text"] {
         flex: 1;
+        min-width: 0;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 13px;
+    }
+    
+    .keyword-item .crop-select-row {
+        display: flex;
+        gap: 8px;
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .keyword-item .crop-select-row select {
+        flex: 0 0 45%;
+        min-width: 0;
         padding: 8px;
         border: 1px solid #ddd;
         border-radius: 4px;
@@ -914,6 +933,7 @@
         let previewPages = [];
         let printPages = [];
         let currentPage = 0;
+        let cropNameOptions = [];
         
         // デフォルトでチェックするヘッダー
         const DEFAULT_CHECKED_HEADERS = [
@@ -923,6 +943,27 @@
             '希釈倍数使用量',
             '使用時期'
         ];
+        
+        // 「作物名」列の候補を、括弧とその中身を除去・重複排除・ソートして生成
+        function buildCropNameOptions() {
+            if (!mergedData) {
+                cropNameOptions = [];
+                return;
+            }
+            const cropHeader = headers.find(h => h === '作物名') || headers.find(h => h.includes('作物名'));
+            if (!cropHeader) {
+                cropNameOptions = [];
+                return;
+            }
+            const set = new Set();
+            mergedData.forEach(row => {
+                let val = (row[cropHeader] || '').toString();
+                // 全角（）・半角()とその中身を削除
+                val = val.replace(/[（(][^）)]*[）)]/g, '').trim();
+                if (val) set.add(val);
+            });
+            cropNameOptions = Array.from(set).sort((a, b) => a.localeCompare(b, 'ja', { numeric: true }));
+        }
         
         /**
          * 全角をハンカクに変換（完全版）
@@ -1161,7 +1202,7 @@
                 
                 const input = document.createElement('input');
                 input.type = 'text';
-                input.placeholder = 'キーワードを入力';
+                input.placeholder = 'キーワードを入力（直接入力）';
                 input.disabled = !isChecked;
                 input.dataset.convertedValue = '';
                 
@@ -1174,7 +1215,43 @@
                 keywordInputs[header] = input;
                 
                 item.appendChild(label);
-                item.appendChild(input);
+                
+                // 「作物名」列は候補リストからの選択も可能にする（直接入力欄は維持）
+                const isCropHeader = (header === '作物名' || header.includes('作物名'));
+                if (isCropHeader && cropNameOptions.length > 0) {
+                    const row = document.createElement('div');
+                    row.className = 'crop-select-row';
+                    
+                    const select = document.createElement('select');
+                    select.disabled = !isChecked;
+                    
+                    const defaultOpt = document.createElement('option');
+                    defaultOpt.value = '';
+                    defaultOpt.textContent = '候補から選択…';
+                    select.appendChild(defaultOpt);
+                    
+                    cropNameOptions.forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.textContent = name;
+                        select.appendChild(opt);
+                    });
+                    
+                    select.addEventListener('change', (e) => {
+                        if (e.target.value) {
+                            input.value = e.target.value;
+                            input.dataset.convertedValue = toHankaku(e.target.value);
+                        }
+                    });
+                    
+                    input.style.flex = '1';
+                    row.appendChild(select);
+                    row.appendChild(input);
+                    item.appendChild(row);
+                } else {
+                    item.appendChild(input);
+                }
+                
                 keywordsContainer.appendChild(item);
             });
         }
@@ -1221,6 +1298,7 @@
                 
                 headers = firstHeaders;
                 mergedData = allData;
+                buildCropNameOptions();
                 
                 const checkboxContainer = document.getElementById('headerCheckboxes');
                 checkboxContainer.innerHTML = '';
