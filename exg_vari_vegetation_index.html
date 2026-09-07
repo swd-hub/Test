@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>可視光植生指数(RGBベース)一括変換</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .controls { margin-bottom: 20px; }
+    .images { display: flex; gap: 16px; flex-wrap: wrap; }
+    .card { width: 300px; }
+    canvas.output, img#source { width: 100%; height: auto; border: 1px solid #ccc; display: block; }
+    #placeholder { color: #999; }
+    h3 { margin-bottom: 2px; font-size: 15px; }
+    .formula { font-size: 12px; color: #888; margin: 0 0 6px 0; font-family: monospace; }
+    .note { font-size: 12px; color: #666; margin-top: 6px; }
+    .legend { margin-top: 6px; }
+    .legend canvas { width: 100%; height: 14px; display: block; border: 1px solid #ccc; }
+    .legend-labels { display: flex; justify-content: space-between; font-size: 11px; color: #666; margin-top: 2px; }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <h3>画像を選択してください</h3>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+
+  <div class="images">
+    <div class="card">
+      <h3>元画像</h3>
+      <img id="source" alt="元画像" style="display:none;">
+      <p id="placeholder">まだ画像が選択されていません</p>
+    </div>
+    <div id="indexCards"></div>
+  </div>
+
+<script>
+const EPS = 1e-6;
+
+// ---- 各指標の定義 ----
+// compute(r,g,b) は 0〜255 の生ピクセル値を受け取り、指標の生の値を返す
+// min/max はその指標で「植物とみなす主要な値域」。カラーマッピングに使う
+// invert: true の場合、生の値が小さいほど植生度が高いことを意味する(CIVEなど)
+const INDICES = [
+  {
+    id: 'exg', name: 'ExG (超緑指数)', formula: '2g − r − b (正規化RGB)',
+    min: -0.2, max: 0.4, invert: false,
+    compute: (r, g, b) => {
+      const sum = r + g + b;
+      if (sum === 0) return 0;
+      const nr = r / sum, ng = g / sum, nb = b / sum;
+      return 2 * ng - nr - nb;
+    },
+    note: '最も基本的な緑超過指標。計算が単純で高速。'
+  },
+  {
+    id: 'vari', name: 'VARI (可視域大気耐性指数)', formula: '(g − r) / (g + r − b)',
+    min: -0.2, max: 0.6, invert: false,
+    compute: (r, g, b) => (g - r) / (g + r - b + EPS),
+    note: '照明・大気の影響を受けにくく、フィールド写真向き。'
+  },
+  {
+    id: 'gli', name: 'GLI (緑葉指数)', formula: '(2g − r − b) / (2g + r + b)',
+    min: -0.2, max: 0.3, invert: false,
+    compute: (r, g, b) => (2 * g - r - b) / (2 * g + r + b + EPS),
+    note: 'ExGを正規化した指標。値域が-1〜1に収まる。'
+  },
+  {
+    id: 'exgr', name: 'ExGR (超緑 − 超赤)', formula: '3g − 2.4r − b (正規化RGB)',
+    min: -0.2, max: 0.6, invert: false,
+    compute: (r, g, b) => {
+      const sum = r + g + b;
+      if (sum === 0) return 0;
+      const nr = r / sum, ng = g / sum, nb = b / sum;
+      const exg = 2 * ng - nr - nb;
+      const exr = 1.4 * nr - ng;
+      return exg - exr;
+    },
+    note: '土壌の赤みを差し引き、植物/土壌の分離精度を高めた指標。雑草検出向き。'
+  },
+  {
+    id: 'cive', name: 'CIVE (植生抽出色指数)', formula: '0.441r − 0.881g + 0.385b + 18.79',
+    min: -40, max: 40, invert: true,
+    compute: (r, g, b) => 0.441 * r - 0.881 * g + 0.385 * b + 18.78745,
+    note: '値が低いほど植物。閾値0付近での二値分類(植物/非植物)に向く。'
+  },
+  {
+    id: 'veg', name: 'VEG (植生指数)', formula: 'g / (r^0.667 × b^0.333)',
+    min: 0.5, max: 1.5, invert: false,
+    compute: (r, g, b) => {
+      const a = 0.667;
+      const r01 = r / 255, g01 = g / 255, b01 = b / 255;
+      const denom = Math.pow(r01 + EPS, a) * Math.pow(b01 + EPS, 1 - a);
+      return g01 / (denom + EPS);
+    },
+    note: '照明変化への頑健性を狙った指標。1を超えるほど植生らしい。'
+  },
+  {
+    id: 'ngrdi', name: 'NGRDI (正規化緑赤差指数)', formula: '(g − r) / (g + r)',
+    min: -0.2, max: 0.4, invert: false,
+    compute: (r, g, b) => (g - r) / (g + r + EPS),
+    note: 'VARIから青成分を除いた最もシンプルな形。影の影響は受けやすい。'
+  },
+  {
+    id: 'rgbvi', name: 'RGBVI (RGB植生指数)', formula: '(g² − r×b) / (g² + r×b)',
+    min: -0.2, max: 0.6, invert: false,
+    compute: (r, g, b) => (g * g - r * b) / (g * g + r * b + EPS),
+    note: 'UAV(ドローン)画像での性能が良いとされる比較的新しい指標。'
+  }
+];
+
+const fileInput = document.getElementById('fileInput');
+const img = document.getElementById('source');
+const placeholder = document.getElementById('placeholder');
+const indexCardsContainer = document.getElementById('indexCards');
+
+// ---- 指標ごとのカードDOMを動的生成 ----
+const canvases = {};
+INDICES.forEach(idx => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <h3>${idx.name}</h3>
+    <p class="formula">${idx.formula}</p>
+    <canvas class="output" id="out_${idx.id}"></canvas>
+    <div class="legend">
+      <canvas id="legend_${idx.id}"></canvas>
+      <div class="legend-labels">
+        <span>低 (${idx.invert ? idx.max : idx.min})</span>
+        <span>中</span>
+        <span>高 (${idx.invert ? idx.min : idx.max})</span>
+      </div>
+    </div>
+    <p class="note">${idx.note}</p>
+  `;
+  indexCardsContainer.appendChild(card);
+  canvases[idx.id] = {
+    output: card.querySelector(`#out_${idx.id}`),
+    legend: card.querySelector(`#legend_${idx.id}`)
+  };
+});
+// カード全体をflexコンテナにするためラップ
+indexCardsContainer.style.display = 'contents';
+
+// ---- 凡例(グラデーションバー)描画 ----
+function drawLegend(canvasEl) {
+  const width = 256, height = 14;
+  canvasEl.width = width;
+  canvasEl.height = height;
+  const lctx = canvasEl.getContext('2d');
+  const imgData = lctx.createImageData(width, height);
+  for (let x = 0; x < width; x++) {
+    const val = x / (width - 1);
+    const color = getVegetationColor(val);
+    for (let y = 0; y < height; y++) {
+      const i = (y * width + x) * 4;
+      imgData.data[i] = color.r;
+      imgData.data[i + 1] = color.g;
+      imgData.data[i + 2] = color.b;
+      imgData.data[i + 3] = 255;
+    }
+  }
+  lctx.putImageData(imgData, 0, 0);
+}
+INDICES.forEach(idx => drawLegend(canvases[idx.id].legend));
+
+// ---- ファイル選択 ----
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    placeholder.style.display = 'none';
+    img.style.display = 'block';
+    processImage();
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+});
+
+// ---- 画像処理本体 ----
+function processImage() {
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = w;
+  tmpCanvas.height = h;
+  const tmpCtx = tmpCanvas.getContext('2d');
+  tmpCtx.drawImage(img, 0, 0);
+  const srcData = tmpCtx.getImageData(0, 0, w, h).data;
+
+  // 各指標ごとに出力用ImageDataを準備
+  const outputs = {};
+  INDICES.forEach(idx => {
+    const c = canvases[idx.id].output;
+    c.width = w;
+    c.height = h;
+    outputs[idx.id] = {
+      ctx: c.getContext('2d'),
+      data: c.getContext('2d').createImageData(w, h)
+    };
+  });
+
+  for (let i = 0; i < srcData.length; i += 4) {
+    const r = srcData[i], g = srcData[i + 1], b = srcData[i + 2];
+
+    INDICES.forEach(idx => {
+      const raw = idx.compute(r, g, b);
+      let val = (raw - idx.min) / (idx.max - idx.min);
+      val = Math.max(0, Math.min(1, val));
+      if (idx.invert) val = 1 - val;
+
+      const color = getVegetationColor(val);
+      const d = outputs[idx.id].data.data;
+      d[i] = color.r;
+      d[i + 1] = color.g;
+      d[i + 2] = color.b;
+      d[i + 3] = 255;
+    });
+  }
+
+  INDICES.forEach(idx => {
+    outputs[idx.id].ctx.putImageData(outputs[idx.id].data, 0, 0);
+  });
+}
+
+// ---- 共通カラーマップ(全指標で共通の低→中→高 のグラデーション) ----
+function getVegetationColor(val) {
+  if (val > 0.5) {
+    const t = (val - 0.5) * 2;
+    return {
+      r: Math.round(255 * (1 - t)),
+      g: Math.round(200 + 55 * t),
+      b: 30
+    };
+  } else {
+    const t = val * 2;
+    return {
+      r: 180,
+      g: Math.round(180 * t),
+      b: 50
+    };
+  }
+}
+</script>
+</body>
+</html>
