@@ -7,7 +7,7 @@
     body { font-family: sans-serif; padding: 20px; }
     .controls { margin-bottom: 20px; }
     .images { display: flex; gap: 16px; flex-wrap: wrap; }
-    .card { width: 300px; }
+    .card { width: 300px; border: 1px solid #eee; border-radius: 6px; padding: 8px; box-sizing: border-box; }
     canvas.output, img#source { width: 100%; height: auto; border: 1px solid #ccc; display: block; }
     #placeholder { color: #999; }
     h3 { margin-bottom: 2px; font-size: 15px; }
@@ -16,6 +16,24 @@
     .legend { margin-top: 6px; }
     .legend canvas { width: 100%; height: 14px; display: block; border: 1px solid #ccc; }
     .legend-labels { display: flex; justify-content: space-between; font-size: 11px; color: #666; margin-top: 2px; }
+
+    .threshold { margin-top: 8px; font-size: 12px; }
+    .threshold label { display: flex; align-items: center; gap: 6px; }
+    .threshold input[type="number"] { width: 70px; }
+    .threshold input[type="range"] { width: 100%; margin-top: 4px; }
+
+    .stats { margin-top: 8px; font-size: 12px; }
+    .stats table { width: 100%; border-collapse: collapse; }
+    .stats td { padding: 2px 4px; border-bottom: 1px dotted #ddd; }
+    .stats td:first-child { color: #555; }
+    .stats td:last-child { text-align: right; font-family: monospace; }
+
+    .rgb-channels { margin-top: 10px; }
+    .rgb-channels .label { font-size: 12px; color: #666; margin: 0 0 4px 0; }
+    .rgb-channels .row { display: flex; gap: 6px; }
+    .rgb-channels .chan { flex: 1; min-width: 0; }
+    .rgb-channels canvas { width: 100%; height: auto; border: 1px solid #ccc; display: block; }
+    .rgb-channels .chan-label { text-align: center; font-size: 11px; margin-top: 2px; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -30,6 +48,23 @@
       <h3>元画像</h3>
       <img id="source" alt="元画像" style="display:none;">
       <p id="placeholder">まだ画像が選択されていません</p>
+      <div class="rgb-channels" id="rgbChannels" style="display:none;">
+        <p class="label">RGB各チャンネル</p>
+        <div class="row">
+          <div class="chan">
+            <canvas id="chan_r"></canvas>
+            <div class="chan-label" style="color:#c00;">R</div>
+          </div>
+          <div class="chan">
+            <canvas id="chan_g"></canvas>
+            <div class="chan-label" style="color:#0a0;">G</div>
+          </div>
+          <div class="chan">
+            <canvas id="chan_b"></canvas>
+            <div class="chan-label" style="color:#00c;">B</div>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="indexCards"></div>
   </div>
@@ -41,10 +76,11 @@ const EPS = 1e-6;
 // compute(r,g,b) は 0〜255 の生ピクセル値を受け取り、指標の生の値を返す
 // min/max はその指標で「植物とみなす主要な値域」。カラーマッピングに使う
 // invert: true の場合、生の値が小さいほど植生度が高いことを意味する(CIVEなど)
+// defaultThreshold: 「植物」とみなす初期しきい値の目安(invertがtrueならこれ以下、falseならこれ以上を植物とみなす)
 const INDICES = [
   {
     id: 'exg', name: 'ExG (超緑指数)', formula: '2g − r − b (正規化RGB)',
-    min: -0.2, max: 0.4, invert: false,
+    min: -0.2, max: 0.4, invert: false, defaultThreshold: 0.05,
     compute: (r, g, b) => {
       const sum = r + g + b;
       if (sum === 0) return 0;
@@ -55,19 +91,19 @@ const INDICES = [
   },
   {
     id: 'vari', name: 'VARI (可視域大気耐性指数)', formula: '(g − r) / (g + r − b)',
-    min: -0.2, max: 0.6, invert: false,
+    min: -0.2, max: 0.6, invert: false, defaultThreshold: 0.1,
     compute: (r, g, b) => (g - r) / (g + r - b + EPS),
     note: '照明・大気の影響を受けにくく、フィールド写真向き。'
   },
   {
     id: 'gli', name: 'GLI (緑葉指数)', formula: '(2g − r − b) / (2g + r + b)',
-    min: -0.2, max: 0.3, invert: false,
+    min: -0.2, max: 0.3, invert: false, defaultThreshold: 0.05,
     compute: (r, g, b) => (2 * g - r - b) / (2 * g + r + b + EPS),
     note: 'ExGを正規化した指標。値域が-1〜1に収まる。'
   },
   {
     id: 'exgr', name: 'ExGR (超緑 − 超赤)', formula: '3g − 2.4r − b (正規化RGB)',
-    min: -0.2, max: 0.6, invert: false,
+    min: -0.2, max: 0.6, invert: false, defaultThreshold: 0.1,
     compute: (r, g, b) => {
       const sum = r + g + b;
       if (sum === 0) return 0;
@@ -80,13 +116,13 @@ const INDICES = [
   },
   {
     id: 'cive', name: 'CIVE (植生抽出色指数)', formula: '0.441r − 0.881g + 0.385b + 18.79',
-    min: -40, max: 40, invert: true,
+    min: -40, max: 40, invert: true, defaultThreshold: 0,
     compute: (r, g, b) => 0.441 * r - 0.881 * g + 0.385 * b + 18.78745,
     note: '値が低いほど植物。閾値0付近での二値分類(植物/非植物)に向く。'
   },
   {
     id: 'veg', name: 'VEG (植生指数)', formula: 'g / (r^0.667 × b^0.333)',
-    min: 0.5, max: 1.5, invert: false,
+    min: 0.5, max: 1.5, invert: false, defaultThreshold: 1.0,
     compute: (r, g, b) => {
       const a = 0.667;
       const r01 = r / 255, g01 = g / 255, b01 = b / 255;
@@ -97,13 +133,13 @@ const INDICES = [
   },
   {
     id: 'ngrdi', name: 'NGRDI (正規化緑赤差指数)', formula: '(g − r) / (g + r)',
-    min: -0.2, max: 0.4, invert: false,
+    min: -0.2, max: 0.4, invert: false, defaultThreshold: 0.0,
     compute: (r, g, b) => (g - r) / (g + r + EPS),
     note: 'VARIから青成分を除いた最もシンプルな形。影の影響は受けやすい。'
   },
   {
     id: 'rgbvi', name: 'RGBVI (RGB植生指数)', formula: '(g² − r×b) / (g² + r×b)',
-    min: -0.2, max: 0.6, invert: false,
+    min: -0.2, max: 0.6, invert: false, defaultThreshold: 0.05,
     compute: (r, g, b) => (g * g - r * b) / (g * g + r * b + EPS),
     note: 'UAV(ドローン)画像での性能が良いとされる比較的新しい指標。'
   }
@@ -113,9 +149,21 @@ const fileInput = document.getElementById('fileInput');
 const img = document.getElementById('source');
 const placeholder = document.getElementById('placeholder');
 const indexCardsContainer = document.getElementById('indexCards');
+const rgbChannelsBox = document.getElementById('rgbChannels');
+const chanCanvases = {
+  r: document.getElementById('chan_r'),
+  g: document.getElementById('chan_g'),
+  b: document.getElementById('chan_b')
+};
+
+// 現在読み込んでいる画像の元RGBデータとサイズ、各指標の生値配列
+let currentSrcData = null;
+let currentW = 0, currentH = 0;
+const rawValues = {}; // idx.id -> Float32Array(w*h) の指標生値
 
 // ---- 指標ごとのカードDOMを動的生成 ----
 const canvases = {};
+const statEls = {};
 INDICES.forEach(idx => {
   const card = document.createElement('div');
   card.className = 'card';
@@ -131,6 +179,23 @@ INDICES.forEach(idx => {
         <span>高 (${idx.invert ? idx.min : idx.max})</span>
       </div>
     </div>
+    <div class="threshold">
+      <label>
+        しきい値(${idx.invert ? '以下' : '以上'}を植物とする):
+        <input type="number" step="0.01" id="thresh_${idx.id}" value="${idx.defaultThreshold}">
+      </label>
+      <input type="range" id="range_${idx.id}" min="${idx.min}" max="${idx.max}" step="0.01" value="${idx.defaultThreshold}">
+    </div>
+    <div class="stats">
+      <table>
+        <tr><td>植物ピクセル数</td><td id="stat_count_${idx.id}">-</td></tr>
+        <tr><td>全体に対する割合</td><td id="stat_ratio_${idx.id}">-</td></tr>
+        <tr><td>平均値</td><td id="stat_mean_${idx.id}">-</td></tr>
+        <tr><td>標準偏差</td><td id="stat_std_${idx.id}">-</td></tr>
+        <tr><td>最小値</td><td id="stat_min_${idx.id}">-</td></tr>
+        <tr><td>最大値</td><td id="stat_max_${idx.id}">-</td></tr>
+      </table>
+    </div>
     <p class="note">${idx.note}</p>
   `;
   indexCardsContainer.appendChild(card);
@@ -138,6 +203,32 @@ INDICES.forEach(idx => {
     output: card.querySelector(`#out_${idx.id}`),
     legend: card.querySelector(`#legend_${idx.id}`)
   };
+  statEls[idx.id] = {
+    count: card.querySelector(`#stat_count_${idx.id}`),
+    ratio: card.querySelector(`#stat_ratio_${idx.id}`),
+    mean: card.querySelector(`#stat_mean_${idx.id}`),
+    std: card.querySelector(`#stat_std_${idx.id}`),
+    min: card.querySelector(`#stat_min_${idx.id}`),
+    max: card.querySelector(`#stat_max_${idx.id}`)
+  };
+
+  // しきい値の数値入力とスライダーを連動させ、変更のたびにマスク・統計を再計算
+  const numInput = card.querySelector(`#thresh_${idx.id}`);
+  const rangeInput = card.querySelector(`#range_${idx.id}`);
+  numInput.addEventListener('input', () => {
+    const val = parseFloat(numInput.value);
+    if (!isNaN(val)) {
+      // スライダーの範囲外の値が入力された場合は、スライダー側の範囲を広げて追従させる
+      if (val < parseFloat(rangeInput.min)) rangeInput.min = val;
+      if (val > parseFloat(rangeInput.max)) rangeInput.max = val;
+      rangeInput.value = val;
+    }
+    updateMaskAndStats(idx);
+  });
+  rangeInput.addEventListener('input', () => {
+    numInput.value = rangeInput.value;
+    updateMaskAndStats(idx);
+  });
 });
 // カード全体をflexコンテナにするためラップ
 indexCardsContainer.style.display = 'contents';
@@ -178,51 +269,145 @@ fileInput.addEventListener('change', (e) => {
   img.src = url;
 });
 
-// ---- 画像処理本体 ----
+// ---- 画像処理本体：各指標の生値を計算してキャッシュし、マスク・統計を反映した画像を描画 ----
 function processImage() {
   const w = img.naturalWidth;
   const h = img.naturalHeight;
+  currentW = w;
+  currentH = h;
 
   const tmpCanvas = document.createElement('canvas');
   tmpCanvas.width = w;
   tmpCanvas.height = h;
   const tmpCtx = tmpCanvas.getContext('2d');
   tmpCtx.drawImage(img, 0, 0);
-  const srcData = tmpCtx.getImageData(0, 0, w, h).data;
+  currentSrcData = tmpCtx.getImageData(0, 0, w, h).data;
 
-  // 各指標ごとに出力用ImageDataを準備
-  const outputs = {};
+  const pixelCount = w * h;
+
+  drawRgbChannels(w, h);
+
   INDICES.forEach(idx => {
     const c = canvases[idx.id].output;
     c.width = w;
     c.height = h;
-    outputs[idx.id] = {
-      ctx: c.getContext('2d'),
-      data: c.getContext('2d').createImageData(w, h)
-    };
+
+    const raw = new Float32Array(pixelCount);
+    for (let i = 0, p = 0; i < currentSrcData.length; i += 4, p++) {
+      const r = currentSrcData[i], g = currentSrcData[i + 1], b = currentSrcData[i + 2];
+      raw[p] = idx.compute(r, g, b);
+    }
+    rawValues[idx.id] = raw;
+
+    updateMaskAndStats(idx);
   });
+}
 
-  for (let i = 0; i < srcData.length; i += 4) {
-    const r = srcData[i], g = srcData[i + 1], b = srcData[i + 2];
+// ---- 元画像の下にR/G/B各チャンネルの画像を描画 ----
+function drawRgbChannels(w, h) {
+  rgbChannelsBox.style.display = 'block';
 
-    INDICES.forEach(idx => {
-      const raw = idx.compute(r, g, b);
-      let val = (raw - idx.min) / (idx.max - idx.min);
+  const channels = [
+    { key: 'r', canvas: chanCanvases.r, index: 0 },
+    { key: 'g', canvas: chanCanvases.g, index: 1 },
+    { key: 'b', canvas: chanCanvases.b, index: 2 }
+  ];
+
+  channels.forEach(chan => {
+    chan.canvas.width = w;
+    chan.canvas.height = h;
+    const ctx = chan.canvas.getContext('2d');
+    const imgData = ctx.createImageData(w, h);
+    const d = imgData.data;
+
+    for (let i = 0; i < currentSrcData.length; i += 4) {
+      const val = currentSrcData[i + chan.index];
+      // 該当チャンネルの値のみを使い、他の2チャンネルは0にして単色画像として表示
+      d[i] = chan.key === 'r' ? val : 0;
+      d[i + 1] = chan.key === 'g' ? val : 0;
+      d[i + 2] = chan.key === 'b' ? val : 0;
+      d[i + 3] = 255;
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+  });
+}
+
+// ---- しきい値に基づいてマスク画像を再描画し、植物ピクセルの基礎統計量を算出 ----
+function updateMaskAndStats(idx) {
+  if (!rawValues[idx.id] || currentW === 0) return;
+
+  const threshold = parseFloat(document.getElementById(`thresh_${idx.id}`).value);
+  const raw = rawValues[idx.id];
+  const w = currentW, h = currentH;
+  const pixelCount = w * h;
+
+  const c = canvases[idx.id].output;
+  const ctx = c.getContext('2d');
+  const outData = ctx.createImageData(w, h);
+  const d = outData.data;
+
+  let count = 0;
+  let sum = 0, sumSq = 0;
+  let minV = Infinity, maxV = -Infinity;
+
+  for (let p = 0; p < pixelCount; p++) {
+    const v = raw[p];
+    const isPlant = idx.invert ? (v <= threshold) : (v >= threshold);
+    const i = p * 4;
+
+    if (isPlant) {
+      count++;
+      sum += v;
+      sumSq += v * v;
+      if (v < minV) minV = v;
+      if (v > maxV) maxV = v;
+
+      // 通常のカラーマッピングで着色
+      let val = (v - idx.min) / (idx.max - idx.min);
       val = Math.max(0, Math.min(1, val));
       if (idx.invert) val = 1 - val;
-
       const color = getVegetationColor(val);
-      const d = outputs[idx.id].data.data;
       d[i] = color.r;
       d[i + 1] = color.g;
       d[i + 2] = color.b;
       d[i + 3] = 255;
-    });
+    } else {
+      // 非選択部分は元画像のグレースケールで暗めに表示し、マスク範囲がわかるようにする
+      const si = i;
+      const gray = 0.299 * currentSrcData[si] + 0.587 * currentSrcData[si + 1] + 0.114 * currentSrcData[si + 2];
+      const dim = gray * 0.35;
+      d[i] = dim;
+      d[i + 1] = dim;
+      d[i + 2] = dim;
+      d[i + 3] = 255;
+    }
   }
 
-  INDICES.forEach(idx => {
-    outputs[idx.id].ctx.putImageData(outputs[idx.id].data, 0, 0);
-  });
+  ctx.putImageData(outData, 0, 0);
+
+  // ---- 基礎統計量の表示 ----
+  const els = statEls[idx.id];
+  if (count > 0) {
+    const mean = sum / count;
+    const variance = sumSq / count - mean * mean;
+    const std = Math.sqrt(Math.max(0, variance));
+    const ratio = (count / pixelCount) * 100;
+
+    els.count.textContent = count.toLocaleString();
+    els.ratio.textContent = ratio.toFixed(1) + '%';
+    els.mean.textContent = mean.toFixed(4);
+    els.std.textContent = std.toFixed(4);
+    els.min.textContent = minV.toFixed(4);
+    els.max.textContent = maxV.toFixed(4);
+  } else {
+    els.count.textContent = '0';
+    els.ratio.textContent = '0.0%';
+    els.mean.textContent = '-';
+    els.std.textContent = '-';
+    els.min.textContent = '-';
+    els.max.textContent = '-';
+  }
 }
 
 // ---- 共通カラーマップ(全指標で共通の低→中→高 のグラデーション) ----
