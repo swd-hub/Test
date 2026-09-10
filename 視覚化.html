@@ -246,6 +246,8 @@ textarea.csv-input {
   <section id="tab-input" class="tab-panel active">
     <div class="toolbar">
       <button class="primary" onclick="showTab('chart')">グラフを更新して表示 ▸</button>
+      <button onclick="saveJson()">JSONへ保存</button>
+      <button onclick="document.getElementById('json-file-input').click()">JSON読み込み</button>
     </div>
 
     <div class="card">
@@ -253,7 +255,7 @@ textarea.csv-input {
       <div class="input-group">
         <label>
           年度
-          <input type="text" id="input-fiscal-year" placeholder="例：2024">
+          <input type="text" id="input-fiscal-year" placeholder="例：令和８年度">
         </label>
         <label>
           名前
@@ -969,6 +971,60 @@ function printCharts() {
     }, 100);
   }, 1000);
 }
+
+  // JSON 入出力: 保存と読み込み
+  function getJsonInputData() {
+    return {
+      fiscalYear: document.getElementById("input-fiscal-year").value || "",
+      name: document.getElementById("input-name").value || "",
+      csvIncome: document.getElementById("csv-income").value || "",
+      csvExpense: document.getElementById("csv-expense").value || "",
+      csvCrop: document.getElementById("csv-crop").value || ""
+    };
+  }
+
+  function sanitizeFileName(s) {
+    return s.replace(/[\\/:*?"<>|\s]+/g, '_');
+  }
+
+  function saveJson() {
+    const data = getJsonInputData();
+    const year = (data.fiscalYear || (new Date()).getFullYear()).toString();
+    const name = sanitizeFileName(data.name || 'no-name');
+    const filename = `${year}_${name}.json`;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function onJsonFileSelected(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        const obj = JSON.parse(ev.target.result);
+        if (obj.fiscalYear !== undefined) document.getElementById('input-fiscal-year').value = obj.fiscalYear;
+        if (obj.name !== undefined) document.getElementById('input-name').value = obj.name;
+        if (obj.csvIncome !== undefined) document.getElementById('csv-income').value = obj.csvIncome;
+        if (obj.csvExpense !== undefined) document.getElementById('csv-expense').value = obj.csvExpense;
+        if (obj.csvCrop !== undefined) document.getElementById('csv-crop').value = obj.csvCrop;
+        renderAllCharts();
+        alert('JSONを読み込みました。グラフを更新しました。');
+      } catch (err) {
+        alert('JSONの読み込みに失敗しました: ' + err.message);
+      } finally {
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
+  }
 </script>
+  <input type="file" id="json-file-input" accept=".json,application/json" style="display:none" onchange="onJsonFileSelected(event)">
 </body>
 </html>
