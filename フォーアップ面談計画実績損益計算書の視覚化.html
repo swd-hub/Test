@@ -103,11 +103,19 @@ textarea.csv-input {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  row-gap: 24px;
 }
-.grid .full { grid-column: 1 / -1; }
+.grid .area-chart { grid-column: 1; grid-row: 1; }
+.grid .revenue-income-chart { grid-column: 2; grid-row: 1; }
+.grid .yield-chart { grid-column: 1; grid-row: 2; }
+.grid .price-chart { grid-column: 2; grid-row: 2; }
+.grid .pareto-plan-chart { grid-column: 1; grid-row: 3; }
+.grid .pareto-actual-chart { grid-column: 2; grid-row: 3; }
+.grid .expense-breakdown-chart { grid-column: 1 / -1; grid-row: 4; margin-top: 8px; }
+
 .chart-box { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
-.chart-box h3 { font-size: 20px; margin: 0 0 8px; text-align: center; color: var(--text); font-weight: 600; }
-.chart-box canvas { max-height: 300px; }
+.chart-box h3 { font-size: 18px; margin: 0 0 8px; text-align: center; color: var(--text); font-weight: 600; }
+.chart-box canvas { max-height: 280px; }
 .summary-line { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; }
 
 /* 印刷用コンテナ */
@@ -128,43 +136,44 @@ textarea.csv-input {
 }
 
 .print-header-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
   color: #000;
-  margin-bottom: 3mm;
+  margin-bottom: 2mm;
   text-align: center;
 }
 
 .print-header-info {
   display: flex;
-  gap: 20px;
-  margin-bottom: 4mm;
-  font-size: 11px;
+  gap: 15px;
+  margin-bottom: 3mm;
+  font-size: 10px;
   font-weight: bold;
   color: #333;
-  line-height: 1.4;
+  line-height: 1.3;
   flex-shrink: 0;
 }
 
 .print-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 5px;
+  gap: 4px;
+  row-gap: 6px;
   flex: 1;
   overflow: hidden;
 }
 
 .print-chart {
   border: 0.5px solid #ddd;
-  padding: 3px;
+  padding: 2px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 .print-chart h4 {
-  font-size: 11px;
-  margin: 0 0 2px 0;
+  font-size: 9px;
+  margin: 0 0 1px 0;
   text-align: center;
   font-weight: bold;
   flex-shrink: 0;
@@ -180,6 +189,15 @@ textarea.csv-input {
 .print-full {
   grid-column: 1 / -1;
 }
+
+//グラフの上下に間隙マージン
+.print-area-chart { grid-column: 1; grid-row: 1; margin-bottom: 20mm; }
+.print-revenue-income-chart { grid-column: 2; grid-row: 1; margin-bottom: 20mm; }
+.print-yield-chart { grid-column: 1; grid-row: 2; margin-bottom: 20mm; }
+.print-price-chart { grid-column: 2; grid-row: 2; margin-bottom: 20mm; }
+.print-pareto-plan-chart { grid-column: 1; grid-row: 3; margin-bottom: 20mm; }
+.print-pareto-actual-chart { grid-column: 2; grid-row: 3; margin-bottom: 20mm; }
+.print-expense-breakdown-chart { grid-column: 1 / -1; grid-row: 4; }
 
 @media print {
   body {
@@ -288,7 +306,7 @@ textarea.csv-input {
 
     <div class="card">
       <h2>農業収入（品目別）</h2>
-      <p class="hint">Excelの「作目名等・経営規模/生産量/売上高・計画・実績」の表をそのまま貼り付けてください（1品目につき3行）。未使用の品目枠（空欄や"0"の行）は自動的に無視されます。</p>
+      <p class="hint">Excelの「作目名等・経営規模/生産量/売上高・計画・実績」の表をそのまま貼り付けてください（1品目につき3行）。未使用の品目枠（空欄や\"0\"の行）は自動的に無視されます。</p>
       <textarea class="csv-input" id="csv-crop" spellcheck="false" rows="4"></textarea>
       <div class="row-actions"><span class="parse-note" id="note-crop"></span></div>
     </div>
@@ -301,21 +319,18 @@ textarea.csv-input {
     </div>
 
     <div class="grid">
-      <div class="chart-box"><h3>収入金額</h3><canvas id="chart-income"></canvas></div>
-      <div class="chart-box"><h3>売上高（万円）</h3><canvas id="chart-revenue"></canvas></div>
+      <div class="chart-box area-chart"><h3>経営規模 アール</h3><canvas id="chart-area"></canvas></div>
+      <div class="chart-box revenue-income-chart"><h3>売上高と農業所得</h3><canvas id="chart-revenue-income"></canvas></div>
 
-      <div class="chart-box"><h3>単収 kg/10a</h3><canvas id="chart-yield"></canvas></div>
-      <div class="chart-box"><h3>単価 円/kg</h3><canvas id="chart-price"></canvas></div>
+      <div class="chart-box yield-chart"><h3>単収 kg/10a</h3><canvas id="chart-yield"></canvas></div>
+      <div class="chart-box price-chart"><h3>単価 円/kg</h3><canvas id="chart-price"></canvas></div>
 
-      <div class="chart-box"><h3>経営規模 アール</h3><canvas id="chart-area"></canvas></div>
-      <div class="chart-box"><h3>経費 合計（万円）</h3><canvas id="chart-expensetotal"></canvas></div>
-
-      <div class="chart-box"><h3>計画経費のパレート分析</h3><canvas id="chart-pareto-plan"></canvas>
+      <div class="chart-box pareto-plan-chart"><h3>計画経費のパレート分析</h3><canvas id="chart-pareto-plan"></canvas>
         <div class="summary-line" id="pareto-plan-note"></div></div>
-      <div class="chart-box"><h3>実績経費のパレート分析</h3><canvas id="chart-pareto-actual"></canvas>
+      <div class="chart-box pareto-actual-chart"><h3>実績経費のパレート分析</h3><canvas id="chart-pareto-actual"></canvas>
         <div class="summary-line" id="pareto-actual-note"></div></div>
 
-      <div class="chart-box full"><h3>経費 内訳（計画 vs 実績）</h3><canvas id="chart-expensebreakdown"></canvas></div>
+      <div class="chart-box expense-breakdown-chart"><h3>経費 内訳（計画 vs 実績）</h3><canvas id="chart-expensebreakdown"></canvas></div>
     </div>
   </section>
 
@@ -330,19 +345,16 @@ textarea.csv-input {
     <div id="print-date"></div>
   </div>
   <div class="print-grid">
-    <div class="print-chart"><h4>収入金額</h4><canvas id="print-chart-income"></canvas></div>
-    <div class="print-chart"><h4>売上高（万円）</h4><canvas id="print-chart-revenue"></canvas></div>
+    <div class="print-chart print-area-chart"><h4>経営規模 アール</h4><canvas id="print-chart-area"></canvas></div>
+    <div class="print-chart print-revenue-income-chart"><h4>売上高と農業所得(売上高=経費+農業所得)</h4><canvas id="print-chart-revenue-income"></canvas></div>
 
-    <div class="print-chart"><h4>単収 kg/10a</h4><canvas id="print-chart-yield"></canvas></div>
-    <div class="print-chart"><h4>単価 円/kg</h4><canvas id="print-chart-price"></canvas></div>
+    <div class="print-chart print-yield-chart"><h4>単収 kg/10a</h4><canvas id="print-chart-yield"></canvas></div>
+    <div class="print-chart print-price-chart"><h4>単価 円/kg</h4><canvas id="print-chart-price"></canvas></div>
 
-    <div class="print-chart"><h4>経営規模 アール</h4><canvas id="print-chart-area"></canvas></div>
-    <div class="print-chart"><h4>経費 合計（万円）</h4><canvas id="print-chart-expensetotal"></canvas></div>
+    <div class="print-chart print-pareto-plan-chart"><h4>計画経費のパレート</h4><canvas id="print-chart-pareto-plan"></canvas></div>
+    <div class="print-chart print-pareto-actual-chart"><h4>実績経費のパレート</h4><canvas id="print-chart-pareto-actual"></canvas></div>
 
-    <div class="print-chart"><h4>計画経費のパレート</h4><canvas id="print-chart-pareto-plan"></canvas></div>
-    <div class="print-chart"><h4>実績経費のパレート</h4><canvas id="print-chart-pareto-actual"></canvas></div>
-
-    <div class="print-chart print-full"><h4>経費 内訳（計画 vs 実績）</h4><canvas id="print-chart-expensebreakdown"></canvas></div>
+    <div class="print-chart print-expense-breakdown-chart"><h4>経費 内訳（計画 vs 実績）</h4><canvas id="print-chart-expensebreakdown"></canvas></div>
   </div>
 </div>
 
@@ -549,10 +561,10 @@ function upsertChart(id, config) {
 
 const YEN_TO_MAN = v => v / 10000;
 let fontSizes = {
-  axisLabel: 18,
-  axisTitle: 16,
-  dataLabel: 20,
-  legend: 17
+  axisLabel: 16,
+  axisTitle: 14,
+  dataLabel: 18,
+  legend: 15
 };
 
 function calculateMaxY(datasets) {
@@ -568,17 +580,74 @@ function renderAllCharts() {
   const expenseTotalActual = state.expense.reduce((s, i) => s + Number(i.actual), 0);
   const crops = computeCropMetrics(state.crop);
 
+  // 売上高合計
+  const revenueTotalPlan = state.income.reduce((s, i) => s + Number(i.plan), 0);
+  const revenueTotalActual = state.income.reduce((s, i) => s + Number(i.actual), 0);
+
+  // 農業所得 = 売上高 - 経費
+  const incomePlan = revenueTotalPlan - expenseTotalPlan;
+  const incomeActual = revenueTotalActual - expenseTotalActual;
+
   document.getElementById("calc-check").textContent =
-    `収入計画 ${Math.round(YEN_TO_MAN(state.income.reduce((s,i)=>s+Number(i.plan),0))).toLocaleString()}万 / `+
-    `実績 ${Math.round(YEN_TO_MAN(state.income.reduce((s,i)=>s+Number(i.actual),0))).toLocaleString()}万　`+
+    `収入計画 ${Math.round(YEN_TO_MAN(revenueTotalPlan)).toLocaleString()}万 / `+
+    `実績 ${Math.round(YEN_TO_MAN(revenueTotalActual)).toLocaleString()}万　`+
     `経費計画 ${Math.round(YEN_TO_MAN(expenseTotalPlan)).toLocaleString()}万 / 実績 ${Math.round(YEN_TO_MAN(expenseTotalActual)).toLocaleString()}万`;
 
-  const incomeDatasets = [
-    { label: "計画", data: incomeRanked.map(i => YEN_TO_MAN(i.plan)), backgroundColor: "#4a86c8" },
-    { label: "実績", data: incomeRanked.map(i => YEN_TO_MAN(i.actual)), backgroundColor: "#e08030" }
-  ];
-  const incomeMaxY = calculateMaxY(incomeDatasets);
+  // ===== 売上高と農業所得の横向き帯グラフ =====
+  const revenueIncomeConfig = {
+    type: "bar",
+    data: {
+      labels: ["計画", "実績"],
+      datasets: [
+        {
+          label: "経費",
+          data: [YEN_TO_MAN(expenseTotalPlan), YEN_TO_MAN(expenseTotalActual)],
+          backgroundColor: "#e08030",
+          borderWidth: 0
+        },
+        {
+          label: "農業所得",
+          data: [YEN_TO_MAN(incomePlan), YEN_TO_MAN(incomeActual)],
+          backgroundColor: "#4a86c8",
+          borderWidth: 0
+        }
+      ]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        datalabels: {
+          color: "#fff",
+          font: { size: fontSizes.dataLabel, weight: "bold" },
+          formatter: (value) => value > 0 ? value.toFixed(0) : "",
+          anchor: "center",
+          align: "center",
+          offset: 0
+        },
+        legend: {
+          position: "bottom",
+          labels: { font: { size: fontSizes.legend } }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          title: { display: true, text: "万円", font: { size: fontSizes.axisTitle, weight: "bold" } },
+          ticks: { font: { size: fontSizes.axisLabel } },
+          max: calculateMaxY([{ data: [YEN_TO_MAN(revenueTotalPlan), YEN_TO_MAN(revenueTotalActual)] }])
+        },
+        y: {
+          stacked: true,
+          ticks: { font: { size: fontSizes.axisLabel } }
+        }
+      }
+    }
+  };
+  upsertChart("chart-revenue-income", revenueIncomeConfig);
 
+  // ===== その他のグラフ =====
   const yieldDatasets = [
     { label: "計画", data: crops.map(c => c.yieldPlan), backgroundColor: "#4a86c8" },
     { label: "実績", data: crops.map(c => c.yieldActual), backgroundColor: "#e08030" }
@@ -592,82 +661,6 @@ function renderAllCharts() {
   const priceMaxY = calculateMaxY(priceDatasets);
 
   const chartConfigs = {
-    "chart-income": {
-      type: "bar",
-      data: {
-        labels: incomeRanked.map(i => i.category),
-        datasets: incomeDatasets
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          datalabels: {
-            color: "#000",
-            font: { size: fontSizes.dataLabel, weight: "bold" },
-            formatter: (value) => value > 0 ? value.toFixed(0) : "",
-            anchor: "end",
-            align: "top"
-          },
-          legend: { 
-            position: "bottom",
-            labels: { font: { size: fontSizes.legend } }
-          }
-        },
-        scales: { 
-          x: {
-            ticks: { font: { size: fontSizes.axisLabel } }
-          },
-          y: {
-            beginAtZero: true,
-            max: incomeMaxY,
-            title: { display: true, text: "万円", font: { size: fontSizes.axisTitle, weight: "bold" } },
-            ticks: { font: { size: fontSizes.axisLabel } }
-          } 
-        }
-      }
-    },
-    "chart-revenue": {
-      type: "bar",
-      data: {
-        labels: ["計画", "実績"],
-        datasets: crops.map((c, idx) => ({
-          label: c.name,
-          data: [YEN_TO_MAN(c.revPlan), YEN_TO_MAN(c.revActual)],
-          backgroundColor: ["#4a86c8", "#9aa4b2", "#c8975a"][idx % 3]
-        }))
-      },
-      options: {
-        indexAxis: "y",
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          datalabels: {
-            color: "#fff",
-            font: { size: fontSizes.dataLabel, weight: "bold" },
-            formatter: (value) => value > 0 ? value.toFixed(0) : "",
-            anchor: "center",
-            align: "center",
-            offset: 0
-          },
-          legend: { 
-            position: "bottom",
-            labels: { font: { size: fontSizes.legend } }
-          }
-        },
-        scales: { 
-          x: { 
-            stacked: true, 
-            title: { display: true, text: "万円", font: { size: fontSizes.axisTitle, weight: "bold" } },
-            ticks: { font: { size: fontSizes.axisLabel } }
-          }, 
-          y: { 
-            stacked: true,
-            ticks: { font: { size: fontSizes.axisLabel } }
-          } 
-        }
-      }
-    },
     "chart-yield": {
       type: "bar",
       data: {
@@ -685,7 +678,7 @@ function renderAllCharts() {
             anchor: "end",
             align: "top"
           },
-          legend: { 
+          legend: {
             position: "bottom",
             labels: { font: { size: fontSizes.legend } }
           }
@@ -719,7 +712,7 @@ function renderAllCharts() {
             anchor: "end",
             align: "top"
           },
-          legend: { 
+          legend: {
             position: "bottom",
             labels: { font: { size: fontSizes.legend } }
           }
@@ -759,53 +752,21 @@ function renderAllCharts() {
             align: "center",
             offset: 0
           },
-          legend: { 
+          legend: {
             position: "bottom",
             labels: { font: { size: fontSizes.legend } }
           }
         },
-        scales: { 
-          x: { 
-            stacked: true, 
-            title: { display: true, text: "アール", font: { size: fontSizes.axisTitle, weight: "bold" } },
-            ticks: { font: { size: fontSizes.axisLabel } }
-          }, 
-          y: { 
-            stacked: true,
-            ticks: { font: { size: fontSizes.axisLabel } }
-          } 
-        }
-      }
-    },
-    "chart-expensetotal": {
-      type: "bar",
-      data: {
-        labels: ["計画", "実績"],
-        datasets: [{ data: [YEN_TO_MAN(expenseTotalPlan), YEN_TO_MAN(expenseTotalActual)], backgroundColor: ["#4a86c8", "#e08030"] }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: { display: false },
-          datalabels: {
-            color: "#000",
-            font: { size: fontSizes.dataLabel, weight: "bold" },
-            formatter: (value) => value.toFixed(0),
-            anchor: "end",
-            align: "top"
-          }
-        },
-        scales: { 
+        scales: {
           x: {
+            stacked: true,
+            title: { display: true, text: "アール", font: { size: fontSizes.axisTitle, weight: "bold" } },
             ticks: { font: { size: fontSizes.axisLabel } }
           },
           y: {
-            beginAtZero: true,
-            max: calculateMaxY([{ data: [YEN_TO_MAN(expenseTotalPlan), YEN_TO_MAN(expenseTotalActual)] }]),
-            title: { display: true, text: "万円", font: { size: fontSizes.axisTitle, weight: "bold" } },
+            stacked: true,
             ticks: { font: { size: fontSizes.axisLabel } }
-          } 
+          }
         }
       }
     },
@@ -826,12 +787,12 @@ function renderAllCharts() {
             anchor: "end",
             align: "top"
           },
-          legend: { 
+          legend: {
             position: "bottom",
             labels: { font: { size: fontSizes.legend } }
           }
         },
-        scales: { 
+        scales: {
           x: {
             ticks: { font: { size: fontSizes.axisLabel } }
           },
@@ -839,7 +800,7 @@ function renderAllCharts() {
             beginAtZero: true,
             title: { display: true, text: "万円", font: { size: fontSizes.axisTitle, weight: "bold" } },
             ticks: { font: { size: fontSizes.axisLabel } }
-          } 
+          }
         }
       }
     }
@@ -860,12 +821,12 @@ function renderAllCharts() {
 
   const breakdownItems = state.expense.filter(e => Number(e.plan) > 0 || Number(e.actual) > 0)
     .slice().sort((a, b) => Number(b.plan) - Number(a.plan));
-  
+
   const breakdownDatasets = [
     { label: "計画", data: breakdownItems.map(e => YEN_TO_MAN(e.plan)), backgroundColor: "#4a86c8" },
     { label: "実績", data: breakdownItems.map(e => YEN_TO_MAN(e.actual)), backgroundColor: "#e08030" }
   ];
-  
+
   const breakdownConfig = chartConfigs["chart-expensebreakdown"];
   breakdownConfig.data.labels = breakdownItems.map(e => e.category);
   breakdownConfig.data.datasets = breakdownDatasets;
@@ -916,7 +877,7 @@ function drawPareto(id, result, barColor) {
           anchor: (context) => context.datasetIndex === 1 ? "center" : "end",
           align: (context) => context.datasetIndex === 1 ? "center" : "top"
         },
-        legend: { 
+        legend: {
           position: "bottom",
           labels: { font: { size: fontSizes.legend } }
         }
@@ -925,18 +886,18 @@ function drawPareto(id, result, barColor) {
         x: {
           ticks: { font: { size: fontSizes.axisLabel } }
         },
-        y: { 
+        y: {
           position: "left",
           beginAtZero: true,
           max: maxBarY,
           title: { display: true, text: "万円", font: { size: fontSizes.axisTitle, weight: "bold" } },
           ticks: { font: { size: fontSizes.axisLabel } }
         },
-        y1: { 
-          position: "right", 
-          min: 0, 
-          max: 100, 
-          grid: { drawOnChartArea: false }, 
+        y1: {
+          position: "right",
+          min: 0,
+          max: 100,
+          grid: { drawOnChartArea: false },
           title: { display: true, text: "累積比率(%)", font: { size: fontSizes.axisTitle, weight: "bold" } },
           ticks: { font: { size: fontSizes.axisLabel } }
         }
@@ -950,19 +911,17 @@ function printCharts() {
   const today = new Date();
   const fiscalYear = document.getElementById("input-fiscal-year").value || "年度未入力";
   const name = document.getElementById("input-name").value || "名前未入力";
-  
+
   document.getElementById("print-fiscal-year").textContent = `年度：${fiscalYear}`;
   document.getElementById("print-name").textContent = `名前：${name}`;
-  document.getElementById("print-date").textContent = 
+  document.getElementById("print-date").textContent =
     `${today.getFullYear()}年${String(today.getMonth() + 1).padStart(2, '0')}月${String(today.getDate()).padStart(2, '0')}日`;
 
   const chartMappings = [
-    { srcId: "chart-income", destId: "print-chart-income" },
-    { srcId: "chart-revenue", destId: "print-chart-revenue" },
+    { srcId: "chart-area", destId: "print-chart-area" },
+    { srcId: "chart-revenue-income", destId: "print-chart-revenue-income" },
     { srcId: "chart-yield", destId: "print-chart-yield" },
     { srcId: "chart-price", destId: "print-chart-price" },
-    { srcId: "chart-area", destId: "print-chart-area" },
-    { srcId: "chart-expensetotal", destId: "print-chart-expensetotal" },
     { srcId: "chart-pareto-plan", destId: "print-chart-pareto-plan" },
     { srcId: "chart-pareto-actual", destId: "print-chart-pareto-actual" },
     { srcId: "chart-expensebreakdown", destId: "print-chart-expensebreakdown" }
@@ -971,18 +930,18 @@ function printCharts() {
   chartMappings.forEach((mapping) => {
     const srcCanvas = document.getElementById(mapping.srcId);
     const destCanvas = document.getElementById(mapping.destId);
-    
+
     if (srcCanvas && destCanvas) {
       destCanvas.width = srcCanvas.width;
       destCanvas.height = srcCanvas.height;
-      
+
       const destCtx = destCanvas.getContext("2d");
       const img = new Image();
-      
+
       img.onload = () => {
         destCtx.drawImage(img, 0, 0);
       };
-      
+
       img.src = srcCanvas.toDataURL("image/png");
     }
   });
@@ -992,9 +951,9 @@ function printCharts() {
     document.querySelector("nav.tabs").style.visibility = "hidden";
     document.querySelector("main").style.visibility = "hidden";
     document.getElementById("print-container").style.visibility = "visible";
-    
+
     window.print();
-    
+
     setTimeout(() => {
       document.querySelector("header").style.visibility = "visible";
       document.querySelector("nav.tabs").style.visibility = "visible";
@@ -1005,7 +964,7 @@ function printCharts() {
 }
 
   function sanitizeFileName(s) {
-    return s.replace(/[\\/:*?"<>|\s]+/g, '_');
+    return s.replace(/[\\\/:*?"<>|\s]+/g, '_');
   }
 
   function csvEscape(value) {
