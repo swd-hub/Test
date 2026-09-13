@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>農業損益計算ダッシュボード (D3.js版)</title>
+<!-- D3.js v7 の読み込み -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+:root {
+  --plan: #4a86c8;
+  --actual: #e08030;
+  --other: #999999;
+  --border: #d9dce1;
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --text: #2c2f36;
+  --muted: #6b7280;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Yu Gothic", "Meiryo", "Hiragino Sans", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+header .sub { font-size: 12px; color: var(--muted); }
+
+nav.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+nav.tabs button {
+  border: none;
+  background: transparent;
+  padding: 12px 20px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--muted);
+  border-bottom: 3px solid transparent;
+}
+nav.tabs button.active {
+  color: var(--text);
+  border-bottom-color: var(--plan);
+  font-weight: 600;
+}
+
+main { padding: 20px 24px 60px; max-width: 1400px; margin: 0 auto; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.card h2 { font-size: 15px; margin: 0 0 12px; }
+.card .hint { font-size: 12px; color: var(--muted); margin: -6px 0 12px; }
+
+textarea.csv-input {
+  width: 100%; min-height: 90px; font-family: "Consolas", "Menlo", monospace;
+  font-size: 16px; padding: 8px; border: 1px solid var(--border); border-radius: 5px;
+  resize: vertical; white-space: pre; overflow-x: auto;
+}
+.parse-note { font-size: 12px; color: var(--muted); }
+.row-actions { margin-top: 8px; display: flex; gap: 8px; align-items: center; }
+.row-actions button, .toolbar button {
+  border: 1px solid var(--border); background: #fff; border-radius: 5px;
+  padding: 6px 12px; font-size: 12px; cursor: pointer; color: var(--text);
+}
+.row-actions button:hover, .toolbar button:hover { background: #f0f2f5; }
+
+.toolbar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.toolbar button.primary {
+  background: var(--plan); color: #fff; border-color: var(--plan); font-weight: 600;
+}
+.toolbar button.print {
+  background: #27ae60; color: #fff; border-color: #27ae60; font-weight: 600;
+}
+.toolbar button.print:hover {
+  background: #229954;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  row-gap: 24px;
+}
+.grid .full { grid-column: 1 / -1; }
+
+.chart-box { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
+.chart-box h3 { font-size: 16px; margin: 0 0 8px; text-align: center; color: var(--text); font-weight: 600; }
+.chart-box svg { width: 100%; height: 277px; display: block; }
+.chart-box.full svg { height: 305px; }
+.summary-line { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; }
+
+.input-group {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.input-group label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.input-group input {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 14px;
+  margin-top: 4px;
+  width: 180px;
+}
+
+/* =========================================================
+   印刷用最適化スタイル (A4 1枚収容・完全非表示制御)
+   ========================================================= */
+#print-container {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 210mm;
+    height: auto !important;
+    background: #fff;
+  }
+
+  /* 画面要素を完全に隠す */
+  header, nav.tabs, main, #tab-input, #tab-chart {
+    display: none !important;
+  }
+  
+  #print-container {
+    display: flex !important;
+    flex-direction: column;
+    width: 210mm !important;
+    height: auto !important;
+    padding: 5mm 8mm !important;
+    box-sizing: border-box;
+  }
+
+  .print-header-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #000;
+    margin-bottom: 2mm;
+    text-align: center;
+  }
+
+  .print-header-info {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 3mm;
+    font-size: 11px;
+    font-weight: bold;
+    color: #333;
+  }
+
+  .print-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(5, 165px) 175px;
+    gap: 4px;
+    row-gap: 4px;
+  }
+
+  .print-chart {
+    border: 0.5px solid #ccc;
+    padding: 2px 4px;
+    display: flex;
+    flex-direction: column;
+    height: 165px;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+  }
+
+  .print-chart h4 {
+    font-size: 13px;
+    line-height: 1.2;
+    margin: 0 0 2px 0;
+    text-align: center;
+    font-weight: bold;
+  }
+
+  .print-chart svg {
+    width: 100% !important;
+    height: 139px !important;
+  }
+
+  .print-chart:not(.print-full) svg {
+    width: 97% !important;
+    align-self: center;
+  }
+
+  .print-full {
+    grid-column: 1 / span 2;
+    width: 100%;
+    min-width: 0;
+    height: 175px;
+  }
+  .print-full svg {
+    height: 150px !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>農業損益計算ダッシュボード</h1>
+    <div class="sub">計画と実績 (D3.js SVG版)</div>
+  </div>
+  <div class="sub" id="calc-check"></div>
+</header>
+
+<nav class="tabs">
+  <button id="tab-btn-input" class="active" onclick="showTab('input')">入力</button>
+  <button id="tab-btn-chart" onclick="showTab('chart')">グラフ</button>
+</nav>
+
+<main>
+  <section id="tab-input" class="tab-panel active">
+    <div class="toolbar">
+      <button class="primary" onclick="showTab('chart')">グラフを更新して表示 ▸</button>
+      <button onclick="saveCsv()">CSVへ保存</button>
+      <button onclick="document.getElementById('csv-file-input').click()">CSV読み込み</button>
+    </div>
+
+    <div class="card">
+      <h2>基本情報</h2>
+      <div class="input-group">
+        <label>
+          年度
+          <input type="text" id="input-fiscal-year" placeholder="例：令和８年度">
+        </label>
+        <label>
+          名前
+          <input type="text" id="input-name" placeholder="例：田中農場">
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>収入金額</h2>
+      <p class="hint">Excelから「科目・計画・実績」の3列をコピーしてそのまま貼り付けてください。</p>
+      <textarea class="csv-input" id="csv-income" spellcheck="false"></textarea>
+      <div class="row-actions"><span class="parse-note" id="note-income"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>経費</h2>
+      <p class="hint">「科目・計画・実績」の3列を貼り付けてください。</p>
+      <textarea class="csv-input" id="csv-expense" spellcheck="false" rows="12"></textarea>
+      <div class="row-actions"><span class="parse-note" id="note-expense"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>農業収入（品目別）</h2>
+      <p class="hint">「作目名等・経営規模/生産量/売上高・計画・実績」の表を貼り付けてください。</p>
+      <textarea class="csv-input" id="csv-crop" spellcheck="false" rows="4"></textarea>
+      <div class="row-actions"><span class="parse-note" id="note-crop"></span></div>
+    </div>
+  </section>
+
+  <section id="tab-chart" class="tab-panel">
+    <div class="toolbar">
+      <button onclick="showTab('input')">◂ 入力に戻る</button>
+      <button class="print" onclick="printCharts()">📄 A4印刷</button>
+    </div>
+<!-- 表示用SVG専用レイアウト -->
+    <div class="grid">
+          <div class="chart-box"><h3>経営規模 アール</h3><svg id="chart-area"></svg></div>
+          <div class="chart-box"><h3>収入の内訳 万円</h3><svg id="chart-revenue-income"></svg></div>
+                <div class="chart-box"><h3>差引金額 万円</h3><svg id="chart-netincome"></svg></div>
+      <div class="chart-box"><h3>販売高＋家事消費 万円</h3><svg id="chart-revenue"></svg></div>
+      <div class="chart-box"><h3>損益分岐図（販売高＋家事消費）万円</h3><svg id="chart-breakeven"></svg><div class="summary-line" id="breakeven-note"></div></div>
+      <div class="chart-box"><h3>生産量 kg</h3><svg id="chart-production"></svg></div>
+      <div class="chart-box"><h3>単収 kg/10a</h3><svg id="chart-yield"></svg></div>
+      <div class="chart-box"><h3>単価 円/kg</h3><svg id="chart-price"></svg></div>
+
+      <div class="chart-box">
+        <h3>計画経費のパレート分析 万円</h3>
+        <svg id="chart-pareto-plan"></svg>
+        <div class="summary-line" id="pareto-plan-note"></div>
+      </div>
+      <div class="chart-box">
+        <h3>実績経費のパレート分析</h3>
+        <svg id="chart-pareto-actual"></svg>
+        <div class="summary-line" id="pareto-actual-note"></div>
+      </div>
+
+      <div class="chart-box full"><h3>経費 内訳（計画 vs 実績）</h3><svg id="chart-expensebreakdown"></svg></div>
+    </div>
+  </section>
+</main>
+
+<!-- 印刷用SVG専用レイアウト -->
+<div id="print-container">
+  <div class="print-header-title">農業損益計算ダッシュボード</div>
+  <div class="print-header-info">
+    <div id="print-fiscal-year"></div>
+    <div id="print-name"></div>
+    <div id="print-date"></div>
+  </div>
+  <div class="print-grid">
+      <div class="print-chart"><h4>経営規模 アール</h4><svg id="print-chart-area"></svg></div>
+      <div class="print-chart"><h4>収入の内訳 万円</h4><svg id="print-chart-revenue-income"></svg></div>
+    <div class="print-chart"><h4>差引金額 万円</h4><svg id="print-chart-netincome"></svg></div>
+    <div class="print-chart"><h4>販売高＋家事消費 万円</h4><svg id="print-chart-revenue"></svg></div>
+    <div class="print-chart"><h4>損益分岐図（販売高＋家事消費）万円</h4><svg id="print-chart-breakeven"></svg></div>
+    <div class="print-chart"><h4>生産量 kg</h4><svg id="print-chart-production"></svg></div>
+    <div class="print-chart"><h4>単収 kg/10a</h4><svg id="print-chart-yield"></svg></div>
+    <div class="print-chart"><h4>単価 円/kg</h4><svg id="print-chart-price"></svg></div>
+    <div class="print-chart"><h4>計画経費のパレート 万円</h4><svg id="print-chart-pareto-plan"></svg></div>
+    <div class="print-chart"><h4>実績経費のパレート 万円</h4><svg id="print-chart-pareto-actual"></svg></div>
+    <div class="print-chart print-full"><h4>経費 内訳（計画 vs 実績）万円</h4><svg id="print-chart-expensebreakdown"></svg></div>
+  </div>
+</div>
+
+<script>
+/* 初期データ定義 */
+const DEFAULT_INCOME_CSV =
+`科目	計画	実績
+販売額	12,236,472	5,843,396
+雑収入	200,000	100,000
+家事・事業消費金額	300,000	150,000
+小計	12,736,472	6,093,396`;
+
+const DEFAULT_EXPENSE_CSV =
+`科目	計画	実績
+租税公課		10,348
+種苗費	163,800	33,600
+素畜費		
+肥料費	444,752	181,579
+飼料費		
+農具費	73,440	90,460
+農薬衛生費	256,643	190,458
+諸材料費	54,301	347,070
+修繕費	648,536	59,070
+動力光熱費	240,965	140,420
+作業用衣料費		
+農業共済掛金	65,892	
+減価償却費	1,233,805	1,153,605
+荷造運賃手数料	3,644,690	1,766,224
+雇用労賃（雇人費）	1,214,400	1,203,996
+利子割引料	1,714	2,166
+地代・賃借料	27,000	
+土地改良費		
+販売促進費		
+支払手数料		704,000
+リース料		
+その他経費	1,233,805	71,300
+雑費	30,000	254,990
+計	9,333,743	6,209,286`;
+
+const DEFAULT_CROP_CSV =
+`作目名等		計画	実績
+アスパラガス	経営規模 a	34	32
+アスパラガス	生産量 kg	5,000	3,955
+アスパラガス	売上高 円	10,560,000	4,943,750
+神西ねぎ	経営規模 a	15	10
+神西ねぎ	生産量 kg	5,000	2,369
+神西ねぎ	売上高 円	1,676,472	899,646`;
+
+document.getElementById("csv-income").value = DEFAULT_INCOME_CSV;
+document.getElementById("csv-expense").value = DEFAULT_EXPENSE_CSV;
+document.getElementById("csv-crop").value = DEFAULT_CROP_CSV;
+
+const YEN_TO_MAN = v => v / 10000;
+
+/* ---- 損益分岐図：固定費の科目区分（暫定） ----
+   ここに列挙した経費科目を「固定費」として合計し、それ以外の経費科目はすべて
+   「変動費」として扱う。実際の費用分解（科目ごとの固定費/変動費の按分など）は
+   ここを手修正して調整すること。 */
+const FIXED_COST_CATEGORIES = ["減価償却費", "雇用労賃（雇人費）", "利子割引料"];
+
+function splitLines(text) {
+  return text.split(/\r?\n/).filter(l => l.trim().length > 0);
+}
+function splitCols(line) {
+  const delim = line.includes("\t") ? "\t" : ",";
+  return line.split(delim).map(c => c.trim().replace(/^"|"$/g, ''));
+}
+function toNum(v) {
+  if (v === undefined || v === "") return NaN;
+  return parseFloat(v.replace(/,/g, ""));
+}
+
+function parseIncomeExpenseCsv(text) {
+  const SKIP_LABELS = ["科目", "小計", "計", "合計", "差引金額"];
+  const rows = [];
+  splitLines(text).forEach(line => {
+    const cols = splitCols(line);
+    const category = cols[0] || "";
+    if (!category || SKIP_LABELS.includes(category)) return;
+    const plan = toNum(cols[1]);
+    const actual = toNum(cols[2]);
+    if (isNaN(plan) && isNaN(actual)) return;
+    rows.push({ category, plan: isNaN(plan) ? 0 : plan, actual: isNaN(actual) ? 0 : actual });
+  });
+  return rows;
+}
+
+function parseCropCsv(text) {
+  const metricLines = splitLines(text).filter(line => /経営規模|生産量|売上高/.test(line));
+  const crops = [];
+  for (let i = 0; i < metricLines.length; i += 3) {
+    const group = metricLines.slice(i, i + 3);
+    if (group.length < 3) break;
+    let name = "";
+    let landPlan = 0, landActual = 0, prodPlan = 0, prodActual = 0, revPlan = 0, revActual = 0;
+    group.forEach(line => {
+      const cols = splitCols(line);
+      const rawName = (cols[0] || "").trim();
+      const label = cols[1] || "";
+      const plan = toNum(cols[2]);
+      const actual = toNum(cols[3]);
+      if (!name && rawName && rawName !== "0") name = rawName;
+      if (/経営規模/.test(label)) { landPlan = isNaN(plan) ? 0 : plan; landActual = isNaN(actual) ? 0 : actual; }
+      else if (/生産量/.test(label)) { prodPlan = isNaN(plan) ? 0 : plan; prodActual = isNaN(actual) ? 0 : actual; }
+      else if (/売上高/.test(label)) { revPlan = isNaN(plan) ? 0 : plan; revActual = isNaN(actual) ? 0 : actual; }
+    });
+    if (!name) continue;
+    crops.push({ name, landPlan, landActual, prodPlan, prodActual, revPlan, revActual });
+  }
+  return crops;
+}
+
+function paretoAnalysis(items, threshold = 0.8) {
+  const valid = items.filter(i => Number(i.value) > 0);
+  const sorted = valid.slice().sort((a, b) => b.value - a.value);
+  const total = sorted.reduce((s, i) => s + Number(i.value), 0);
+  let cum = 0;
+  const kept = [];
+  const otherItems = [];
+  sorted.forEach(item => {
+    const ratio = total > 0 ? item.value / total : 0;
+    cum += ratio;
+    if (cum < threshold) {
+      kept.push({ category: item.category, value: item.value, ratio, cumRatio: cum });
+    } else {
+      otherItems.push(item);
+    }
+  });
+  const result = kept.slice();
+  if (otherItems.length > 0) {
+    const otherTotal = otherItems.reduce((s, i) => s + Number(i.value), 0);
+    result.push({ category: "その他", value: otherTotal, ratio: total > 0 ? otherTotal / total : 0, cumRatio: 1, isOther: true });
+  }
+  return { total, series: result };
+}
+
+function readState() {
+  const income = parseIncomeExpenseCsv(document.getElementById("csv-income").value);
+  const expense = parseIncomeExpenseCsv(document.getElementById("csv-expense").value);
+  const crop = parseCropCsv(document.getElementById("csv-crop").value);
+  document.getElementById("note-income").textContent = `${income.length}件を読み込みました`;
+  document.getElementById("note-expense").textContent = `${expense.length}件を読み込みました`;
+  document.getElementById("note-crop").textContent = `${crop.length}品目を読み込みました`;
+  return { income, expense, crop };
+}
+
+function showTab(name) {
+  document.getElementById("tab-input").classList.toggle("active", name === "input");
+  document.getElementById("tab-chart").classList.toggle("active", name === "chart");
+  document.getElementById("tab-btn-input").classList.toggle("active", name === "input");
+  document.getElementById("tab-btn-chart").classList.toggle("active", name === "chart");
+  if (name === "chart") renderAllCharts();
+}
+
+/* =========================================================
+   D3.js 描画ロジック
+   ========================================================= */
+function addLegend(svg, keys, color, margin, fontSize = 18) {
+  const legend = svg.append("g")
+    .attr("transform", `translate(${margin.left},2)`)
+    .attr("font-size", `${fontSize}px`);
+  let offset = 0;
+  keys.forEach(key => {
+    const item = legend.append("g").attr("transform", `translate(${offset},0)`);
+    item.append("rect")
+      .attr("width", 16)
+      .attr("height", 16)
+      .attr("fill", color(key));
+    item.append("text")
+      .attr("x", 22)
+      .attr("y", 14)
+      .text(key);
+    offset += 22 + key.length * fontSize + 22;
+  });
+}
+
+function drawGroupedBarD3(svgId, data, keys, groupKey) {
+  const svg = d3.select(`#${svgId}`);
+  svg.selectAll("*").remove();
+  const isPrint = svgId.startsWith("print-");
+  const isExpenseBreakdown = svgId.includes("expensebreakdown");
+
+  const bounds = svg.node().getBoundingClientRect();
+  const width = bounds.width || (isPrint ? (isExpenseBreakdown ? 725 : 290) : 380);
+  const height = bounds.height || (isPrint ? (isExpenseBreakdown ? 150 : 134) : 120);
+  const margin = { top: 24, right: 10, bottom: isExpenseBreakdown ? (isPrint ? 50 : 75) : (isPrint ? 42 : 45), left: 50 };
+  svg.attr("viewBox", `0 0 ${width} ${height}`).attr("preserveAspectRatio", "none");
+
+  const x0 = d3.scaleBand()
+    .domain(data.map(d => d[groupKey]))
+    .rangeRound([margin.left, width - margin.right])
+    .paddingInner(0.2);
+
+  const x1 = d3.scaleBand()
+    .domain(keys)
+    .rangeRound([0, x0.bandwidth()])
+    .padding(0.05);
+
+  const values = data.flatMap(d => keys.map(k => Number(d[k]) || 0));
+  const minY = Math.min(0, d3.min(values) || 0);
+  const maxY = Math.max(0, d3.max(values) || 0);
+  const y = d3.scaleLinear()
+    .domain([minY * 1.15, maxY * 1.15])
+    .rangeRound([height - margin.bottom, margin.top]);
+
+  const color = d3.scaleOrdinal().domain(keys).range(["#4a86c8", "#e08030"]);
+  addLegend(svg, keys, color, margin, isPrint ? 11 : 18);
+
+  svg.append("line")
+    .attr("x1", margin.left)
+    .attr("x2", width - margin.right)
+    .attr("y1", y(0))
+    .attr("y2", y(0))
+    .attr("stroke", "#555")
+    .attr("stroke-width", 1);
+
+  svg.append("g")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x0))
+    .selectAll("text")
+      .attr("font-size", isExpenseBreakdown && isPrint ? "7px" : isPrint ? "8px" : isExpenseBreakdown ? "14px" : "16px")
+      .attr("transform", isPrint ? "rotate(-20)" : (isExpenseBreakdown ? "rotate(-30)" : null))
+      .attr("dy", isExpenseBreakdown || !isPrint ? "1.3em" : "0.71em")
+      .style("text-anchor", isExpenseBreakdown || isPrint ? "end" : null);
+
+  svg.append("g")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y).ticks(4))
+    .selectAll("text")
+      .attr("font-size", isPrint ? "10px" : "16px");
+
+  const group = svg.append("g")
+    .selectAll("g")
+    .data(data)
+    .join("g")
+      .attr("transform", d => `translate(${x0(d[groupKey])},0)`);
+
+  group.selectAll("rect")
+    .data(d => keys.map(k => ({ key: k, value: d[k] })))
+    .join("rect")
+      .attr("x", d => x1(d.key))
+      .attr("y", d => d.value >= 0 ? y(d.value) : y(0))
+      .attr("width", x1.bandwidth())
+      .attr("height", d => Math.abs(y(d.value) - y(0)))
+      .attr("fill", d => color(d.key));
+
+  group.selectAll("text")
+    .data(d => keys.map(k => ({ key: k, value: d[k] })))
+    .join("text")
+      .attr("x", d => x1(d.key) + x1.bandwidth() / 2)
+      .attr("y", d => d.value >= 0 ? y(d.value) - 2 : y(d.value) + 12)
+      .attr("text-anchor", "middle")
+      .attr("font-size", isPrint ? "10px" : "15px")
+      .attr("font-weight", "bold")
+      .text(d => d.value !== 0 ? d.value.toFixed(0) : "");
+}
+
+function drawStackedHorizontalBarD3(svgId, data, keys, groupKey) {
+  const svg = d3.select(`#${svgId}`);
+  svg.selectAll("*").remove();
+  const isPrint = svgId.startsWith("print-");
+
+  const bounds = svg.node().getBoundingClientRect();
+  const width = bounds.width || (isPrint ? 290 : 380);
+  const height = bounds.height || (isPrint ? 134 : 120);
+  const margin = { top: 24, right: 20, bottom: 20, left: 50 };
+  svg.attr("viewBox", `0 0 ${width} ${height}`).attr("preserveAspectRatio", "none");
+  const segments = data.flatMap(row => {
+    let positive = 0;
+    let negative = 0;
+    return keys.map(key => {
+      const value = Number(row[key]) || 0;
+      const start = value >= 0 ? positive : negative;
+      if (value >= 0) positive += value;
+      else negative += value;
+      return { data: row, key, value, start, end: start + value };
+    });
+  });
+  const minX = Math.min(0, d3.min(segments, d => d.start) || 0);
+  const maxX = Math.max(0, d3.max(segments, d => d.end) || 0);
+  const x = d3.scaleLinear()
+    .domain([minX * 1.1, maxX * 1.1])
+    .range([margin.left, width - margin.right]);
+
+  const y = d3.scaleBand()
+    .domain(data.map(d => d[groupKey]))
+    .range([margin.top, height - margin.bottom])
+    .padding(0.25);
+
+  const colors = ["#4a86c8", "#9aa4b2", "#c8975a", "#e08030"];
+  const color = d3.scaleOrdinal().domain(keys).range(colors);
+  addLegend(svg, keys, color, margin, isPrint ? 11 : 18);
+
+  svg.append("g")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x).ticks(4))
+    .selectAll("text")
+      .attr("font-size", isPrint ? "10px" : "16px");
+
+  svg.append("g")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y))
+    .selectAll("text")
+      .attr("font-size", isPrint ? "10px" : "16px");
+
+  svg.append("g")
+    .selectAll("rect")
+    .data(segments)
+    .join("rect")
+      .attr("y", d => y(d.data[groupKey]))
+      .attr("x", d => x(Math.min(d.start, d.end)))
+      .attr("width", d => Math.abs(x(d.end) - x(d.start)))
+      .attr("height", y.bandwidth())
+      .attr("fill", d => color(d.key));
+
+  svg.append("g")
+    .selectAll("text")
+    .data(segments)
+    .join("text")
+      .attr("x", d => x(d.start) + (x(d.end) - x(d.start)) / 2)
+      .attr("y", d => y(d.data[groupKey]) + y.bandwidth() / 2 + 3)
+      .attr("text-anchor", "middle")
+      .attr("fill", "#fff")
+      .attr("font-size", isPrint ? "8px" : "15px")
+      .attr("font-weight", "bold")
+      .text(d => d.value !== 0 ? d.value.toFixed(0) : "");
+}
+
+function drawParetoD3(svgId, result, barColor, sharedMaxY) {
+  const svg = d3.select(`#${svgId}`);
+  svg.selectAll("*").remove();
+  const isPrint = svgId.startsWith("print-");
+
+  const bounds = svg.node().getBoundingClientRect();
+  const width = bounds.width || (isPrint ? 290 : 380);
+  const height = bounds.height || (isPrint ? 134 : 120);
+  const margin = { top: 24, right: 45, bottom: svgId.startsWith("print-") ? 35 : 70, left: 50 };
+  svg.attr("viewBox", `0 0 ${width} ${height}`).attr("preserveAspectRatio", "none");
+
+  const x = d3.scaleBand()
+    .domain(result.series.map(d => d.category))
+    .range([margin.left, width - margin.right])
+    .padding(0.2);
+
+  const maxY = sharedMaxY ?? (d3.max(result.series, d => YEN_TO_MAN(d.value)) || 0);
+  const yLeft = d3.scaleLinear()
+    .domain([0, maxY * 1.15])
+    .range([height - margin.bottom, margin.top]);
+
+  const yRight = d3.scaleLinear()
+    .domain([0, 100])
+    .range([height - margin.bottom, margin.top]);
+
+  addLegend(svg, ["金額", "累積比率"], key => key === "金額" ? barColor : "#555555", margin, isPrint ? 11 : 18);
+
+  svg.append("g")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x))
+    .selectAll("text")
+      .attr("font-size", isPrint ? "7px" : "13px")
+      .attr("transform", `rotate(${isPrint ? -15 : -25})`)
+      .style("text-anchor", "end");
+
+  svg.append("g")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(d3.axisLeft(yLeft).ticks(4))
+    .selectAll("text")
+      .attr("font-size", isPrint ? "9px" : "16px");
+
+  svg.append("g")
+    .attr("transform", `translate(${width - margin.right},0)`)
+    .call(d3.axisRight(yRight).ticks(4))
+    .selectAll("text")
+      .attr("font-size", isPrint ? "8px" : "13px");
+
+  svg.selectAll(".bar")
+    .data(result.series)
+    .join("rect")
+      .attr("x", d => x(d.category))
+      .attr("y", d => yLeft(YEN_TO_MAN(d.value)))
+      .attr("width", x.bandwidth())
+      .attr("height", d => yLeft(0) - yLeft(YEN_TO_MAN(d.value)))
+      .attr("fill", d => d.isOther ? "#999999" : barColor);
+
+  svg.selectAll(".bar-label")
+    .data(result.series)
+    .join("text")
+      .attr("x", d => x(d.category) + x.bandwidth() / 2)
+      .attr("y", d => yLeft(YEN_TO_MAN(d.value)) - 2)
+      .attr("text-anchor", "middle")
+      .attr("font-size", isPrint ? "9px" : "15px")
+      .attr("font-weight", "bold")
+      .text(d => YEN_TO_MAN(d.value) > 0 ? YEN_TO_MAN(d.value).toFixed(0) : "");
+
+  const line = d3.line()
+    .x(d => x(d.category) + x.bandwidth() / 2)
+    .y(d => yRight(d.cumRatio * 100));
+
+  svg.append("path")
+    .datum(result.series)
+    .attr("fill", "none")
+    .attr("stroke", "#555555")
+    .attr("stroke-width", isPrint ? 1.5 : 2.25)
+    .attr("d", line);
+
+  svg.selectAll(".dot")
+    .data(result.series)
+    .join("circle")
+      .attr("cx", d => x(d.category) + x.bandwidth() / 2)
+      .attr("cy", d => yRight(d.cumRatio * 100))
+      .attr("r", 2)
+      .attr("fill", "#555555");
+}
+
+function drawBreakEvenD3(svgId, d) {
+  const svg = d3.select(`#${svgId}`);
+  svg.selectAll("*").remove();
+  const isPrint = svgId.startsWith("print-");
+
+  const bounds = svg.node().getBoundingClientRect();
+  const width = bounds.width || (isPrint ? 290 : 380);
+  const height = bounds.height || (isPrint ? 134 : 120);
+  svg.attr("viewBox", `0 0 ${width} ${height}`).attr("preserveAspectRatio", "none");
+
+  const totalCostAt = (fixedCost, ratio, xv) => fixedCost + ratio * xv;
+
+  const gap = isPrint ? 6 : 10;
+  const halfWidth = (width - gap) / 2;
+  const margin = { top: 22, right: isPrint ? 13 : 24, bottom: isPrint ? 17 : 20, left: isPrint ? 33 : 42 };
+
+  const panels = [
+    { label: "計画", color: "#4a86c8", fixedCost: d.fixedCostPlan, ratio: d.variableRatioPlan, revenue: d.revenuePlan, bep: d.breakEvenPlan },
+    { label: "実績", color: "#e08030", fixedCost: d.fixedCostActual, ratio: d.variableRatioActual, revenue: d.revenueActual, bep: d.breakEvenActual }
+  ];
+
+  // 各パネルのX軸最大値を先に求め、大きい方に両パネルの横軸(X)を揃える。縦軸(Y)も両パネル共通のスケールにする
+  panels.forEach(p => {
+    const maxXCandidates = [p.revenue, p.bep].filter(v => v !== null && isFinite(v) && v > 0);
+    p.maxX = (maxXCandidates.length ? Math.max(...maxXCandidates) : 100) * 1.2;
+  });
+  const sharedMaxX = Math.max(...panels.map(p => p.maxX));
+  panels.forEach(p => { p.maxX = sharedMaxX; });
+
+  const sharedMaxY = Math.max(0, ...panels.flatMap(p => [
+    p.maxX,
+    totalCostAt(p.fixedCost, p.ratio, p.maxX),
+    p.fixedCost
+  ].filter(v => isFinite(v)))) * 1.1;
+  const y = d3.scaleLinear().domain([0, sharedMaxY]).range([height - margin.bottom, margin.top]);
+
+  panels.forEach((p, i) => {
+    const offsetX = i === 0 ? 0 : halfWidth + gap;
+    const maxX = p.maxX;
+
+    const x = d3.scaleLinear().domain([0, maxX]).range([offsetX + margin.left, offsetX + halfWidth - margin.right]);
+
+    // パネル見出し（計画/実績）
+    svg.append("text")
+      .attr("x", offsetX + margin.left)
+      .attr("y", margin.top - (isPrint ? 8 : 9))
+      .attr("font-size", isPrint ? "9px" : "14px")
+      .attr("font-weight", "bold")
+      .attr("fill", p.color)
+      .text(p.label);
+
+    svg.append("g")
+      .attr("transform", `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(x).ticks(isPrint ? 3 : 4).tickFormat(v => v.toFixed(0)))
+      .selectAll("text").attr("font-size", isPrint ? "9px" : "13px");
+
+    svg.append("g")
+      .attr("transform", `translate(${offsetX + margin.left},0)`)
+      .call(d3.axisLeft(y).ticks(3))
+      .selectAll("text").attr("font-size", isPrint ? "7px" : "11px");
+
+    // 売上高線 (y=x)
+    svg.append("line")
+      .attr("x1", x(0)).attr("y1", y(0))
+      .attr("x2", x(maxX)).attr("y2", y(maxX))
+      .attr("stroke", "#888888")
+      .attr("stroke-width", isPrint ? 1.6 : 2.4);
+
+    // 総費用線
+    svg.append("line")
+      .attr("x1", x(0)).attr("y1", y(p.fixedCost))
+      .attr("x2", x(maxX)).attr("y2", y(totalCostAt(p.fixedCost, p.ratio, maxX)))
+      .attr("stroke", p.color)
+      .attr("stroke-width", isPrint ? 2.4 : 3.6);
+
+    // 固定費・変動費率（総費用線の上、左上の空きスペースに表示）
+    svg.append("text")
+      .attr("x", offsetX + margin.left + (isPrint ? 3 : 4))
+      .attr("y", margin.top + (isPrint ? 8 : 11))
+      .attr("font-size", isPrint ? "9px" : "13px")
+      .attr("fill", "#333333")
+      .text(`固定費 ${Math.round(p.fixedCost).toLocaleString()}万円`);
+    svg.append("text")
+      .attr("x", offsetX + margin.left + (isPrint ? 3 : 4))
+      .attr("y", margin.top + (isPrint ? 17 : 24))
+      .attr("font-size", isPrint ? "9px" : "13px")
+      .attr("fill", "#333333")
+      .text(`変動費率 ${(p.ratio * 100).toFixed(1)}%`);
+    svg.append("text")
+      .attr("x", offsetX + margin.left + (isPrint ? 3 : 4))
+      .attr("y", margin.top + (isPrint ? 26 : 37))
+      .attr("font-size", isPrint ? "9px" : "13px")
+      .attr("fill", "#333333")
+      .text(`入力値 ${Math.round(p.revenue).toLocaleString()}万円`);
+
+    // 入力値（販売高＋家事消費）の位置を売上高線上にドットで表示
+    svg.append("circle")
+      .attr("cx", x(p.revenue)).attr("cy", y(p.revenue))
+      .attr("r", isPrint ? 2.5 : 4)
+      .attr("fill", p.color)
+      .attr("stroke", "#ffffff")
+      .attr("stroke-width", isPrint ? 0.5 : 1);
+  });
+
+  // 左右パネルの区切り線
+  svg.append("line")
+    .attr("x1", halfWidth + gap / 2).attr("x2", halfWidth + gap / 2)
+    .attr("y1", margin.top - (isPrint ? 10 : 12)).attr("y2", height - margin.bottom)
+    .attr("stroke", "#dddddd")
+    .attr("stroke-width", 1);
+}
+
+function renderAllCharts() {
+  const state = readState();
+  const crops = state.crop.map(c => ({
+    ...c,
+    yieldPlan: c.landPlan > 0 ? (c.prodPlan / c.landPlan) * 10 : 0,
+    yieldActual: c.landActual > 0 ? (c.prodActual / c.landActual) * 10 : 0,
+    pricePlan: c.prodPlan > 0 ? c.revPlan / c.prodPlan : 0,
+    priceActual: c.prodActual > 0 ? c.revActual / c.prodActual : 0
+  }));
+
+  const salesPlan = state.income.find(i => i.category === "販売額")?.plan || 0;
+  const salesActual = state.income.find(i => i.category === "販売額")?.actual || 0;
+  const miscPlan = state.income.find(i => i.category === "雑収入")?.plan || 0;
+  const miscActual = state.income.find(i => i.category === "雑収入")?.actual || 0;
+  const householdPlan = state.income.find(i => i.category === "家事・事業消費金額")?.plan || 0;
+  const householdActual = state.income.find(i => i.category === "家事・事業消費金額")?.actual || 0;
+
+  const expenseTotalPlan = state.expense.reduce((s, i) => s + Number(i.plan), 0);
+  const expenseTotalActual = state.expense.reduce((s, i) => s + Number(i.actual), 0);
+
+  const revenuePlan = salesPlan + householdPlan;
+  const revenueActual = salesActual + householdActual;
+
+  const fixedCostPlan = state.expense
+    .filter(e => FIXED_COST_CATEGORIES.includes(e.category))
+    .reduce((s, e) => s + Number(e.plan), 0);
+  const fixedCostActual = state.expense
+    .filter(e => FIXED_COST_CATEGORIES.includes(e.category))
+    .reduce((s, e) => s + Number(e.actual), 0);
+  const variableCostPlan = expenseTotalPlan - fixedCostPlan;
+  const variableCostActual = expenseTotalActual - fixedCostActual;
+  const variableRatioPlan = revenuePlan > 0 ? variableCostPlan / revenuePlan : 0;
+  const variableRatioActual = revenueActual > 0 ? variableCostActual / revenueActual : 0;
+  const breakEvenPlan = variableRatioPlan < 1 ? fixedCostPlan / (1 - variableRatioPlan) : null;
+  const breakEvenActual = variableRatioActual < 1 ? fixedCostActual / (1 - variableRatioActual) : null;
+
+  const breakEvenData = {
+    fixedCostPlan: YEN_TO_MAN(fixedCostPlan),
+    fixedCostActual: YEN_TO_MAN(fixedCostActual),
+    variableRatioPlan,
+    variableRatioActual,
+    revenuePlan: YEN_TO_MAN(revenuePlan),
+    revenueActual: YEN_TO_MAN(revenueActual),
+    breakEvenPlan: breakEvenPlan !== null ? YEN_TO_MAN(breakEvenPlan) : null,
+    breakEvenActual: breakEvenActual !== null ? YEN_TO_MAN(breakEvenActual) : null
+  };
+  drawBreakEvenD3("chart-breakeven", breakEvenData);
+  drawBreakEvenD3("print-chart-breakeven", breakEvenData);
+  document.getElementById("breakeven-note").textContent =
+    `損益分岐点：計画 ${breakEvenData.breakEvenPlan !== null ? Math.round(breakEvenData.breakEvenPlan).toLocaleString() : "―"}万円／実績 ${breakEvenData.breakEvenActual !== null ? Math.round(breakEvenData.breakEvenActual).toLocaleString() : "―"}万円`;
+
+  const netIncomeData = [
+    { type: "計画", 農業所得: YEN_TO_MAN(salesPlan - expenseTotalPlan), 雑収入: YEN_TO_MAN(miscPlan), 家事消費: YEN_TO_MAN(householdPlan) },
+    { type: "実績", 農業所得: YEN_TO_MAN(salesActual - expenseTotalActual), 雑収入: YEN_TO_MAN(miscActual), 家事消費: YEN_TO_MAN(householdActual) }
+  ];
+  drawStackedHorizontalBarD3("chart-netincome", netIncomeData, ["農業所得", "雑収入", "家事消費"], "type");
+  drawStackedHorizontalBarD3("print-chart-netincome", netIncomeData, ["農業所得", "雑収入", "家事消費"], "type");
+
+  const revExpData = [
+    { type: "計画", 販売: YEN_TO_MAN(salesPlan), 家事消費: YEN_TO_MAN(householdPlan), 雑収入: YEN_TO_MAN(miscPlan) },
+    { type: "実績", 販売: YEN_TO_MAN(salesActual), 家事消費: YEN_TO_MAN(householdActual), 雑収入: YEN_TO_MAN(miscActual) }
+  ];
+  drawStackedHorizontalBarD3("chart-revenue-income", revExpData, ["販売", "家事消費", "雑収入"], "type");
+  drawStackedHorizontalBarD3("print-chart-revenue-income", revExpData, ["販売", "家事消費", "雑収入"], "type");
+
+  const cropKeys = crops.map(c => c.name);
+  const revData = [
+    { type: "計画", 家事消費: YEN_TO_MAN(householdPlan) },
+    { type: "実績", 家事消費: YEN_TO_MAN(householdActual) }
+  ];
+  crops.forEach(c => {
+    revData[0][c.name] = YEN_TO_MAN(c.revPlan);
+    revData[1][c.name] = YEN_TO_MAN(c.revActual);
+  });
+  drawStackedHorizontalBarD3("chart-revenue", revData, [...cropKeys, "家事消費"], "type");
+  drawStackedHorizontalBarD3("print-chart-revenue", revData, [...cropKeys, "家事消費"], "type");
+
+  const landData = [{ type: "計画" }, { type: "実績" }];
+  crops.forEach(c => {
+    landData[0][c.name] = c.landPlan;
+    landData[1][c.name] = c.landActual;
+  });
+  drawStackedHorizontalBarD3("chart-area", landData, cropKeys, "type");
+  drawStackedHorizontalBarD3("print-chart-area", landData, cropKeys, "type");
+
+  const prodData = crops.map(c => ({ name: c.name, 計画: c.prodPlan, 実績: c.prodActual }));
+  drawGroupedBarD3("chart-production", prodData, ["計画", "実績"], "name");
+  drawGroupedBarD3("print-chart-production", prodData, ["計画", "実績"], "name");
+
+  const yieldData = crops.map(c => ({ name: c.name, 計画: c.yieldPlan, 実績: c.yieldActual }));
+  drawGroupedBarD3("chart-yield", yieldData, ["計画", "実績"], "name");
+  drawGroupedBarD3("print-chart-yield", yieldData, ["計画", "実績"], "name");
+
+  const priceData = crops.map(c => ({ name: c.name, 計画: c.pricePlan, 実績: c.priceActual }));
+  drawGroupedBarD3("chart-price", priceData, ["計画", "実績"], "name");
+  drawGroupedBarD3("print-chart-price", priceData, ["計画", "実績"], "name");
+
+  const paretoPlan = paretoAnalysis(state.expense.map(e => ({ category: e.category, value: Number(e.plan) })));
+  const paretoActual = paretoAnalysis(state.expense.map(e => ({ category: e.category, value: Number(e.actual) })));
+  const paretoMaxY = Math.max(
+    d3.max(paretoPlan.series, d => YEN_TO_MAN(d.value)) || 0,
+    d3.max(paretoActual.series, d => YEN_TO_MAN(d.value)) || 0
+  );
+  drawParetoD3("chart-pareto-plan", paretoPlan, "#4a86c8", paretoMaxY);
+  drawParetoD3("print-chart-pareto-plan", paretoPlan, "#4a86c8", paretoMaxY);
+  drawParetoD3("chart-pareto-actual", paretoActual, "#e08030", paretoMaxY);
+  drawParetoD3("print-chart-pareto-actual", paretoActual, "#e08030", paretoMaxY);
+
+  document.getElementById("pareto-plan-note").textContent = `合計 ${Math.round(YEN_TO_MAN(paretoPlan.total)).toLocaleString()}万円`;
+  document.getElementById("pareto-actual-note").textContent = `合計 ${Math.round(YEN_TO_MAN(paretoActual.total)).toLocaleString()}万円`;
+
+  const breakdownData = state.expense
+    .filter(e => Number(e.plan) > 0 || Number(e.actual) > 0)
+    .map(e => ({ category: e.category, 計画: YEN_TO_MAN(e.plan), 実績: YEN_TO_MAN(e.actual) }))
+    .sort((a, b) => b.計画 - a.計画);
+  drawGroupedBarD3("chart-expensebreakdown", breakdownData, ["計画", "実績"], "category");
+  drawGroupedBarD3("print-chart-expensebreakdown", breakdownData, ["計画", "実績"], "category");
+}
+
+/* 印刷・CSV保存処理 */
+function printCharts() {
+  const today = new Date();
+  const fiscalYear = document.getElementById("input-fiscal-year").value || "年度未入力";
+  const name = document.getElementById("input-name").value || "名前未入力";
+
+  document.getElementById("print-fiscal-year").textContent = `年度：${fiscalYear}`;
+  document.getElementById("print-name").textContent = `名前：${name}`;
+  document.getElementById("print-date").textContent = 
+    `出力日：${today.getFullYear()}年${String(today.getMonth() + 1).padStart(2, '0')}月${String(today.getDate()).padStart(2, '0')}日`;
+
+  renderAllCharts(); // 最新状態に更新して印刷
+  window.print();
+}
+
+function saveCsv() {
+  const state = readState();
+  const rows = [
+    ["種類", "項目", "区分", "計画", "実績"],
+    ["基本情報", "年度", "", document.getElementById("input-fiscal-year").value || "", ""],
+    ["基本情報", "名前", "", document.getElementById("input-name").value || "", ""]
+  ];
+  state.income.forEach(item => rows.push(["収入", item.category, "", item.plan, item.actual]));
+  state.expense.forEach(item => rows.push(["経費", item.category, "", item.plan, item.actual]));
+  state.crop.forEach(item => {
+    rows.push(["農業収入", item.name, "経営規模 a", item.landPlan, item.landActual]);
+    rows.push(["農業収入", item.name, "生産量 kg", item.prodPlan, item.prodActual]);
+    rows.push(["農業収入", item.name, "売上高 円", item.revPlan, item.revActual]);
+  });
+  
+  const csvStr = rows.map(r => r.join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF", csvStr], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `損益ダッシュボード_${document.getElementById("input-fiscal-year").value || 'データ'}.csv`;
+  a.click();
+}
+</script>
+<input type="file" id="csv-file-input" accept=".csv" style="display:none">
+</body>
+</html>
