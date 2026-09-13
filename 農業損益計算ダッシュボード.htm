@@ -853,6 +853,12 @@ function drawBreakEvenD3(svgId, d) {
       .attr("font-size", isPrint ? "9px" : "13px")
       .attr("fill", "#333333")
       .text(`入力値 ${Math.round(p.revenue).toLocaleString()}万円`);
+    svg.append("text")
+      .attr("x", offsetX + margin.left + (isPrint ? 3 : 4))
+      .attr("y", margin.top + (isPrint ? 35 : 50))
+      .attr("font-size", isPrint ? "9px" : "13px")
+      .attr("fill", "#333333")
+      .text(`収支 ${Math.round(p.revenue - totalCostAt(p.fixedCost, p.ratio, p.revenue)).toLocaleString()}万円`);
 
     // 入力値（販売高＋家事消費）の位置を売上高線上にドットで表示
     svg.append("circle")
