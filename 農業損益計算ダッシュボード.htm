@@ -1011,6 +1011,85 @@ function printCharts() {
   window.print();
 }
 
+function handleCsvFileChange(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      loadCsv(e.target.result);
+    } catch (err) {
+      console.error(err);
+      alert("CSVの読み込みに失敗しました。ファイル形式をご確認ください。");
+    }
+  };
+  reader.onerror = () => alert("CSVファイルの読み込み中にエラーが発生しました。");
+  reader.readAsText(file, "UTF-8");
+  input.value = "";
+}
+
+function loadCsv(text) {
+  const clean = text.replace(/^\uFEFF/, "");
+  const lines = clean.split(/\r?\n/).filter(l => l.trim().length > 0);
+  if (lines.length <= 1) { alert("CSVにデータが見つかりませんでした。"); return; }
+
+  const parseRow = line => line.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+
+  let fiscalYear = "";
+  let name = "";
+  const incomeRows = [];
+  const expenseRows = [];
+  const cropMap = new Map();
+
+  lines.slice(1).forEach(line => {
+    const cols = parseRow(line);
+    const type = cols[0] || "", item = cols[1] || "", subtype = cols[2] || "";
+    const plan = cols[3] !== undefined ? cols[3] : "", actual = cols[4] !== undefined ? cols[4] : "";
+    if (!type) return;
+    if (type === "基本情報") {
+      if (item === "年度") fiscalYear = plan;
+      if (item === "名前") name = plan;
+    } else if (type === "収入") {
+      incomeRows.push({ category: item, plan: toNum(plan) || 0, actual: toNum(actual) || 0 });
+    } else if (type === "経費") {
+      expenseRows.push({ category: item, plan: toNum(plan) || 0, actual: toNum(actual) || 0 });
+    } else if (type === "農業収入") {
+      if (!cropMap.has(item)) cropMap.set(item, { name: item, landPlan: 0, landActual: 0, prodPlan: 0, prodActual: 0, revPlan: 0, revActual: 0 });
+      const c = cropMap.get(item);
+      const p = toNum(plan) || 0, a = toNum(actual) || 0;
+      if (/経営規模/.test(subtype)) { c.landPlan = p; c.landActual = a; }
+      else if (/生産量/.test(subtype)) { c.prodPlan = p; c.prodActual = a; }
+      else if (/売上高/.test(subtype)) { c.revPlan = p; c.revActual = a; }
+    }
+  });
+
+  const fmt = v => v ? v.toLocaleString() : "";
+
+  document.getElementById("input-fiscal-year").value = fiscalYear;
+  document.getElementById("input-name").value = name;
+
+  const incomeLines = ["科目\t計画\t実績"];
+  incomeRows.forEach(r => incomeLines.push(`${r.category}\t${fmt(r.plan)}\t${fmt(r.actual)}`));
+  incomeLines.push(`小計\t${fmt(incomeRows.reduce((s, r) => s + r.plan, 0))}\t${fmt(incomeRows.reduce((s, r) => s + r.actual, 0))}`);
+  document.getElementById("csv-income").value = incomeLines.join("\n");
+
+  const expenseLines = ["科目\t計画\t実績"];
+  expenseRows.forEach(r => expenseLines.push(`${r.category}\t${fmt(r.plan)}\t${fmt(r.actual)}`));
+  expenseLines.push(`計\t${fmt(expenseRows.reduce((s, r) => s + r.plan, 0))}\t${fmt(expenseRows.reduce((s, r) => s + r.actual, 0))}`);
+  document.getElementById("csv-expense").value = expenseLines.join("\n");
+
+  const cropLines = ["作目名等\t\t計画\t実績"];
+  cropMap.forEach(c => {
+    cropLines.push(`${c.name}\t経営規模 a\t${fmt(c.landPlan)}\t${fmt(c.landActual)}`);
+    cropLines.push(`${c.name}\t生産量 kg\t${fmt(c.prodPlan)}\t${fmt(c.prodActual)}`);
+    cropLines.push(`${c.name}\t売上高 円\t${fmt(c.revPlan)}\t${fmt(c.revActual)}`);
+  });
+  document.getElementById("csv-crop").value = cropLines.join("\n");
+
+  readState();
+  renderAllCharts();
+}
+
 function saveCsv() {
   const state = readState();
   const rows = [
@@ -1030,10 +1109,12 @@ function saveCsv() {
   const blob = new Blob(["\uFEFF", csvStr], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `損益ダッシュボード_${document.getElementById("input-fiscal-year").value || 'データ'}.csv`;
+  const csvFiscalYear = document.getElementById("input-fiscal-year").value || "年度未入力";
+  const csvName = document.getElementById("input-name").value || "名前未入力";
+  a.download = `${csvFiscalYear}_${csvName}.csv`;
   a.click();
 }
 </script>
-<input type="file" id="csv-file-input" accept=".csv" style="display:none">
+<input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="handleCsvFileChange(this)">
 </body>
 </html>
