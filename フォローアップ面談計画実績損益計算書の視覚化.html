@@ -677,10 +677,16 @@ function drawStackedHorizontalBarD3(svgId, data, keys, groupKey) {
       return { data: row, key, value, start, end: start + value };
     });
   });
-  const minX = Math.min(0, d3.min(segments, d => d.start) || 0);
-  const maxX = Math.max(0, d3.max(segments, d => d.end) || 0);
+// データの全領域（負の累積最小値と正の累積最大値）を取得
+  const minX = Math.min(0, d3.min(segments, d => Math.min(d.start, d.end)) || 0);
+  const maxX = Math.max(0, d3.max(segments, d => Math.max(d.start, d.end)) || 0);
+
+  // 負数がある場合はその値（マイナス方向）にもマージンをとる
+  const domainMin = minX < 0 ? minX * 1.15 : 0;
+  const domainMax = maxX > 0 ? maxX * 1.15 : 0;
+
   const x = d3.scaleLinear()
-    .domain([minX * 1.1, maxX * 1.1])
+    .domain([domainMin, domainMax])
     .range([margin.left, width - margin.right]);
 
   const y = d3.scaleBand()
