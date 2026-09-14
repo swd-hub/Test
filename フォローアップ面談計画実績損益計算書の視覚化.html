@@ -313,10 +313,10 @@ textarea.csv-input {
     </div>
 <!-- 表示用SVG専用レイアウト -->
     <div class="grid">
-          <div class="chart-box"><h3>経営規模 アール</h3><svg id="chart-area"></svg></div>
-          <div class="chart-box"><h3>収入の内訳 万円</h3><svg id="chart-revenue-income"></svg></div>
-                <div class="chart-box"><h3>経費差引金額 万円</h3><svg id="chart-netincome"></svg></div>
+      <div class="chart-box"><h3>経営規模 アール</h3><svg id="chart-area"></svg></div>
+      <div class="chart-box"><h3>収入の内訳 万円</h3><svg id="chart-revenue-income"></svg></div>
       <div class="chart-box"><h3>売上高＋家事消費 万円</h3><svg id="chart-revenue"></svg></div>
+      <div class="chart-box"><h3>経費差引金額 万円</h3><svg id="chart-netincome"></svg></div>
       <div class="chart-box"><h3>損益分岐図（売上高＋家事消費）万円</h3><svg id="chart-breakeven"></svg><div class="summary-line" id="breakeven-note"></div></div>
       <div class="chart-box"><h3>生産量 kg</h3><svg id="chart-production"></svg></div>
       <div class="chart-box"><h3>単収 kg/10a</h3><svg id="chart-yield"></svg></div>
@@ -347,10 +347,10 @@ textarea.csv-input {
     <div id="print-date"></div>
   </div>
   <div class="print-grid">
-      <div class="print-chart"><h4>経営規模 アール</h4><svg id="print-chart-area"></svg></div>
-      <div class="print-chart"><h4>収入の内訳 万円</h4><svg id="print-chart-revenue-income"></svg></div>
-    <div class="print-chart"><h4>経費差引金額 万円</h4><svg id="print-chart-netincome"></svg></div>
+    <div class="print-chart"><h4>経営規模 アール</h4><svg id="print-chart-area"></svg></div>
+    <div class="print-chart"><h4>収入の内訳 万円</h4><svg id="print-chart-revenue-income"></svg></div>
     <div class="print-chart"><h4>売上高＋家事消費 万円</h4><svg id="print-chart-revenue"></svg></div>
+    <div class="print-chart"><h4>経費差引金額 万円</h4><svg id="print-chart-netincome"></svg></div>
     <div class="print-chart"><h4>損益分岐図（売上高＋家事消費）万円</h4><svg id="print-chart-breakeven"></svg></div>
     <div class="print-chart"><h4>生産量 kg</h4><svg id="print-chart-production"></svg></div>
     <div class="print-chart"><h4>単収 kg/10a</h4><svg id="print-chart-yield"></svg></div>
@@ -413,11 +413,7 @@ document.getElementById("csv-crop").value = DEFAULT_CROP_CSV;
 
 const YEN_TO_MAN = v => v / 10000;
 
-/* ---- 損益分岐図：固定費の科目区分（暫定） ----
-   ここに列挙した経費科目を「固定費」として合計し、それ以外の経費科目はすべて
-   
-   「変動費」として扱う。実際の費用分解（科目ごとの固定費/変動費の按分など）は
-   ここを手修正して調整すること。 */
+/* ---- 損益分岐図：固定費の科目区分（暫定） ---- */
 const FIXED_COST_CATEGORIES = ["減価償却費", "雇用労賃（雇人費）", "利子割引料","地代・賃借料","土地改良費","販売促進費","支払手数料","リース料","その他経費","雑費"];
 
 function splitLines(text) {
@@ -517,12 +513,6 @@ function showTab(name) {
 /* =========================================================
    D3.js 描画ロジック
    ========================================================= */
-/* ---- 全グラフ共通の配色ルール ----
-   計画=#4a86c8 / 実績=#e08030 はグループ棒・パレート・損益分岐図で使用（変更なし）。
-   積み上げ横棒グラフ（収入の内訳・経費差引金額・売上高＋家事消費・経営規模）では、
-   同じ意味を持つ項目名には常に同じ色を割り当てる（例：雑収入・家事消費はどのグラフでも同色）。
-   作目名（アスパラガス等）のような可変項目には、固定色を使っていない項目だけを対象に
-   出現順で別パレットから色を割り当てる。 */
 const NAMED_STACK_COLORS = {
   "経常利益": "#4a86c8",
   "売上": "#4a86c8",
@@ -538,9 +528,6 @@ function stackColorFor(key, keys) {
   return DYNAMIC_STACK_PALETTE[idx % DYNAMIC_STACK_PALETTE.length];
 }
 
-/* Canvasのフォント計測APIで文字幅を測る。印刷レイアウトは描画時点でまだ
-   display:none のため、SVG要素のgetBBox()は幅0を返してしまい使えない。
-   Canvas計測は要素の表示状態に関係なく正しい幅を返す。 */
 const LEGEND_FONT_FAMILY = `"Yu Gothic","Meiryo","Hiragino Sans",sans-serif`;
 let _legendMeasureCtx = null;
 function measureTextWidth(text, fontSize) {
@@ -573,6 +560,25 @@ function addLegend(svg, keys, color, margin, fontSize = 18, isPrint = false) {
     const textWidth = measureTextWidth(key, fontSize);
     offset += rectSize + gap + textWidth + itemGap;
   });
+}
+
+/* SVG右上隅に注記テキストを配置する関数 */
+function drawTopRightNote(svgId, text) {
+  const svg = d3.select(`#${svgId}`);
+  if (svg.empty()) return;
+  const isPrint = svgId.startsWith("print-");
+  const bounds = svg.node().getBoundingClientRect();
+  const width = bounds.width || (isPrint ? 290 : 380);
+  const marginRight = isPrint ? 10 : 20;
+
+  svg.append("text")
+    .attr("x", width - marginRight)
+    .attr("y", isPrint ? 10 : 14)
+    .attr("text-anchor", "end")
+    .attr("font-size", isPrint ? "7.5px" : "12px")
+    .attr("font-weight", "bold")
+    .attr("fill", "#444444")
+    .text(text);
 }
 
 function drawGroupedBarD3(svgId, data, keys, groupKey) {
@@ -677,11 +683,10 @@ function drawStackedHorizontalBarD3(svgId, data, keys, groupKey) {
       return { data: row, key, value, start, end: start + value };
     });
   });
-// データの全領域（負の累積最小値と正の累積最大値）を取得
+
   const minX = Math.min(0, d3.min(segments, d => Math.min(d.start, d.end)) || 0);
   const maxX = Math.max(0, d3.max(segments, d => Math.max(d.start, d.end)) || 0);
 
-  // 負数がある場合はその値（マイナス方向）にもマージンをとる
   const domainMin = minX < 0 ? minX * 1.15 : 0;
   const domainMax = maxX > 0 ? maxX * 1.15 : 0;
 
@@ -840,7 +845,6 @@ function drawBreakEvenD3(svgId, d) {
     { label: "実績", color: "#e08030", fixedCost: d.fixedCostActual, ratio: d.variableRatioActual, revenue: d.revenueActual, bep: d.breakEvenActual }
   ];
 
-  // 各パネルのX軸最大値を先に求め、大きい方に両パネルの横軸(X)を揃える。縦軸(Y)も両パネル共通のスケールにする
   panels.forEach(p => {
     const maxXCandidates = [p.revenue, p.bep].filter(v => v !== null && isFinite(v) && v > 0);
     p.maxX = (maxXCandidates.length ? Math.max(...maxXCandidates) : 100) * 1.2;
@@ -861,7 +865,6 @@ function drawBreakEvenD3(svgId, d) {
 
     const x = d3.scaleLinear().domain([0, maxX]).range([offsetX + margin.left, offsetX + halfWidth - margin.right]);
 
-    // パネル見出し（計画/実績）
     svg.append("text")
       .attr("x", offsetX + margin.left)
       .attr("y", margin.top - (isPrint ? 8 : 9))
@@ -880,21 +883,18 @@ function drawBreakEvenD3(svgId, d) {
       .call(d3.axisLeft(y).ticks(3))
       .selectAll("text").attr("font-size", isPrint ? "7px" : "11px");
 
-    // 売上高線 (y=x)
     svg.append("line")
       .attr("x1", x(0)).attr("y1", y(0))
       .attr("x2", x(maxX)).attr("y2", y(maxX))
       .attr("stroke", "#888888")
       .attr("stroke-width", isPrint ? 1.6 : 2.4);
 
-    // 総費用線
     svg.append("line")
       .attr("x1", x(0)).attr("y1", y(p.fixedCost))
       .attr("x2", x(maxX)).attr("y2", y(totalCostAt(p.fixedCost, p.ratio, maxX)))
       .attr("stroke", p.color)
       .attr("stroke-width", isPrint ? 2.4 : 3.6);
 
-    // 固定費・変動費率（総費用線の上、左上の空きスペースに表示）
     svg.append("text")
       .attr("x", offsetX + margin.left + (isPrint ? 3 : 4))
       .attr("y", margin.top + (isPrint ? 8 : 11))
@@ -920,7 +920,6 @@ function drawBreakEvenD3(svgId, d) {
       .attr("fill", "#333333")
       .text(`収支 ${Math.round(p.revenue - totalCostAt(p.fixedCost, p.ratio, p.revenue)).toLocaleString()}万円`);
 
-    // 入力値（売上高＋家事消費）の位置を売上高線上にドットで表示
     svg.append("circle")
       .attr("cx", x(p.revenue)).attr("cy", y(p.revenue))
       .attr("r", isPrint ? 2.5 : 4)
@@ -929,7 +928,6 @@ function drawBreakEvenD3(svgId, d) {
       .attr("stroke-width", isPrint ? 0.5 : 1);
   });
 
-  // 左右パネルの区切り線
   svg.append("line")
     .attr("x1", halfWidth + gap / 2).attr("x2", halfWidth + gap / 2)
     .attr("y1", margin.top - (isPrint ? 10 : 12)).attr("y2", height - margin.bottom)
@@ -994,6 +992,13 @@ function renderAllCharts() {
   ];
   drawStackedHorizontalBarD3("chart-netincome", netIncomeData, ["経常利益", "家事消費", "雑収入"], "type");
   drawStackedHorizontalBarD3("print-chart-netincome", netIncomeData, ["経常利益", "家事消費", "雑収入"], "type");
+
+  /* 経費差引金額グラフ右上に経費（計画・実績）の数値を表示 */
+  const expPlanMan = Math.round(YEN_TO_MAN(expenseTotalPlan)).toLocaleString();
+  const expActualMan = Math.round(YEN_TO_MAN(expenseTotalActual)).toLocaleString();
+  const expenseNoteText = `経費：計画 ${expPlanMan}万円 実績 ${expActualMan}万円`;
+  drawTopRightNote("chart-netincome", expenseNoteText);
+  drawTopRightNote("print-chart-netincome", expenseNoteText);
 
   const revExpData = [
     { type: "計画", 売上高: YEN_TO_MAN(salesPlan), 家事消費: YEN_TO_MAN(householdPlan), 雑収入: YEN_TO_MAN(miscPlan) },
@@ -1067,7 +1072,7 @@ function printCharts() {
   document.getElementById("print-date").textContent = 
     `出力日：${today.getFullYear()}年${String(today.getMonth() + 1).padStart(2, '0')}月${String(today.getDate()).padStart(2, '0')}日`;
 
-  renderAllCharts(); // 最新状態に更新して印刷
+  renderAllCharts();
   window.print();
 }
 
