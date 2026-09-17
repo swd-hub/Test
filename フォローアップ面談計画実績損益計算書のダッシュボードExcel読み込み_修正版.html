@@ -583,7 +583,7 @@ function addLegend(svg, keys, color, margin, fontSize = 18, isPrint = false) {
 }
 
 /* SVG右上隅に注記テキストを配置する関数 */
-function drawTopRightNote(svgId, text) {
+function drawTopRightNote(svgId, text, yOffset = 0) {
   const svg = d3.select(`#${svgId}`);
   if (svg.empty()) return;
   const isPrint = svgId.startsWith("print-");
@@ -593,7 +593,7 @@ function drawTopRightNote(svgId, text) {
 
   svg.append("text")
     .attr("x", width - marginRight)
-    .attr("y", isPrint ? 10 : 14)
+    .attr("y", (isPrint ? 10 : 14) + yOffset)
     .attr("text-anchor", "end")
     .attr("font-size", isPrint ? "7.5px" : "12px")
     .attr("font-weight", "bold")
@@ -1046,7 +1046,7 @@ function renderAllCharts() {
   const expActualMan = Math.round(YEN_TO_MAN(expenseTotalActual)).toLocaleString();
   const expenseNoteText = `経費：計画 ${expPlanMan}万円 実績 ${expActualMan}万円`;
   drawTopRightNote("chart-netincome", expenseNoteText);
-  drawTopRightNote("print-chart-netincome", expenseNoteText);
+  drawTopRightNote("print-chart-netincome", expenseNoteText, 10);
 
   const revExpData = [
     { type: "計画", 売上高: YEN_TO_MAN(salesPlan), 家事消費: YEN_TO_MAN(householdPlan), 雑収入: YEN_TO_MAN(miscPlan) },
