@@ -838,7 +838,7 @@ function drawBreakEvenD3(svgId, d) {
 
   const gap = isPrint ? 6 : 10;
   const halfWidth = (width - gap) / 2;
-  const margin = { top: 22, right: isPrint ? 13 : 24, bottom: isPrint ? 17 : 20, left: isPrint ? 33 : 42 };
+  const margin = { top: 22, right: isPrint ? 13 : 24, bottom: isPrint ? 30 : 38, left: isPrint ? 38 : 50 };
 
   const panels = [
     { label: "計画", color: "#4a86c8", fixedCost: d.fixedCostPlan, ratio: d.variableRatioPlan, revenue: d.revenuePlan, bep: d.breakEvenPlan },
@@ -884,6 +884,27 @@ function drawBreakEvenD3(svgId, d) {
       .call(d3.axisLeft(y).ticks(3))
       .selectAll("text").attr("font-size", isPrint ? "7px" : "11px");
 
+    svg.append("text")
+      .attr("x", offsetX + halfWidth / 2)
+      .attr("y", height - (isPrint ? 3 : 6))
+      .attr("text-anchor", "middle")
+      .attr("font-size", isPrint ? "8px" : "11px")
+      .attr("fill", "#555555")
+      .text("売上高＋家事消費(万円)");
+
+    {
+      const yLabelX = offsetX + (isPrint ? 10 : 13);
+      const yLabelY = (margin.top + (height - margin.bottom)) / 2;
+      svg.append("text")
+        .attr("x", yLabelX)
+        .attr("y", yLabelY)
+        .attr("text-anchor", "middle")
+        .attr("font-size", isPrint ? "8px" : "11px")
+        .attr("fill", "#555555")
+        .attr("transform", `rotate(-90, ${yLabelX}, ${yLabelY})`)
+        .text("経費(万円)");
+    }
+
     svg.append("line")
       .attr("x1", x(0)).attr("y1", y(0))
       .attr("x2", x(maxX)).attr("y2", y(maxX))
@@ -919,7 +940,7 @@ function drawBreakEvenD3(svgId, d) {
       .attr("y", margin.top + (isPrint ? 35 : 50))
       .attr("font-size", isPrint ? "9px" : "13px")
       .attr("fill", "#333333")
-      .text(`計画（実績）値 ${Math.round(p.revenue).toLocaleString()}万円`);
+      .text(`入力値 ${Math.round(p.revenue).toLocaleString()}万円`);
     svg.append("text")
       .attr("x", offsetX + margin.left + (isPrint ? 3 : 4))
       .attr("y", margin.top + (isPrint ? 44 : 63))
