@@ -68,15 +68,7 @@
     .progress-text { font-size: 12px; color: var(--text-muted); margin: 5px 0 0; }
 
     .images { display: flex; gap: 18px; flex-wrap: wrap; }
-    .card {
-      width: 300px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--accent);
-      border-radius: var(--radius);
-      padding: 14px;
-      box-sizing: border-box;
-    }
+    .card { width: 340px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 14px; box-sizing: border-box; }
     .card h3 { margin: 0 0 3px; font-size: 14px; font-weight: 700; }
     canvas.output, img#source {
       width: 100%; height: auto;
@@ -146,12 +138,13 @@
     }
     .corr-result { font-family: var(--mono); font-weight: 700; color: var(--accent-dark); }
     .corr-note { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
-    canvas#corrScatter, canvas#histA, canvas#histB {
-      border: 1px solid var(--border); border-radius: 6px; background: var(--surface-alt);
-    }
-    .hist-grid { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
-    .hist-col { flex: 0 1 380px; min-width: 240px; }
-    .hist-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-family: var(--mono); }
+    canvas#corrScatter { border: 1px solid var(--border); border-radius: 6px; background: var(--surface-alt); }
+
+    .output-row { display: flex; gap: 8px; align-items: flex-start; }
+    .output-row .output { flex: 1 1 62%; min-width: 0; }
+    .mini-hist { flex: 1 1 38%; min-width: 0; }
+    .mini-hist canvas { width: 100%; height: 74px; display: block; border: 1px solid var(--border); border-radius: 4px; background: var(--surface-alt); }
+    .mini-hist-label { font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -231,16 +224,6 @@
     </div>
     <canvas id="corrScatter" style="width:100%; max-width:520px; display:block;"></canvas>
     <p class="corr-note" id="corrNote"></p>
-    <div class="hist-grid">
-      <div class="hist-col">
-        <div id="histALabel" class="hist-label"></div>
-        <canvas id="histA" style="width:100%; max-width:400px; display:block;"></canvas>
-      </div>
-      <div class="hist-col">
-        <div id="histBLabel" class="hist-label"></div>
-        <canvas id="histB" style="width:100%; max-width:400px; display:block;"></canvas>
-      </div>
-    </div>
   </div>
 
 <script>
@@ -733,7 +716,13 @@ INDICES.forEach((idx, cardIndex) => {
     <button class="show-btn" id="show_${idx.id}">表示</button>
     <p class="note" id="pending_${idx.id}">${idx.note}</p>
     <div class="card-body" id="body_${idx.id}" style="display:none;">
-      <canvas class="output" id="out_${idx.id}"></canvas>
+      <div class="output-row">
+        <canvas class="output" id="out_${idx.id}"></canvas>
+        <div class="mini-hist">
+          <canvas id="hist_${idx.id}"></canvas>
+          <div class="mini-hist-label">分布(1〜99%ile)</div>
+        </div>
+      </div>
       <div class="legend">
         <canvas id="legend_${idx.id}"></canvas>
         <div class="legend-labels">
@@ -765,7 +754,8 @@ INDICES.forEach((idx, cardIndex) => {
   indexCardsContainer.appendChild(card);
   canvases[idx.id] = {
     output: card.querySelector(`#out_${idx.id}`),
-    legend: card.querySelector(`#legend_${idx.id}`)
+    legend: card.querySelector(`#legend_${idx.id}`),
+    hist: card.querySelector(`#hist_${idx.id}`)
   };
   statEls[idx.id] = {
     count: card.querySelector(`#stat_count_${idx.id}`),
@@ -931,6 +921,31 @@ function processImage() {
 }
 
 // ---- 1つの指標だけ生値を計算してキャッシュする(未計算の場合のみ) ----
+// ---- 値配列の1〜99パーセンタイル(近似)を返す。外れ値で表示範囲が過剰に広がるのを防ぐため、
+// 　　全画素ソート(重い)ではなく粗いヒストグラムで近似する。 ----
+function approxPercentileRange(rawArr, n, lo, hi, pLow, pHigh, coarseBins) {
+  const range = (hi - lo) || 1;
+  const coarse = new Uint32Array(coarseBins);
+  for (let p = 0; p < n; p++) {
+    let b = Math.floor((rawArr[p] - lo) / range * coarseBins);
+    if (b >= coarseBins) b = coarseBins - 1; if (b < 0) b = 0;
+    coarse[b]++;
+  }
+  const lowTarget = pLow * n, highTarget = pHigh * n;
+  let cum = 0, loVal = lo, hiVal = hi;
+  for (let b = 0; b < coarseBins; b++) {
+    cum += coarse[b];
+    if (cum >= lowTarget) { loVal = lo + (b / coarseBins) * range; break; }
+  }
+  cum = 0;
+  for (let b = 0; b < coarseBins; b++) {
+    cum += coarse[b];
+    if (cum >= highTarget) { hiVal = lo + ((b + 1) / coarseBins) * range; break; }
+  }
+  if (hiVal <= loVal) { hiVal = loVal + (range || 1) * 0.01; }
+  return [loVal, hiVal];
+}
+
 function computeIndexRaw(idx) {
   if (computedSet.has(idx.id)) return;
   const w = currentW, h = currentH;
@@ -941,12 +956,33 @@ function computeIndexRaw(idx) {
   c.height = h;
 
   const raw = new Float32Array(pixelCount);
+  let minV = Infinity, maxV = -Infinity;
   for (let i = 0, p = 0; i < currentSrcData.length; i += 4, p++) {
     const r = currentSrcData[i], g = currentSrcData[i + 1], b = currentSrcData[i + 2];
-    raw[p] = idx.compute(r, g, b);
+    const v = idx.compute(r, g, b);
+    raw[p] = v;
+    if (v < minV) minV = v;
+    if (v > maxV) maxV = v;
   }
   rawValues[idx.id] = raw;
   computedSet.add(idx.id);
+
+  // ---- カード右側のミニヒストグラム(全画素を毎回スキャンすると重いので、代表サンプルで高速に集計) ----
+  const SAMPLE_STRIDE = Math.max(1, Math.floor(pixelCount / 200000));
+  const sampleSize = Math.ceil(pixelCount / SAMPLE_STRIDE);
+  const sample = new Float32Array(sampleSize);
+  for (let p = 0, s = 0; p < pixelCount; p += SAMPLE_STRIDE, s++) sample[s] = raw[p];
+
+  const [loV, hiV] = approxPercentileRange(sample, sample.length, minV, maxV, 0.01, 0.99, 500);
+  const HIST_BINS = 24;
+  const hist = new Uint32Array(HIST_BINS);
+  const hRange = (hiV - loV) || 1;
+  for (let s = 0; s < sample.length; s++) {
+    let b = Math.floor((sample[s] - loV) / hRange * HIST_BINS);
+    if (b >= HIST_BINS) b = HIST_BINS - 1; if (b < 0) b = 0;
+    hist[b]++;
+  }
+  drawHistogram(canvases[idx.id].hist, hist, loV, hiV, '#3f6b3b', 74, true);
 }
 
 // ---- 「表示」ボタン押下時の処理：未計算ならその場で計算し、カード本体を表示する ----
@@ -1174,52 +1210,6 @@ corrComputeBtn.addEventListener('click', () => {
 
     corrResultEl.textContent = `相関係数 r = ${r.toFixed(4)}(n=${n.toLocaleString()}画素)`;
 
-    // ---- ヒストグラム(A・Bそれぞれ50ビン、全画素で集計) ----
-    // 実際のmin~maxをそのまま使うと、ごく少数の外れ値(前述のVARI等)のせいで
-    // 軸が過剰に広がり、大多数のデータが1~2ビンに潰れて見える。
-    // そのため粗いヒストグラムで近似1~99パーセンタイルを求め、それを表示範囲にする
-    // (全画素ソートは重い(1500万画素で~2.5秒)ため、ソートせず近似する)。
-    function approxPercentileRange(rawArr, lo, hi, pLow, pHigh, coarseBins) {
-      const range = (hi - lo) || 1;
-      const coarse = new Uint32Array(coarseBins);
-      for (let p = 0; p < n; p++) {
-        let b = Math.floor((rawArr[p] - lo) / range * coarseBins);
-        if (b >= coarseBins) b = coarseBins - 1; if (b < 0) b = 0;
-        coarse[b]++;
-      }
-      const lowTarget = pLow * n, highTarget = pHigh * n;
-      let cum = 0, loVal = lo, hiVal = hi;
-      for (let b = 0; b < coarseBins; b++) {
-        cum += coarse[b];
-        if (cum >= lowTarget) { loVal = lo + (b / coarseBins) * range; break; }
-      }
-      cum = 0;
-      for (let b = 0; b < coarseBins; b++) {
-        cum += coarse[b];
-        if (cum >= highTarget) { hiVal = lo + ((b + 1) / coarseBins) * range; break; }
-      }
-      if (hiVal <= loVal) { hiVal = loVal + (range || 1) * 0.01; }
-      return [loVal, hiVal];
-    }
-    const [loX, hiX] = approxPercentileRange(rawA, minX, maxX, 0.01, 0.99, 2000);
-    const [loY, hiY] = approxPercentileRange(rawB, minY, maxY, 0.01, 0.99, 2000);
-
-    const HIST_BINS = 50;
-    const histA = new Uint32Array(HIST_BINS), histB = new Uint32Array(HIST_BINS);
-    const hRangeX = (hiX - loX) || 1, hRangeY = (hiY - loY) || 1;
-    for (let p = 0; p < n; p++) {
-      let ba = Math.floor((rawA[p] - loX) / hRangeX * HIST_BINS);
-      if (ba >= HIST_BINS) ba = HIST_BINS - 1; if (ba < 0) ba = 0;
-      histA[ba]++;
-      let bb = Math.floor((rawB[p] - loY) / hRangeY * HIST_BINS);
-      if (bb >= HIST_BINS) bb = HIST_BINS - 1; if (bb < 0) bb = 0;
-      histB[bb]++;
-    }
-    document.getElementById('histALabel').textContent = `${idxA.name} の分布(1〜99パーセンタイル表示、実際の範囲は${minX.toFixed(2)}〜${maxX.toFixed(2)})`;
-    document.getElementById('histBLabel').textContent = `${idxB.name} の分布(1〜99パーセンタイル表示、実際の範囲は${minY.toFixed(2)}〜${maxY.toFixed(2)})`;
-    drawHistogram(document.getElementById('histA'), histA, loX, hiX, '#3f6b3b');
-    drawHistogram(document.getElementById('histB'), histB, loY, hiY, '#9c5a34');
-
     // ---- 散布図: 全画素だと重く見づらいので無作為抽出して描画 ----
     const SAMPLE_N = Math.min(8000, n);
     const sampled = new Set();
@@ -1296,10 +1286,10 @@ function drawScatter(canvasEl, points, minX, maxX, minY, maxY, labelX, labelY) {
   ctx.restore();
 }
 
-function drawHistogram(canvasEl, bins, minV, maxV, color) {
+function drawHistogram(canvasEl, bins, minV, maxV, color, cssHOverride, compact) {
   const dpr = window.devicePixelRatio || 1;
   const cssW = canvasEl.clientWidth || 380;
-  const cssH = 180;
+  const cssH = cssHOverride || 180;
   canvasEl.width = cssW * dpr;
   canvasEl.height = cssH * dpr;
   canvasEl.style.height = cssH + 'px';
@@ -1307,7 +1297,7 @@ function drawHistogram(canvasEl, bins, minV, maxV, color) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cssW, cssH);
 
-  const padL = 40, padR = 10, padT = 8, padB = 22;
+  const padL = compact ? 8 : 40, padR = compact ? 4 : 10, padT = compact ? 4 : 8, padB = compact ? 14 : 22;
   const plotW = cssW - padL - padR, plotH = cssH - padT - padB;
 
   const maxCount = Math.max(...bins) || 1;
@@ -1328,17 +1318,19 @@ function drawHistogram(canvasEl, bins, minV, maxV, color) {
   ctx.stroke();
 
   ctx.fillStyle = '#6e6f62';
-  ctx.font = '10px sans-serif';
+  ctx.font = compact ? '9px sans-serif' : '10px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(minV.toFixed(2), padL, cssH - 6);
+  ctx.fillText(minV.toFixed(2), padL, cssH - 3);
   ctx.textAlign = 'right';
-  ctx.fillText(maxV.toFixed(2), padL + plotW, cssH - 6);
-  ctx.save();
-  ctx.translate(10, padT + plotH / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.textAlign = 'center';
-  ctx.fillText('度数', 0, 0);
-  ctx.restore();
+  ctx.fillText(maxV.toFixed(2), padL + plotW, cssH - 3);
+  if (!compact) {
+    ctx.save();
+    ctx.translate(10, padT + plotH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillText('度数', 0, 0);
+    ctx.restore();
+  }
 }
 </script>
 </body>
