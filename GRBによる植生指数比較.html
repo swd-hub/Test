@@ -2,9 +2,12 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#eeede4">
   <title>可視光植生指数(RGBベース)一括変換</title>
   <style>
     :root {
+      color-scheme: light;
       --bg: #eeede4;
       --surface: #ffffff;
       --surface-alt: #f6f5ee;
@@ -161,6 +164,19 @@
       font-family: var(--sans); font-size: 9.5px; color: var(--text-muted);
       border: 1px solid var(--border); border-radius: 3px; padding: 1px 2px; background: var(--surface);
       max-width: 90px;
+    }
+
+    canvas, img#source { cursor: zoom-in; }
+    .lightbox-overlay {
+      position: fixed; inset: 0; background: rgba(20, 22, 17, 0.82);
+      display: none; align-items: center; justify-content: center;
+      z-index: 9999; cursor: zoom-out; padding: 24px;
+    }
+    .lightbox-overlay img {
+      width: 94vw; height: 94vh; object-fit: contain;
+      background: #fff;
+      border-radius: 6px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      cursor: zoom-out;
     }
   </style>
 </head>
@@ -1593,6 +1609,45 @@ function drawBoxPlot(canvasEl, box, color, cssHOverride, compact) {
   ctx.fillText(box.min.toFixed(2), padL - 2, yMin + 3);
   ctx.fillText(box.median.toFixed(2), padL - 2, yMed + 3);
 }
+
+// ---- ダブルクリックで写真・グラフを拡大表示するライトボックス ----
+// キャンバス/画像を個別に配線するのではなく、documentへの委譲(dblclick)で
+// 「canvas か img#source をダブルクリックしたら開く」という単一の仕組みにしている。
+function openLightbox(dataUrl) {
+  let overlay = document.getElementById('lightboxOverlay');
+  let img;
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'lightboxOverlay';
+    overlay.className = 'lightbox-overlay';
+    img = document.createElement('img');
+    img.id = 'lightboxImg';
+    overlay.appendChild(img);
+    overlay.addEventListener('click', () => { overlay.style.display = 'none'; });
+    document.body.appendChild(overlay);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && overlay.style.display === 'flex') overlay.style.display = 'none';
+    });
+  } else {
+    img = document.getElementById('lightboxImg');
+  }
+  img.src = dataUrl;
+  overlay.style.display = 'flex';
+}
+
+document.addEventListener('dblclick', (e) => {
+  const el = e.target.closest('canvas, img#source');
+  if (!el) return;
+  let dataUrl;
+  if (el.tagName === 'CANVAS') {
+    if (!el.width || !el.height) return; // まだ何も描かれていない
+    try { dataUrl = el.toDataURL('image/png'); } catch (err) { return; }
+  } else {
+    if (!el.src) return;
+    dataUrl = el.src;
+  }
+  openLightbox(dataUrl);
+});
 </script>
 </body>
 </html>
