@@ -157,7 +157,11 @@
     .output-row { display: flex; gap: 8px; align-items: flex-start; }
     .output-row .output { flex: 1 1 62%; min-width: 0; }
     .mini-hist { flex: 1 1 38%; min-width: 0; }
-    .mini-hist canvas { width: 100%; height: 74px; display: block; border: 1px solid var(--border); border-radius: 4px; background: var(--surface-alt); }
+    .mini-hist-chart {
+      width: 100%; height: 74px; display: block; cursor: zoom-in;
+      border: 1px solid var(--border); border-radius: 4px; background: var(--surface-alt); overflow: hidden;
+    }
+    .mini-hist-chart svg { display: block; width: 100%; height: 100%; }
     .mini-hist-label { font-size: 10px; color: var(--text-muted); }
     .mini-hist-footer { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 2px; }
     .mini-hist-select {
@@ -761,7 +765,7 @@ INDICES.forEach((idx, cardIndex) => {
       <div class="output-row">
         <canvas class="output" id="out_${idx.id}"></canvas>
         <div class="mini-hist">
-          <canvas id="hist_${idx.id}"></canvas>
+          <div class="mini-hist-chart" id="hist_${idx.id}"></div>
           <div class="mini-hist-footer">
             <span class="mini-hist-label">植物判定画素の分布(1〜99%ile)</span>
             <select class="mini-hist-select" id="chartType_${idx.id}">
@@ -1256,7 +1260,7 @@ function updateMaskAndStats(idx) {
     els.min.textContent = '-';
     els.max.textContent = '-';
     delete distCache[idx.id];
-    clearHistogramCanvas(canvases[idx.id].hist);
+    clearMiniChart(canvases[idx.id].hist);
 
     if (sumEls) {
       sumEls.count.textContent = '0';
@@ -1418,96 +1422,81 @@ function drawScatter(canvasEl, points, minX, maxX, minY, maxY, labelX, labelY) {
   ctx.restore();
 }
 
-function clearHistogramCanvas(canvasEl) {
-  const dpr = window.devicePixelRatio || 1;
-  const cssW = canvasEl.clientWidth || 380;
-  const cssH = canvasEl.clientHeight || 74;
-  canvasEl.width = cssW * dpr;
-  canvasEl.height = cssH * dpr;
-  const ctx = canvasEl.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, cssW, cssH);
+// ---- ミニ分布チャート(ヒストグラム/バイオリン/箱ひげ図)はSVG(ベクター)で描画する。
+// 　　ラスター(canvas)と違い拡大表示しても輪郭がぼやけない。座標系は常に固定の
+// 　　論理サイズ(W×H)で組み立て、CSS側の実表示サイズには viewBox で自動追従させる。
+const MINI_CHART_W = 380, MINI_CHART_H = 74;
+
+function clearMiniChart(hostEl) {
+  hostEl.innerHTML = '';
 }
 
-// ---- ミニ分布チャートを、選択中の種類(ヒストグラム/バイオリン)で再描画する。
+// ---- ミニ分布チャートを、選択中の種類(ヒストグラム/バイオリン/箱ひげ図)で再描画する。
 // 　　集計済みのビンをキャッシュから使うので、切り替え自体に追加計算は発生しない。 ----
 function renderMiniChart(idx) {
   const cached = distCache[idx.id];
-  const canvasEl = canvases[idx.id].hist;
-  if (!cached) { clearHistogramCanvas(canvasEl); return; }
+  const hostEl = canvases[idx.id].hist;
+  if (!cached) { clearMiniChart(hostEl); return; }
   const select = document.getElementById(`chartType_${idx.id}`);
   const mode = select ? select.value : 'hist';
   if (mode === 'violin') {
-    drawViolin(canvasEl, cached.hist, cached.loV, cached.hiV, '#3f6b3b', 74, true);
+    drawViolin(hostEl, cached.hist, cached.loV, cached.hiV, '#3f6b3b', cached.box.median);
   } else if (mode === 'box') {
-    drawBoxPlot(canvasEl, cached.box, '#3f6b3b', 74, true);
+    drawBoxPlot(hostEl, cached.box, '#3f6b3b');
   } else {
-    drawHistogram(canvasEl, cached.hist, cached.loV, cached.hiV, '#3f6b3b', 74, true);
+    drawHistogram(hostEl, cached.hist, cached.loV, cached.hiV, '#3f6b3b', cached.box.median);
   }
 }
 
-function drawHistogram(canvasEl, bins, minV, maxV, color, cssHOverride, compact) {
-  const dpr = window.devicePixelRatio || 1;
-  const cssW = canvasEl.clientWidth || 380;
-  const cssH = cssHOverride || 180;
-  canvasEl.width = cssW * dpr;
-  canvasEl.height = cssH * dpr;
-  canvasEl.style.height = cssH + 'px';
-  const ctx = canvasEl.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, cssW, cssH);
+function svgWrap(inner) {
+  return `<svg viewBox="0 0 ${MINI_CHART_W} ${MINI_CHART_H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">${inner}</svg>`;
+}
 
-  const padL = compact ? 8 : 40, padR = compact ? 4 : 10, padT = compact ? 4 : 8, padB = compact ? 14 : 22;
-  const plotW = cssW - padL - padR, plotH = cssH - padT - padB;
-
+function drawHistogram(hostEl, bins, minV, maxV, color, median) {
+  const W = MINI_CHART_W, H = MINI_CHART_H;
+  const padL = 8, padR = 4, padT = 4, padB = 14;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
   const maxCount = Math.max(...bins) || 1;
   const barW = plotW / bins.length;
 
-  ctx.fillStyle = color;
+  let bars = '';
   bins.forEach((cnt, i) => {
     const h = (cnt / maxCount) * plotH;
-    ctx.fillRect(padL + i * barW, padT + plotH - h, Math.max(1, barW - 1), h);
+    const x = padL + i * barW;
+    const y = padT + plotH - h;
+    bars += `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${Math.max(1, barW - 1).toFixed(2)}" height="${Math.max(0, h).toFixed(2)}" fill="${color}"/>`;
   });
 
-  ctx.strokeStyle = '#232a20';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(padL, padT);
-  ctx.lineTo(padL, padT + plotH);
-  ctx.lineTo(padL + plotW, padT + plotH);
-  ctx.stroke();
-
-  ctx.fillStyle = '#6e6f62';
-  ctx.font = compact ? '9px sans-serif' : '10px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(minV.toFixed(2), padL, cssH - 3);
-  ctx.textAlign = 'right';
-  ctx.fillText(maxV.toFixed(2), padL + plotW, cssH - 3);
-  if (!compact) {
-    ctx.save();
-    ctx.translate(10, padT + plotH / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = 'center';
-    ctx.fillText('度数', 0, 0);
-    ctx.restore();
+  // 中央値の位置に目印(点線)を1本だけ加える(情報を増やしすぎないよう、これ以外は足さない)
+  let medianMark = '';
+  if (typeof median === 'number' && isFinite(median)) {
+    const range = (maxV - minV) || 1;
+    const t = Math.min(1, Math.max(0, (median - minV) / range));
+    const mx = padL + t * plotW;
+    const labelX = Math.min(Math.max(mx, padL + 16), padL + plotW - 16);
+    const labelText = median.toFixed(2);
+    medianMark = `
+    <line x1="${mx.toFixed(2)}" y1="${padT}" x2="${mx.toFixed(2)}" y2="${padT + plotH}" stroke="#9c5a34" stroke-width="1.2" stroke-dasharray="3,2"/>
+    <rect x="${(labelX - labelText.length * 3.1).toFixed(2)}" y="${padT}" width="${(labelText.length * 6.2).toFixed(2)}" height="10" fill="#f6f5ee" fill-opacity="0.9"/>
+    <text x="${labelX.toFixed(2)}" y="${padT + 8}" font-size="9" fill="#9c5a34" font-family="sans-serif" text-anchor="middle">${labelText}</text>`;
   }
+
+  const inner = `
+    ${bars}
+    ${medianMark}
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="#232a20" stroke-width="1"/>
+    <line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#232a20" stroke-width="1"/>
+    <text x="${padL}" y="${H - 3}" font-size="9" fill="#6e6f62" font-family="sans-serif">${minV.toFixed(2)}</text>
+    <text x="${padL + plotW}" y="${H - 3}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${maxV.toFixed(2)}</text>`;
+  hostEl.innerHTML = svgWrap(inner);
 }
 
 // ---- バイオリンプロット: ヒストグラムと同じビンデータを使い、値の範囲を縦軸にとって
 // 　　各ビンの度数を左右対称の幅として輪郭を描く(見た目のみヒストグラムと切り替え可能)。 ----
-function drawViolin(canvasEl, bins, minV, maxV, color, cssHOverride, compact) {
-  const dpr = window.devicePixelRatio || 1;
-  const cssW = canvasEl.clientWidth || 380;
-  const cssH = cssHOverride || 180;
-  canvasEl.width = cssW * dpr;
-  canvasEl.height = cssH * dpr;
-  canvasEl.style.height = cssH + 'px';
-  const ctx = canvasEl.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, cssW, cssH);
-
-  const padL = compact ? 30 : 46, padR = compact ? 8 : 14, padT = compact ? 6 : 10, padB = compact ? 6 : 10;
-  const plotW = cssW - padL - padR, plotH = cssH - padT - padB;
+function drawViolin(hostEl, bins, minV, maxV, color, median) {
+  const W = MINI_CHART_W, H = MINI_CHART_H;
+  const padL = 30, padR = 8, padT = 4, padB = 4;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
   const cx = padL + plotW / 2;
   const maxCount = Math.max(...bins) || 1;
   const n = bins.length;
@@ -1518,101 +1507,68 @@ function drawViolin(canvasEl, bins, minV, maxV, color, cssHOverride, compact) {
     const t = (i + 0.5) / n;
     const y = padT + plotH - t * plotH;
     const w = (bins[i] / maxCount) * (plotW / 2) * 0.92;
-    rightPts.push({ x: cx + w, y });
+    rightPts.push([cx + w, y]);
   }
-  const leftPts = rightPts.map(p => ({ x: cx - (p.x - cx), y: p.y }));
+  const leftPts = rightPts.map(([x, y]) => [cx - (x - cx), y]);
 
-  ctx.beginPath();
-  ctx.moveTo(cx, padT + plotH);
-  rightPts.forEach(p => ctx.lineTo(p.x, p.y));
-  ctx.lineTo(cx, padT);
-  for (let i = leftPts.length - 1; i >= 0; i--) ctx.lineTo(leftPts[i].x, leftPts[i].y);
-  ctx.closePath();
-  ctx.fillStyle = color;
-  ctx.globalAlpha = 0.75;
-  ctx.fill();
-  ctx.globalAlpha = 1;
-  ctx.strokeStyle = '#232a20';
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  let d = `M ${cx} ${padT + plotH} `;
+  rightPts.forEach(([x, y]) => { d += `L ${x.toFixed(2)} ${y.toFixed(2)} `; });
+  d += `L ${cx} ${padT} `;
+  for (let i = leftPts.length - 1; i >= 0; i--) d += `L ${leftPts[i][0].toFixed(2)} ${leftPts[i][1].toFixed(2)} `;
+  d += 'Z';
 
-  ctx.strokeStyle = '#dad6c7';
-  ctx.beginPath();
-  ctx.moveTo(cx, padT);
-  ctx.lineTo(cx, padT + plotH);
-  ctx.stroke();
+  // 中央値の位置に目印(点線)を1本だけ加える
+  let medianMark = '';
+  if (typeof median === 'number' && isFinite(median)) {
+    const range = (maxV - minV) || 1;
+    const t = Math.min(1, Math.max(0, (median - minV) / range));
+    const my = padT + plotH - t * plotH;
+    medianMark = `
+    <line x1="${padL}" y1="${my.toFixed(2)}" x2="${padL + plotW}" y2="${my.toFixed(2)}" stroke="#9c5a34" stroke-width="1.2" stroke-dasharray="3,2"/>
+    <text x="${padL - 2}" y="${(my + 3).toFixed(2)}" font-size="9" fill="#9c5a34" font-family="sans-serif" text-anchor="end">${median.toFixed(2)}</text>`;
+  }
 
-  ctx.fillStyle = '#6e6f62';
-  ctx.font = compact ? '9px sans-serif' : '10px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText(maxV.toFixed(2), padL - 2, padT + 7);
-  ctx.fillText(minV.toFixed(2), padL - 2, padT + plotH);
+  const inner = `
+    <path d="${d}" fill="${color}" fill-opacity="0.75" stroke="#232a20" stroke-width="1"/>
+    <line x1="${cx}" y1="${padT}" x2="${cx}" y2="${padT + plotH}" stroke="#dad6c7" stroke-width="1"/>
+    ${medianMark}
+    <text x="${padL - 2}" y="${padT + 7}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${maxV.toFixed(2)}</text>
+    <text x="${padL - 2}" y="${padT + plotH}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${minV.toFixed(2)}</text>`;
+  hostEl.innerHTML = svgWrap(inner);
 }
 
 // ---- 箱ひげ図: 植物判定画素の最小・第1四分位・中央値・第3四分位・最大値を縦軸で描く。
 // 　　値はupdateMaskAndStatsで既にソート済みの配列からO(1)で取り出し済み(追加ソート不要)。 ----
-function drawBoxPlot(canvasEl, box, color, cssHOverride, compact) {
-  const dpr = window.devicePixelRatio || 1;
-  const cssW = canvasEl.clientWidth || 380;
-  const cssH = cssHOverride || 180;
-  canvasEl.width = cssW * dpr;
-  canvasEl.height = cssH * dpr;
-  canvasEl.style.height = cssH + 'px';
-  const ctx = canvasEl.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, cssW, cssH);
-
-  const padL = compact ? 30 : 46, padR = compact ? 8 : 14, padT = compact ? 6 : 10, padB = compact ? 6 : 10;
-  const plotW = cssW - padL - padR, plotH = cssH - padT - padB;
+function drawBoxPlot(hostEl, box, color) {
+  const W = MINI_CHART_W, H = MINI_CHART_H;
+  const padL = 30, padR = 8, padT = 6, padB = 6;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
   const cx = padL + plotW / 2;
-  const boxWidth = Math.min(plotW * 0.5, compact ? 26 : 60);
-
+  const boxWidth = Math.min(plotW * 0.5, 26);
   const range = (box.max - box.min) || 1;
   const yFor = (v) => padT + plotH - ((v - box.min) / range) * plotH;
-
   const yMin = yFor(box.min), yMax = yFor(box.max);
   const yQ1 = yFor(box.q1), yQ3 = yFor(box.q3), yMed = yFor(box.median);
   const capHalf = boxWidth / 2.4;
 
-  ctx.strokeStyle = '#232a20';
-  ctx.lineWidth = 1;
-
-  // ひげ(最小〜第1四分位、第3四分位〜最大)
-  ctx.beginPath();
-  ctx.moveTo(cx, yMin); ctx.lineTo(cx, yQ1);
-  ctx.moveTo(cx, yQ3); ctx.lineTo(cx, yMax);
-  ctx.stroke();
-
-  // 端のキャップ
-  ctx.beginPath();
-  ctx.moveTo(cx - capHalf, yMin); ctx.lineTo(cx + capHalf, yMin);
-  ctx.moveTo(cx - capHalf, yMax); ctx.lineTo(cx + capHalf, yMax);
-  ctx.stroke();
-
-  // 箱(第1〜第3四分位)
-  ctx.fillStyle = color;
-  ctx.globalAlpha = 0.75;
-  ctx.fillRect(cx - boxWidth / 2, yQ3, boxWidth, Math.max(1, yQ1 - yQ3));
-  ctx.globalAlpha = 1;
-  ctx.strokeRect(cx - boxWidth / 2, yQ3, boxWidth, Math.max(1, yQ1 - yQ3));
-
-  // 中央値の線
-  ctx.beginPath();
-  ctx.moveTo(cx - boxWidth / 2, yMed);
-  ctx.lineTo(cx + boxWidth / 2, yMed);
-  ctx.stroke();
-
-  ctx.fillStyle = '#6e6f62';
-  ctx.font = compact ? '9px sans-serif' : '10px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText(box.max.toFixed(2), padL - 2, yMax + 3);
-  ctx.fillText(box.min.toFixed(2), padL - 2, yMin + 3);
-  ctx.fillText(box.median.toFixed(2), padL - 2, yMed + 3);
+  const inner = `
+    <line x1="${cx}" y1="${yMin.toFixed(2)}" x2="${cx}" y2="${yQ1.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
+    <line x1="${cx}" y1="${yQ3.toFixed(2)}" x2="${cx}" y2="${yMax.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
+    <line x1="${(cx - capHalf).toFixed(2)}" y1="${yMin.toFixed(2)}" x2="${(cx + capHalf).toFixed(2)}" y2="${yMin.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
+    <line x1="${(cx - capHalf).toFixed(2)}" y1="${yMax.toFixed(2)}" x2="${(cx + capHalf).toFixed(2)}" y2="${yMax.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
+    <rect x="${(cx - boxWidth / 2).toFixed(2)}" y="${yQ3.toFixed(2)}" width="${boxWidth.toFixed(2)}" height="${Math.max(1, yQ1 - yQ3).toFixed(2)}" fill="${color}" fill-opacity="0.75" stroke="#232a20" stroke-width="1"/>
+    <line x1="${(cx - boxWidth / 2).toFixed(2)}" y1="${yMed.toFixed(2)}" x2="${(cx + boxWidth / 2).toFixed(2)}" y2="${yMed.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
+    <text x="${padL - 2}" y="${(yMax + 3).toFixed(2)}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${box.max.toFixed(2)}</text>
+    <text x="${padL - 2}" y="${(yMin + 3).toFixed(2)}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${box.min.toFixed(2)}</text>
+    <text x="${padL - 2}" y="${(yMed + 3).toFixed(2)}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${box.median.toFixed(2)}</text>`;
+  hostEl.innerHTML = svgWrap(inner);
 }
 
 // ---- ダブルクリックで写真・グラフを拡大表示するライトボックス ----
-// キャンバス/画像を個別に配線するのではなく、documentへの委譲(dblclick)で
-// 「canvas か img#source をダブルクリックしたら開く」という単一の仕組みにしている。
+// キャンバス/画像/SVGミニチャートを個別に配線するのではなく、documentへの委譲(dblclick)で
+// 「canvas・img#source・SVGミニチャートのいずれかをダブルクリックしたら開く」という
+// 単一の仕組みにしている。SVGはラスター化せず、SVGのままdata URIにして<img>へ渡すことで
+// ライトボックス側で拡大してもベクターのままぼやけずに表示される。
 function openLightbox(dataUrl) {
   let overlay = document.getElementById('lightboxOverlay');
   let img;
@@ -1635,7 +1591,26 @@ function openLightbox(dataUrl) {
   overlay.style.display = 'flex';
 }
 
+// SVG要素をimgのsrcに渡せるdata URIに変換する。viewBoxはそのままに、
+// 明示的なwidth/height属性を持たせて、外部画像として使われたときの
+// 縦横比(intrinsic aspect ratio)をブラウザが正しく認識できるようにする。
+function svgToDataUri(svgEl) {
+  const clone = svgEl.cloneNode(true);
+  const vb = svgEl.viewBox && svgEl.viewBox.baseVal;
+  clone.setAttribute('width', (vb && vb.width) || MINI_CHART_W);
+  clone.setAttribute('height', (vb && vb.height) || MINI_CHART_H);
+  const markup = new XMLSerializer().serializeToString(clone);
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markup);
+}
+
 document.addEventListener('dblclick', (e) => {
+  const chartHost = e.target.closest('.mini-hist-chart');
+  if (chartHost) {
+    const svgEl = chartHost.querySelector('svg');
+    if (!svgEl) return; // まだ何も描かれていない
+    openLightbox(svgToDataUri(svgEl));
+    return;
+  }
   const el = e.target.closest('canvas, img#source');
   if (!el) return;
   let dataUrl;
@@ -1643,8 +1618,17 @@ document.addEventListener('dblclick', (e) => {
     if (!el.width || !el.height) return; // まだ何も描かれていない
     try { dataUrl = el.toDataURL('image/png'); } catch (err) { return; }
   } else {
-    if (!el.src) return;
-    dataUrl = el.src;
+    // img#source: 読み込み直後にblob URLを解放しているため、el.srcをそのまま
+    // 別のimgに渡すと壊れた画像になる。既にデコード済みのビットマップを
+    // canvas経由で新しいdata URLに変換することで、解放済みURLを回避する。
+    if (!el.naturalWidth || !el.naturalHeight) return;
+    try {
+      const tmp = document.createElement('canvas');
+      tmp.width = el.naturalWidth;
+      tmp.height = el.naturalHeight;
+      tmp.getContext('2d').drawImage(el, 0, 0);
+      dataUrl = tmp.toDataURL('image/png');
+    } catch (err) { return; }
   }
   openLightbox(dataUrl);
 });
