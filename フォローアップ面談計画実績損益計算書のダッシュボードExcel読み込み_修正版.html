@@ -386,7 +386,8 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 const DEFAULT_INCOME_CSV =
 `科目	計画	実績
 売上高	12,236,472	5,843,396
-雑収入	200,000	100,000
+青年就農給付金	150,000	75,000
+その他雑収入	50,000	25,000
 家事・事業消費金額	300,000	150,000
 小計	12,736,472	6,093,396`;
 
@@ -537,6 +538,8 @@ const NAMED_STACK_COLORS = {
   "経常利益": "#4a86c8",
   "売上": "#4a86c8",
   "雑収入": "#9aa4b2",
+  "青年就農給付金": "#9aa4b2",
+  "その他雑収入": "#b08fce",
   "家事消費": "#c8975a"
 };
 const DYNAMIC_STACK_PALETTE = ["#4a86c8", "#e08030", "#5fa777", "#a56bbd", "#c94f4f", "#4fa3a3"];
@@ -583,7 +586,7 @@ function addLegend(svg, keys, color, margin, fontSize = 18, isPrint = false) {
 }
 
 /* SVG右上隅に注記テキストを配置する関数 */
-function drawTopRightNote(svgId, text, yOffset = 0) {
+function drawTopRightNote(svgId, text) {
   const svg = d3.select(`#${svgId}`);
   if (svg.empty()) return;
   const isPrint = svgId.startsWith("print-");
@@ -593,7 +596,7 @@ function drawTopRightNote(svgId, text, yOffset = 0) {
 
   svg.append("text")
     .attr("x", width - marginRight)
-    .attr("y", (isPrint ? 10 : 14) + yOffset)
+    .attr("y", isPrint ? 20 : 14)
     .attr("text-anchor", "end")
     .attr("font-size", isPrint ? "7.5px" : "12px")
     .attr("font-weight", "bold")
@@ -960,7 +963,7 @@ function drawBreakEvenD3(svgId, d) {
       .attr("y", margin.top + (isPrint ? 35 : 50))
       .attr("font-size", isPrint ? "9px" : "13px")
       .attr("fill", "#333333")
-      .text(`計画（実績）値 ${Math.round(p.revenue).toLocaleString()}万円`);
+      .text(`売上高＋家事消費 ${Math.round(p.revenue).toLocaleString()}万円`);
     svg.append("text")
       .attr("x", offsetX + margin.left + (isPrint ? 3 : 4))
       .attr("y", margin.top + (isPrint ? 44 : 63))
@@ -995,8 +998,18 @@ function renderAllCharts() {
 
   const salesPlan = state.income.find(i => i.category === "売上高")?.plan || 0;
   const salesActual = state.income.find(i => i.category === "売上高")?.actual || 0;
-  const miscPlan = state.income.find(i => i.category === "雑収入")?.plan || 0;
-  const miscActual = state.income.find(i => i.category === "雑収入")?.actual || 0;
+  const youngFarmerPlan = state.income.find(i => i.category === "青年就農給付金")?.plan || 0;
+  const youngFarmerActual = state.income.find(i => i.category === "青年就農給付金")?.actual || 0;
+  const otherMiscRow = state.income.find(i => i.category === "その他雑収入");
+  const miscRow = state.income.find(i => i.category === "雑収入");
+  const otherMiscPlan = otherMiscRow
+    ? otherMiscRow.plan
+    : Math.max(0, (miscRow?.plan || 0) - youngFarmerPlan);
+  const otherMiscActual = otherMiscRow
+    ? otherMiscRow.actual
+    : Math.max(0, (miscRow?.actual || 0) - youngFarmerActual);
+  const miscPlan = youngFarmerPlan + otherMiscPlan;
+  const miscActual = youngFarmerActual + otherMiscActual;
   const householdPlan = state.income.find(i => i.category === "家事・事業消費金額")?.plan || 0;
   const householdActual = state.income.find(i => i.category === "家事・事業消費金額")?.actual || 0;
 
@@ -1046,14 +1059,14 @@ function renderAllCharts() {
   const expActualMan = Math.round(YEN_TO_MAN(expenseTotalActual)).toLocaleString();
   const expenseNoteText = `経費：計画 ${expPlanMan}万円 実績 ${expActualMan}万円`;
   drawTopRightNote("chart-netincome", expenseNoteText);
-  drawTopRightNote("print-chart-netincome", expenseNoteText, 10);
+  drawTopRightNote("print-chart-netincome", expenseNoteText);
 
   const revExpData = [
-    { type: "計画", 売上高: YEN_TO_MAN(salesPlan), 家事消費: YEN_TO_MAN(householdPlan), 雑収入: YEN_TO_MAN(miscPlan) },
-    { type: "実績", 売上高: YEN_TO_MAN(salesActual), 家事消費: YEN_TO_MAN(householdActual), 雑収入: YEN_TO_MAN(miscActual) }
+    { type: "計画", 売上高: YEN_TO_MAN(salesPlan), 青年就農給付金: YEN_TO_MAN(youngFarmerPlan), その他雑収入: YEN_TO_MAN(otherMiscPlan), 家事消費: YEN_TO_MAN(householdPlan) },
+    { type: "実績", 売上高: YEN_TO_MAN(salesActual), 青年就農給付金: YEN_TO_MAN(youngFarmerActual), その他雑収入: YEN_TO_MAN(otherMiscActual), 家事消費: YEN_TO_MAN(householdActual) }
   ];
-  drawStackedHorizontalBarD3("chart-revenue-income", revExpData, ["売上高", "家事消費", "雑収入"], "type");
-  drawStackedHorizontalBarD3("print-chart-revenue-income", revExpData, ["売上高", "家事消費", "雑収入"], "type");
+  drawStackedHorizontalBarD3("chart-revenue-income", revExpData, ["売上高", "青年就農給付金", "その他雑収入", "家事消費"], "type");
+  drawStackedHorizontalBarD3("print-chart-revenue-income", revExpData, ["売上高", "青年就農給付金", "その他雑収入", "家事消費"], "type");
 
   const cropKeys = crops.map(c => c.name);
   const revData = [
@@ -1284,6 +1297,7 @@ function extractExcelIncomeAndCrop(grid, header) {
   // 「3行＝1品目」の固定ブロックとしてまとめて処理する。
   const metricRows = [];
   let zatsuPlan = "", zatsuActual = "";
+  let youngFarmerPlan = "", youngFarmerActual = "";
   let kajiPlan = "", kajiActual = "";
   for (let r = header.row + 1; r < grid.length; r++) {
     const row = grid[r] || [];
@@ -1298,9 +1312,13 @@ function extractExcelIncomeAndCrop(grid, header) {
     }
     if (last.includes("計")) break; // 「収入計①」等で終了
     if (excelCellStr(plan) === "" && excelCellStr(actual) === "") continue; // 空行
+    if (/青年就農給付金/.test(last)) {
+      youngFarmerPlan = excelFormatNum(plan);
+      youngFarmerActual = excelFormatNum(actual);
+      continue;
+    }
     if (/雑収入/.test(last)) { zatsuPlan = excelFormatNum(plan); zatsuActual = excelFormatNum(actual); continue; }
     if (/家事.*消費|事業消費/.test(last)) { kajiPlan = excelFormatNum(plan); kajiActual = excelFormatNum(actual); continue; }
-    if (/青年就農給付金/.test(last)) continue; // 雑収入にすでに含まれるため無視
     // その他の不明な行（区分見出しなど）は無視
   }
   const cropLines = ["作目名等\t\t計画\t実績"];
@@ -1323,7 +1341,14 @@ function extractExcelIncomeAndCrop(grid, header) {
   }
   const incomeLines = ["科目\t計画\t実績"];
   incomeLines.push(["売上高", salesFound ? salesPlan.toLocaleString("ja-JP") : "", salesFound ? salesActual.toLocaleString("ja-JP") : ""].join("\t"));
-  incomeLines.push(["雑収入", zatsuPlan, zatsuActual].join("\t"));
+  if (youngFarmerPlan !== "" || youngFarmerActual !== "") {
+    incomeLines.push(["青年就農給付金", youngFarmerPlan, youngFarmerActual].join("\t"));
+    const otherPlan = excelToNumberLoose(zatsuPlan) - excelToNumberLoose(youngFarmerPlan);
+    const otherActual = excelToNumberLoose(zatsuActual) - excelToNumberLoose(youngFarmerActual);
+    incomeLines.push(["その他雑収入", Number.isNaN(otherPlan) ? "" : Math.max(0, otherPlan).toLocaleString("ja-JP"), Number.isNaN(otherActual) ? "" : Math.max(0, otherActual).toLocaleString("ja-JP")].join("\t"));
+  } else {
+    incomeLines.push(["雑収入", zatsuPlan, zatsuActual].join("\t"));
+  }
   incomeLines.push(["家事・事業消費金額", kajiPlan, kajiActual].join("\t"));
   return { incomeText: incomeLines.join("\n"), cropText: cropLines.length > 1 ? cropLines.join("\n") : "" };
 }
