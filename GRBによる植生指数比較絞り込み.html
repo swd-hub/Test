@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#eeede4">
+  <title>可視光植生指数(RGBベース)一括変換</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #eeede4;
+      --surface: #ffffff;
+      --surface-alt: #f6f5ee;
+      --border: #dad6c7;
+      --text: #232a20;
+      --text-muted: #6e6f62;
+      --accent: #3f6b3b;
+      --accent-dark: #2b4c29;
+      --soil: #9c5a34;
+      --soil-dark: #7a4527;
+      --mono: ui-monospace, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Segoe UI", sans-serif;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 28px clamp(16px, 4vw, 44px) 60px;
+      line-height: 1.55;
+      font-size: 14px;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin: 0 0 10px;
+      padding-left: 10px;
+      border-left: 3px solid var(--accent);
+      color: var(--text);
+    }
+    .controls {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 24px;
+    }
+    .controls input[type="file"] { font-family: var(--sans); font-size: 13px; }
+    .hint { font-size: 12px; color: var(--text-muted); margin: 8px 0 0; }
+    button {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    button:hover { background: var(--accent-dark); }
+    button:focus-visible { outline: 2px solid var(--soil); outline-offset: 2px; }
+
+    .progress-box { margin-top: 10px; max-width: 420px; }
+    .progress-track { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 4px; height: 10px; overflow: hidden; }
+    .progress-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.1s; }
+    .progress-text { font-size: 12px; color: var(--text-muted); margin: 5px 0 0; }
+
+    .images { display: flex; gap: 18px; flex-wrap: wrap; }
+    .card { width: 340px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 14px; box-sizing: border-box; }
+    .card h3 { margin: 0 0 3px; font-size: 14px; font-weight: 700; }
+    canvas.output, img#source {
+      width: 100%; height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      display: block;
+      background: var(--surface-alt);
+    }
+    #placeholder { color: var(--text-muted); font-size: 13px; }
+    h3 { margin-bottom: 2px; font-size: 15px; }
+    .formula { font-size: 11.5px; color: var(--text-muted); margin: 0 0 8px 0; font-family: var(--mono); }
+    .note { font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.5; }
+    .legend { margin-top: 8px; }
+    .legend canvas { width: 100%; height: 14px; display: block; border: 1px solid var(--border); border-radius: 3px; }
+    .legend-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 3px; font-family: var(--mono); }
+
+    .threshold { margin-top: 10px; font-size: 12px; }
+    .threshold label { display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+    .threshold input[type="number"] {
+      width: 72px; font-family: var(--mono); font-size: 12px;
+      border: 1px solid var(--border); border-radius: 4px; padding: 3px 6px;
+    }
+    .threshold input[type="range"] { width: 100%; margin-top: 6px; accent-color: var(--accent); }
+    .auto-thresh-btn {
+      display: block; margin-top: 8px; width: 100%;
+      background: transparent; color: var(--soil-dark);
+      border: 1px solid var(--soil); font-size: 11.5px; font-weight: 600;
+      padding: 5px 8px; border-radius: 5px;
+    }
+    .auto-thresh-btn:hover { background: var(--soil); color: #fff; }
+    .auto-thresh-btn.applied {
+      background: var(--soil); color: #fff; border-color: var(--soil-dark);
+    }
+    .auto-thresh-btn.applied::after { content: " ✓ 適用済み"; }
+
+    .stats { margin-top: 10px; font-size: 12px; }
+    .stats table { width: 100%; border-collapse: collapse; }
+    .stats td { padding: 3px 2px; border-bottom: 1px dotted var(--border); }
+    .stats td:first-child { color: var(--text-muted); }
+    .stats td:last-child { text-align: right; font-family: var(--mono); font-weight: 600; }
+
+    .rgb-channels { margin-top: 12px; }
+    .rgb-channels .label { font-size: 12px; color: var(--text-muted); margin: 0 0 4px 0; }
+    .rgb-channels .row { display: flex; gap: 6px; }
+    .rgb-channels .chan { flex: 1; min-width: 0; }
+    .rgb-channels canvas { width: 100%; height: auto; border: 1px solid var(--border); border-radius: 4px; display: block; }
+    .rgb-channels .chan-label { text-align: center; font-size: 11px; margin-top: 3px; font-weight: bold; font-family: var(--mono); }
+
+    .section-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      margin-top: 28px;
+    }
+
+    .summary-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }
+    table.summary-table { border-collapse: collapse; font-size: 12px; white-space: nowrap; width: 100%; }
+    table.summary-table thead th {
+      background: var(--accent); color: #fff; padding: 8px 10px; text-align: left; font-weight: 600;
+      position: sticky; top: 0;
+    }
+    table.summary-table thead th:first-child { position: sticky; left: 0; z-index: 2; }
+    table.summary-table tbody td {
+      padding: 5px 10px; border-bottom: 1px solid var(--border); font-family: var(--mono);
+    }
+    table.summary-table tbody td:first-child {
+      font-family: var(--sans); font-weight: 600; position: sticky; left: 0; background: var(--surface);
+    }
+    table.summary-table tbody td.formula-cell { color: var(--text-muted); }
+    table.summary-table tbody td:not(:first-child) { text-align: right; }
+    table.summary-table tbody tr:nth-child(even) td { background: var(--surface-alt); }
+
+    .corr-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+    .corr-controls select {
+      font-family: var(--sans); font-size: 13px;
+      border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px; background: var(--surface);
+    }
+    .corr-result { font-family: var(--mono); font-weight: 700; color: var(--accent-dark); }
+    .corr-note { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+    canvas#corrScatter { border: 1px solid var(--border); border-radius: 6px; background: var(--surface-alt); }
+
+    .output-row { display: flex; gap: 8px; align-items: flex-start; }
+    .output-row .output { flex: 1 1 62%; min-width: 0; }
+    .mini-hist { flex: 1 1 38%; min-width: 0; }
+    .mini-hist-chart {
+      width: 100%; height: 74px; display: block; cursor: zoom-in;
+      border: 1px solid var(--border); border-radius: 4px; background: var(--surface-alt); overflow: hidden;
+    }
+    .mini-hist-chart svg { display: block; width: 100%; height: 100%; }
+    .mini-hist-label { font-size: 10px; color: var(--text-muted); }
+    .mini-hist-footer { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 2px; }
+    .mini-hist-select {
+      font-family: var(--sans); font-size: 9.5px; color: var(--text-muted);
+      border: 1px solid var(--border); border-radius: 3px; padding: 1px 2px; background: var(--surface);
+      max-width: 90px;
+    }
+
+    canvas, img#source { cursor: zoom-in; }
+    .lightbox-overlay {
+      position: fixed; inset: 0; background: rgba(20, 22, 17, 0.82);
+      display: none; align-items: center; justify-content: center;
+      z-index: 9999; cursor: zoom-out; padding: 24px;
+    }
+    .lightbox-overlay img {
+      width: 94vw; height: 94vh; object-fit: contain;
+      background: #fff;
+      border-radius: 6px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      cursor: zoom-out;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <h3 class="section-title">画像を選択してください</h3>
+    <input type="file" id="fileInput" accept="image/*">
+    <button id="showAllBtn" style="margin-left:12px;">すべての指標を計算・表示</button>
+    <label style="margin-left:12px; font-size:13px;">
+      分布グラフ(全カード一括):
+      <select id="globalChartType">
+        <option value="hist">ヒストグラム</option>
+        <option value="violin">バイオリン</option>
+        <option value="box">箱ひげ図</option>
+      </select>
+    </label>
+    <p class="hint">
+      各カードの「表示」ボタンを押すと、その指標だけを計算して表示します(重い場合は必要な指標だけ表示してください)。
+    </p>
+    <div id="allProgressBox" class="progress-box" style="display:none;">
+      <div class="progress-track">
+        <div id="allProgressBar" class="progress-fill"></div>
+      </div>
+      <p id="allProgressText" class="progress-text"></p>
+    </div>
+  </div>
+
+  <div class="images">
+    <div class="card">
+      <h3>元画像</h3>
+      <img id="source" alt="元画像" style="display:none;">
+      <p id="placeholder">まだ画像が選択されていません</p>
+      <div class="rgb-channels" id="rgbChannels" style="display:none;">
+        <p class="label">RGB各チャンネル</p>
+        <div class="row">
+          <div class="chan">
+            <canvas id="chan_r"></canvas>
+            <div class="chan-label" style="color:#c00;">R</div>
+          </div>
+          <div class="chan">
+            <canvas id="chan_g"></canvas>
+            <div class="chan-label" style="color:#0a0;">G</div>
+          </div>
+          <div class="chan">
+            <canvas id="chan_b"></canvas>
+            <div class="chan-label" style="color:#00c;">B</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="indexCards"></div>
+  </div>
+
+  <div id="summaryTableBox" class="section-box">
+    <h3 class="section-title">全指標サマリー(クロス表)</h3>
+    <p class="hint">各カードで「表示」を押す(または「すべての指標を計算・表示」)と、その行の統計が埋まります。</p>
+    <div class="summary-table-wrap">
+      <table id="summaryTable" class="summary-table">
+        <thead>
+          <tr>
+            <th>指数名</th>
+            <th>数式</th>
+            <th>しきい値</th>
+            <th>植物ピクセル数</th>
+            <th>全体に対する割合</th>
+            <th>平均値</th>
+            <th>中央値</th>
+            <th>標準偏差</th>
+            <th>最小値</th>
+            <th>最大値</th>
+          </tr>
+        </thead>
+        <tbody id="summaryTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="correlationBox" class="section-box">
+    <h3 class="section-title">2指標間の相関分析</h3>
+    <div class="corr-controls">
+      <label>指数A: <select id="corrSelectA"></select></label>
+      <label>指数B: <select id="corrSelectB"></select></label>
+      <button id="corrComputeBtn">相関係数を計算</button>
+      <span id="corrResult" class="corr-result"></span>
+    </div>
+    <canvas id="corrScatter" style="width:100%; max-width:520px; display:block;"></canvas>
+    <p class="corr-note" id="corrNote"></p>
+  </div>
+
+<script>
+const EPS = 1e-6;
+// ゼロ除算・べき乗の暴走を防ぐための「意味のある最小値」(ピクセル量子化の下限に相当)
+// EPS(1e-6)は小さすぎて、チャンネル値が0の画素で比やべき乗が桁外れに跳ね上がるのを防げないため、
+// 比・べき乗を含む指標ではこちらを使う。
+const MIN_CH = 1;        // 生値(0-255)スケールでの最小許容値
+const MIN_CH01 = 1 / 255; // 正規化(0-1)スケールでの最小許容値
+
+// ---- 各指標の定義 ----
+// compute(r,g,b) は 0〜255 の生ピクセル値を受け取り、指標の生の値を返す
+// min/max はその指標で「植物とみなす主要な値域」。カラーマッピングに使う
+// invert: true の場合、生の値が小さいほど植生度が高いことを意味する(CIVEなど)
+// defaultThreshold: 「植物」とみなす初期しきい値の目安(invertがtrueならこれ以下、falseならこれ以上を植物とみなす)
+const INDICES = [
+  {
+    id: 'exg', name: 'ExG (超緑指数)', formula: '2g − r − b (正規化RGB)',
+    min: -0.2, max: 0.4, invert: false, defaultThreshold: 0.05,
+    compute: (r, g, b) => {
+      const sum = r + g + b;
+      if (sum === 0) return 0;
+      const nr = r / sum, ng = g / sum, nb = b / sum;
+      return 2 * ng - nr - nb;
+    },
+    note: '最も基本的な緑超過指標。計算が単純で高速。'
+  },
+  {
+    id: 'vari', name: 'VARI (可視域大気耐性指数)', formula: '(g − r) / (g + r − b)',
+    min: -0.2, max: 0.6, invert: false, defaultThreshold: 0.1,
+    compute: (r, g, b) => {
+      const d = g + r - b;
+      const safeD = Math.abs(d) < MIN_CH ? (d >= 0 ? MIN_CH : -MIN_CH) : d;
+      return (g - r) / safeD;
+    },
+    note: '照明・大気の影響を受けにくく、フィールド写真向き。青みの強い画素(g+r≈b)では分母をクリップして暴走を防止。'
+  },
+  {
+    id: 'gli', name: 'GLI (緑葉指数)', formula: '(2g − r − b) / (2g + r + b)',
+    min: -0.2, max: 0.3, invert: false, defaultThreshold: 0.05,
+    compute: (r, g, b) => (2 * g - r - b) / (2 * g + r + b + EPS),
+    note: 'ExGを正規化した指標。値域が-1〜1に収まる。'
+  },
+  {
+    id: 'exgr', name: 'ExGR (超緑 − 超赤)', formula: '3g − 2.4r − b (正規化RGB)',
+    min: -0.2, max: 0.6, invert: false, defaultThreshold: 0.1,
+    compute: (r, g, b) => {
+      const sum = r + g + b;
+      if (sum === 0) return 0;
+      const nr = r / sum, ng = g / sum, nb = b / sum;
+      const exg = 2 * ng - nr - nb;
+      const exr = 1.4 * nr - ng;
+      return exg - exr;
+    },
+    note: '土壌の赤みを差し引き、植物/土壌の分離精度を高めた指標。雑草検出向き。'
+  },
+  {
+    id: 'cive', name: 'CIVE (植生抽出色指数)', formula: '0.441r − 0.811g + 0.385b + 18.79',
+    min: -40, max: 40, invert: true, defaultThreshold: 0,
+    compute: (r, g, b) => 0.441 * r - 0.811 * g + 0.385 * b + 18.78745,
+    note: '値が低いほど植物。閾値0付近での二値分類(植物/非植物)に向く。'
+  },
+  {
+    id: 'ngrdi', name: 'NGRDI (正規化緑赤差指数)', formula: '(g − r) / (g + r)',
+    min: -0.2, max: 0.4, invert: false, defaultThreshold: 0.0,
+    compute: (r, g, b) => (g - r) / (g + r + EPS),
+    note: 'VARIから青成分を除いた最もシンプルな形。影の影響は受けやすい。'
+  },
+  {
+    id: 'rgbvi', name: 'RGBVI (RGB植生指数)', formula: '(g² − r×b) / (g² + r×b)',
+    min: -0.2, max: 0.6, invert: false, defaultThreshold: 0.05,
+    compute: (r, g, b) => (g * g - r * b) / (g * g + r * b + EPS),
+    note: 'UAV(ドローン)画像での性能が良いとされる比較的新しい指標。'
+  },
+  {
+    id: 'mgvri', name: 'MGVRI', formula: '(G² − R²) / (G² + R²)', min: -0.3, max: 0.5, invert: false, defaultThreshold: 0.05,
+    compute: (R, G, B) => (G * G - R * R) / (G * G + R * R + EPS), note: 'GRVIの二乗版。比なので正規化前後で同値。'
+  },
+  {
+    id: 'npci', name: 'NPCI', formula: '(R − B) / (R + B)', min: -0.3, max: 0.4, invert: false, defaultThreshold: 0,
+    compute: (R, G, B) => (R - B) / (R + B + EPS), note: '色素関連の比指標。比なので正規化前後で同値。'
+  },
+  {
+    id: 'gbvi', name: 'GBVI', formula: '(G − B) / (G + B)', min: -0.2, max: 0.5, invert: false, defaultThreshold: 0.1,
+    compute: (R, G, B) => (G - B) / (G + B + EPS), note: '緑と青の正規化差。比なので正規化前後で同値。'
+  },
+  {
+    id: 'tgi3', name: 'TGI_3 (正規化)', formula: '-0.5 × [190(r−g) − 120(r−b)]', min: -150, max: 150, invert: false, defaultThreshold: 10,
+    compute: (R, G, B) => { const s = R + G + B + EPS, r = R / s, g = G / s, b = B / s; return -0.5 * (190 * (r - g) - 120 * (r - b)); },
+    note: 'TGIの正規化版。'
+  },
+  {
+    id: 'tgi4', name: 'TGI_4 (正規化)', formula: 'g − 0.39r − 0.61b', min: -0.5, max: 0.5, invert: false, defaultThreshold: 0.05,
+    compute: (R, G, B) => { const s = R + G + B + EPS; return G / s - 0.39 * (R / s) - 0.61 * (B / s); },
+    note: 'TGI_2の正規化版。'
+  },
+  {
+    id: 'veg2', name: 'VEG_2 (正規化)', formula: 'g / (r^0.667 × b^0.333)', min: 0.5, max: 2, invert: false, defaultThreshold: 1,
+    compute: (R, G, B) => {
+      const s = R + G + B + EPS, r = Math.max(R / s, MIN_CH01), g = G / s, b = Math.max(B / s, MIN_CH01), a = 0.667;
+      return g / (Math.pow(r, a) * Math.pow(b, 1 - a));
+    },
+    note: 'VEGの正規化版。'
+  },
+  {
+    id: 'savi2', name: 'SAVI_2 (正規化)', formula: '1.5(g−r) / (g+r+0.5)', min: -1, max: 1, invert: false, defaultThreshold: 0.1,
+    compute: (R, G, B) => { const s = R + G + B + EPS, r = R / s, g = G / s; return 1.5 * (g - r) / (g + r + 0.5); },
+    note: 'SAVIの正規化版。'
+  },
+  {
+    id: 'rgvbi2', name: 'RGVBI_2 (正規化)', formula: '(g − b×r) / (g² + b×r)', min: -1, max: 1, invert: false, defaultThreshold: -0.1,
+    compute: (R, G, B) => { const s = R + G + B + EPS, r = R / s, g = G / s, b = B / s; return (g - b * r) / (g * g + b * r + EPS); },
+    note: 'RGVBIの正規化版。'
+  },
+  {
+    id: 'comb1_2', name: 'COMB1_2 (正規化)', formula: '0.25ExG_2 + 0.3ExGR_2 + 0.33CIVE_2 + 0.12VEG_2', min: 5.5, max: 6.6, invert: true, defaultThreshold: 6.1,
+    compute: (R, G, B) => {
+      const s = R + G + B + EPS, r = R / s, g = G / s, b = B / s;
+      const exg2 = 2 * g - r - b, exr2 = 1.4 * r - g, exgr2 = exg2 - exr2;
+      const cive2 = 0.441 * r - 0.811 * g + 0.385 * b + 18.78745;
+      const a = 0.667;
+      const rSafe = Math.max(r, MIN_CH01), bSafe = Math.max(b, MIN_CH01);
+      const veg2 = g / (Math.pow(rSafe, a) * Math.pow(bSafe, 1 - a));
+      return 0.25 * exg2 + 0.3 * exgr2 + 0.33 * cive2 + 0.12 * veg2;
+    },
+    note: 'COMB1の正規化版。CIVE_2の定数項の影響で値域が狭く、値が低いほど植生。'
+  },
+  {
+    id: 'comb2_2', name: 'COMB2_2 (正規化)', formula: '0.36ExG_2 + 0.47CIVE_2 + 0.17VEG_2', min: 8, max: 9.6, invert: true, defaultThreshold: 8.9,
+    compute: (R, G, B) => {
+      const s = R + G + B + EPS, r = R / s, g = G / s, b = B / s;
+      const exg2 = 2 * g - r - b;
+      const cive2 = 0.441 * r - 0.811 * g + 0.385 * b + 18.78745;
+      const a = 0.667;
+      const rSafe = Math.max(r, MIN_CH01), bSafe = Math.max(b, MIN_CH01);
+      const veg2 = g / (Math.pow(rSafe, a) * Math.pow(bSafe, 1 - a));
+      return 0.36 * exg2 + 0.47 * cive2 + 0.17 * veg2;
+    },
+    note: 'COMB2の正規化版。値が低いほど植生。'
+  },
+  {
+    id: 'vndvi', name: 'vNDVI', formula: '0.5268 × R^-0.1294 × G^0.3389 × B^-0.3118', min: 0.2, max: 0.9, invert: false, defaultThreshold: 0.5,
+    compute: (R, G, B) => {
+      // R,Bは負のべき乗のため、0付近だとEPS(1e-6)だけでは暴走を防ぎきれない。
+      // 1ピクセル階調(1/255)を下限にして極端な外れ値を抑える。
+      const r01 = Math.max(R / 255, MIN_CH01), g01 = G / 255, b01 = Math.max(B / 255, MIN_CH01);
+      return 0.5268 * Math.pow(r01, -0.1294) * Math.pow(g01 + EPS, 0.3389) * Math.pow(b01, -0.3118);
+    },
+    note: '可視光バンドのみでNDVIを近似する経験式。'
+  }
+
+];
+
+const fileInput = document.getElementById('fileInput');
+const showAllBtn = document.getElementById('showAllBtn');
+const img = document.getElementById('source');
+const placeholder = document.getElementById('placeholder');
+const indexCardsContainer = document.getElementById('indexCards');
+const rgbChannelsBox = document.getElementById('rgbChannels');
+const chanCanvases = {
+  r: document.getElementById('chan_r'),
+  g: document.getElementById('chan_g'),
+  b: document.getElementById('chan_b')
+};
+
+// 現在読み込んでいる画像の元RGBデータとサイズ、各指標の生値配列
+let currentSrcData = null;
+let currentW = 0, currentH = 0;
+let plantValuesScratch = null; // 中央値計算用の再利用スクラッチ配列(画像サイズが変わったときだけ再確保)
+const rawValues = {}; // idx.id -> Float32Array(w*h) の指標生値(表示ボタンを押した指標のみ計算済み)
+const computedSet = new Set(); // 現在の画像に対して計算済みの idx.id
+const distCache = {}; // idx.id -> { hist, loV, hiV } 直近の分布集計結果(ヒストグラム/バイオリン切替用)
+
+// ---- 指標ごとのカードDOMを動的生成 ----
+const canvases = {};
+const statEls = {};
+const summaryTableBody = document.getElementById('summaryTableBody');
+const summaryRowEls = {};
+INDICES.forEach((idx, cardIndex) => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <h3>${cardIndex + 1}. ${idx.name}</h3>
+    <p class="formula">${idx.formula}</p>
+    <button class="show-btn" id="show_${idx.id}">表示</button>
+    <p class="note" id="pending_${idx.id}">${idx.note}</p>
+    <div class="card-body" id="body_${idx.id}" style="display:none;">
+      <div class="output-row">
+        <canvas class="output" id="out_${idx.id}"></canvas>
+        <div class="mini-hist">
+          <div class="mini-hist-chart" id="hist_${idx.id}"></div>
+          <div class="mini-hist-footer">
+            <span class="mini-hist-label">植物判定画素の分布(1〜99%ile)</span>
+            <select class="mini-hist-select" id="chartType_${idx.id}">
+              <option value="hist">ヒストグラム</option>
+              <option value="violin">バイオリン</option>
+              <option value="box">箱ひげ図</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="legend">
+        <canvas id="legend_${idx.id}"></canvas>
+        <div class="legend-labels">
+          <span>低 (${idx.invert ? idx.max : idx.min})</span>
+          <span>中</span>
+          <span>高 (${idx.invert ? idx.min : idx.max})</span>
+        </div>
+      </div>
+      <div class="threshold">
+        <label>
+          しきい値(${idx.invert ? '以下' : '以上'}を植物とする):
+          <input type="number" step="0.01" id="thresh_${idx.id}" value="${idx.defaultThreshold}">
+        </label>
+        <input type="range" id="range_${idx.id}" min="${idx.min}" max="${idx.max}" step="0.01" value="${idx.defaultThreshold}">
+        <button class="auto-thresh-btn" id="auto_${idx.id}" type="button">しきい値を自動調整(Otsu法)</button>
+      </div>
+      <div class="stats">
+        <table>
+          <tr><td>植物ピクセル数</td><td id="stat_count_${idx.id}">-</td></tr>
+          <tr><td>全体に対する割合</td><td id="stat_ratio_${idx.id}">-</td></tr>
+          <tr><td>平均値</td><td id="stat_mean_${idx.id}">-</td></tr>
+          <tr><td>中央値</td><td id="stat_median_${idx.id}">-</td></tr>
+          <tr><td>標準偏差</td><td id="stat_std_${idx.id}">-</td></tr>
+          <tr><td>最小値</td><td id="stat_min_${idx.id}">-</td></tr>
+          <tr><td>最大値</td><td id="stat_max_${idx.id}">-</td></tr>
+        </table>
+      </div>
+    </div>
+  `;
+  indexCardsContainer.appendChild(card);
+  canvases[idx.id] = {
+    output: card.querySelector(`#out_${idx.id}`),
+    legend: card.querySelector(`#legend_${idx.id}`),
+    hist: card.querySelector(`#hist_${idx.id}`)
+  };
+  statEls[idx.id] = {
+    count: card.querySelector(`#stat_count_${idx.id}`),
+    ratio: card.querySelector(`#stat_ratio_${idx.id}`),
+    mean: card.querySelector(`#stat_mean_${idx.id}`),
+    median: card.querySelector(`#stat_median_${idx.id}`),
+    std: card.querySelector(`#stat_std_${idx.id}`),
+    min: card.querySelector(`#stat_min_${idx.id}`),
+    max: card.querySelector(`#stat_max_${idx.id}`)
+  };
+
+  // ---- クロス表(サマリー)の行を生成 ----
+  const tr = document.createElement('tr');
+  tr.id = `sumrow_${idx.id}`;
+  tr.innerHTML = `
+    <td>${cardIndex + 1}. ${idx.name}</td>
+    <td class="formula-cell">${idx.formula}</td>
+    <td id="sum_thresh_${idx.id}">${idx.defaultThreshold}</td>
+    <td id="sum_count_${idx.id}">-</td>
+    <td id="sum_ratio_${idx.id}">-</td>
+    <td id="sum_mean_${idx.id}">-</td>
+    <td id="sum_median_${idx.id}">-</td>
+    <td id="sum_std_${idx.id}">-</td>
+    <td id="sum_min_${idx.id}">-</td>
+    <td id="sum_max_${idx.id}">-</td>
+  `;
+  summaryTableBody.appendChild(tr);
+  summaryRowEls[idx.id] = {
+    thresh: tr.querySelector(`#sum_thresh_${idx.id}`),
+    count: tr.querySelector(`#sum_count_${idx.id}`),
+    ratio: tr.querySelector(`#sum_ratio_${idx.id}`),
+    mean: tr.querySelector(`#sum_mean_${idx.id}`),
+    median: tr.querySelector(`#sum_median_${idx.id}`),
+    std: tr.querySelector(`#sum_std_${idx.id}`),
+    min: tr.querySelector(`#sum_min_${idx.id}`),
+    max: tr.querySelector(`#sum_max_${idx.id}`)
+  };
+
+  // 「表示」ボタン：押されたときに初めてその指標を計算する(遅延計算)
+  const showBtn = card.querySelector(`#show_${idx.id}`);
+  showBtn.addEventListener('click', () => showIndex(idx));
+
+  // しきい値の数値入力とスライダーを連動させ、変更のたびにマスク・統計を再計算
+  const numInput = card.querySelector(`#thresh_${idx.id}`);
+  const rangeInput = card.querySelector(`#range_${idx.id}`);
+  const autoBtn = card.querySelector(`#auto_${idx.id}`);
+  numInput.addEventListener('input', () => {
+    const val = parseFloat(numInput.value);
+    if (!isNaN(val)) {
+      // スライダーの範囲外の値が入力された場合は、スライダー側の範囲を広げて追従させる
+      if (val < parseFloat(rangeInput.min)) rangeInput.min = val;
+      if (val > parseFloat(rangeInput.max)) rangeInput.max = val;
+      rangeInput.value = val;
+    }
+    autoBtn.classList.remove('applied'); // 手動で変更したのでOtsu適用済み表示は消す
+    updateMaskAndStats(idx);
+  });
+  rangeInput.addEventListener('input', () => {
+    numInput.value = rangeInput.value;
+    autoBtn.classList.remove('applied'); // 手動で変更したのでOtsu適用済み表示は消す
+    updateMaskAndStats(idx);
+  });
+
+  // 「しきい値を自動調整(Otsu法)」：今読み込んでいる画像の分布から、
+  // その場でOtsu法により植物/背景を最もよく分ける値を計算してしきい値に反映する。
+  autoBtn.addEventListener('click', () => {
+    if (!currentSrcData) return;
+    computeIndexRaw(idx);
+    const th = computeOtsuThreshold(rawValues[idx.id], currentW * currentH);
+    numInput.value = th.toFixed(4);
+    if (th < parseFloat(rangeInput.min)) rangeInput.min = th;
+    if (th > parseFloat(rangeInput.max)) rangeInput.max = th;
+    rangeInput.value = th;
+    document.getElementById(`body_${idx.id}`).style.display = 'block';
+    document.getElementById(`pending_${idx.id}`).style.display = 'none';
+    document.getElementById(`show_${idx.id}`).textContent = '再表示';
+    autoBtn.classList.add('applied'); // このしきい値がOtsu法由来であることを示す
+    updateMaskAndStats(idx);
+  });
+
+  // ヒストグラム/バイオリンプロットの切り替え(再計算はせず、キャッシュ済みビンを描き直すだけ)
+  const chartTypeSelect = card.querySelector(`#chartType_${idx.id}`);
+  chartTypeSelect.addEventListener('change', () => renderMiniChart(idx));
+});
+// カード全体をflexコンテナにするためラップ
+indexCardsContainer.style.display = 'contents';
+
+// ---- 凡例(グラデーションバー)描画 ----
+function drawLegend(canvasEl) {
+  const width = 256, height = 14;
+  canvasEl.width = width;
+  canvasEl.height = height;
+  const lctx = canvasEl.getContext('2d');
+  const imgData = lctx.createImageData(width, height);
+  for (let x = 0; x < width; x++) {
+    const val = x / (width - 1);
+    const color = getVegetationColor(val);
+    for (let y = 0; y < height; y++) {
+      const i = (y * width + x) * 4;
+      imgData.data[i] = color.r;
+      imgData.data[i + 1] = color.g;
+      imgData.data[i + 2] = color.b;
+      imgData.data[i + 3] = 255;
+    }
+  }
+  lctx.putImageData(imgData, 0, 0);
+}
+INDICES.forEach(idx => drawLegend(canvases[idx.id].legend));
+
+// ---- ファイル選択 ----
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    placeholder.style.display = 'none';
+    img.style.display = 'block';
+    processImage();
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+});
+
+// ---- 「すべての指標を計算・表示」ボタン(進捗バー付き・1指標ごとに描画をはさんで固まらないようにする) ----
+const allProgressBox = document.getElementById('allProgressBox');
+const allProgressBar = document.getElementById('allProgressBar');
+const allProgressText = document.getElementById('allProgressText');
+
+showAllBtn.addEventListener('click', () => {
+  if (!currentSrcData) return;
+  runAllSequentially();
+});
+
+// 分布グラフの種類を全カード一括で切り替える(各カードのプルダウンにも反映し、再描画はキャッシュ済みビンを使うだけ)
+const globalChartType = document.getElementById('globalChartType');
+globalChartType.addEventListener('change', () => {
+  const mode = globalChartType.value;
+  INDICES.forEach(idx => {
+    const sel = document.getElementById(`chartType_${idx.id}`);
+    if (sel) sel.value = mode;
+    renderMiniChart(idx);
+  });
+});
+
+function runAllSequentially() {
+  const total = INDICES.length;
+  let i = 0;
+  showAllBtn.disabled = true;
+  allProgressBox.style.display = 'block';
+  allProgressBar.style.width = '0%';
+  allProgressText.textContent = `計算中: 0 / ${total}`;
+
+  function step() {
+    if (i >= total) {
+      allProgressText.textContent = `完了: ${total} / ${total}`;
+      allProgressBar.style.width = '100%';
+      showAllBtn.disabled = false;
+      setTimeout(() => { allProgressBox.style.display = 'none'; }, 800);
+      return;
+    }
+    const idx = INDICES[i];
+    showIndex(idx);
+    i++;
+    allProgressBar.style.width = `${Math.round((i / total) * 100)}%`;
+    allProgressText.textContent = `計算中: ${i} / ${total} (${idx.name})`;
+    // setTimeoutで一呼吸置き、ブラウザに描画の機会を与える(体感の固まりを防ぐ)
+    setTimeout(step, 0);
+  }
+  step();
+}
+
+// ---- 画像処理本体：新しい画像を読み込み、RGBチャンネル表示だけ即時更新。各指標は「表示」ボタン押下時に計算する ----
+function processImage() {
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  currentW = w;
+  currentH = h;
+
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = w;
+  tmpCanvas.height = h;
+  const tmpCtx = tmpCanvas.getContext('2d');
+  tmpCtx.drawImage(img, 0, 0);
+  currentSrcData = tmpCtx.getImageData(0, 0, w, h).data;
+
+  drawRgbChannels(w, h);
+
+  // 新しい画像なので、前の画像に対する計算結果と表示状態をすべてリセットする
+  computedSet.clear();
+  INDICES.forEach(idx => {
+    delete rawValues[idx.id];
+    delete distCache[idx.id];
+    document.getElementById(`body_${idx.id}`).style.display = 'none';
+    document.getElementById(`pending_${idx.id}`).style.display = 'block';
+    document.getElementById(`show_${idx.id}`).textContent = '表示';
+    document.getElementById(`auto_${idx.id}`).classList.remove('applied'); // 新しい画像なのでOtsu適用済み表示もリセット
+  });
+  allProgressBox.style.display = 'none';
+  showAllBtn.disabled = false;
+}
+
+// ---- 1つの指標だけ生値を計算してキャッシュする(未計算の場合のみ) ----
+// ---- Otsu法: 指標の生値ヒストグラム(256ビン)から、植物/背景を最もよく分ける
+// 　　しきい値をその場で計算する。全画素ソートは不要で、ヒストグラム1回分の走査のみ。 ----
+// ---- Otsu法: 指標の生値ヒストグラムから、植物/背景を最もよく分けるしきい値を
+// 　　その場で計算する。全画素ソートは不要で、ヒストグラム数回分の走査のみ。
+// 　　外れ値(裾の重い指標)でビンの解像度が無駄になるのを防ぐため、
+// 　　まず粗いヒストグラムで近似1〜99パーセンタイルを求め、その範囲でOtsuの本ヒストグラムを作る。 ----
+function computeOtsuThreshold(raw, n) {
+  let minV = Infinity, maxV = -Infinity;
+  for (let p = 0; p < n; p++) {
+    const v = raw[p];
+    if (v < minV) minV = v;
+    if (v > maxV) maxV = v;
+  }
+
+  // 近似1~99パーセンタイル(粗いヒストグラムで概算、ソート不要)
+  const COARSE_BINS = 1000;
+  const fullRange = (maxV - minV) || 1;
+  const coarse = new Uint32Array(COARSE_BINS);
+  for (let p = 0; p < n; p++) {
+    let b = Math.floor((raw[p] - minV) / fullRange * COARSE_BINS);
+    if (b >= COARSE_BINS) b = COARSE_BINS - 1; if (b < 0) b = 0;
+    coarse[b]++;
+  }
+  const lowTarget = 0.01 * n, highTarget = 0.99 * n;
+  let cum = 0, loV = minV, hiV = maxV;
+  for (let b = 0; b < COARSE_BINS; b++) {
+    cum += coarse[b];
+    if (cum >= lowTarget) { loV = minV + (b / COARSE_BINS) * fullRange; break; }
+  }
+  cum = 0;
+  for (let b = 0; b < COARSE_BINS; b++) {
+    cum += coarse[b];
+    if (cum >= highTarget) { hiV = minV + ((b + 1) / COARSE_BINS) * fullRange; break; }
+  }
+  if (hiV <= loV) { hiV = loV + fullRange * 0.01; }
+
+  // Otsu本体: 1~99パーセンタイルの範囲で256ビンのヒストグラムを作り、
+  // 範囲外の値(外れ値)は両端のビンにまとめる。
+  const BINS = 256;
+  const range = (hiV - loV) || 1;
+  const hist = new Uint32Array(BINS);
+  for (let p = 0; p < n; p++) {
+    let b = Math.floor((raw[p] - loV) / range * BINS);
+    if (b >= BINS) b = BINS - 1; if (b < 0) b = 0;
+    hist[b]++;
+  }
+
+  let total = 0;
+  for (let i = 0; i < BINS; i++) total += i * hist[i];
+
+  let sumB = 0, wB = 0, maxVar = -1, bestBin = 0;
+  for (let i = 0; i < BINS; i++) {
+    wB += hist[i];
+    if (wB === 0) continue;
+    const wF = n - wB;
+    if (wF === 0) break;
+    sumB += i * hist[i];
+    const mB = sumB / wB;
+    const mF = (total - sumB) / wF;
+    const varBetween = wB * wF * (mB - mF) * (mB - mF);
+    if (varBetween > maxVar) { maxVar = varBetween; bestBin = i; }
+  }
+  return loV + ((bestBin + 0.5) / BINS) * range;
+}
+
+function computeIndexRaw(idx) {
+  if (computedSet.has(idx.id)) return;
+  const w = currentW, h = currentH;
+  const pixelCount = w * h;
+
+  const c = canvases[idx.id].output;
+  c.width = w;
+  c.height = h;
+
+  const raw = new Float32Array(pixelCount);
+  for (let i = 0, p = 0; i < currentSrcData.length; i += 4, p++) {
+    const r = currentSrcData[i], g = currentSrcData[i + 1], b = currentSrcData[i + 2];
+    raw[p] = idx.compute(r, g, b);
+  }
+  rawValues[idx.id] = raw;
+  computedSet.add(idx.id);
+}
+
+// ---- 「表示」ボタン押下時の処理：未計算ならその場で計算し、カード本体を表示する ----
+function showIndex(idx) {
+  if (!currentSrcData) return; // 画像未選択
+  computeIndexRaw(idx);
+  updateMaskAndStats(idx);
+  document.getElementById(`body_${idx.id}`).style.display = 'block';
+  document.getElementById(`pending_${idx.id}`).style.display = 'none';
+  document.getElementById(`show_${idx.id}`).textContent = '再表示';
+}
+
+// ---- 元画像の下にR/G/B各チャンネルの画像を描画 ----
+function drawRgbChannels(w, h) {
+  rgbChannelsBox.style.display = 'block';
+
+  const channels = [
+    { key: 'r', canvas: chanCanvases.r, index: 0 },
+    { key: 'g', canvas: chanCanvases.g, index: 1 },
+    { key: 'b', canvas: chanCanvases.b, index: 2 }
+  ];
+
+  channels.forEach(chan => {
+    chan.canvas.width = w;
+    chan.canvas.height = h;
+    const ctx = chan.canvas.getContext('2d');
+    const imgData = ctx.createImageData(w, h);
+    const d = imgData.data;
+
+    for (let i = 0; i < currentSrcData.length; i += 4) {
+      const val = currentSrcData[i + chan.index];
+      // 該当チャンネルの値のみを使い、他の2チャンネルは0にして単色画像として表示
+      d[i] = chan.key === 'r' ? val : 0;
+      d[i + 1] = chan.key === 'g' ? val : 0;
+      d[i + 2] = chan.key === 'b' ? val : 0;
+      d[i + 3] = 255;
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+  });
+}
+
+// ---- しきい値に基づいてマスク画像を再描画し、植物ピクセルの基礎統計量を算出 ----
+function updateMaskAndStats(idx) {
+  if (!rawValues[idx.id] || currentW === 0) return;
+
+  const threshold = parseFloat(document.getElementById(`thresh_${idx.id}`).value);
+  const raw = rawValues[idx.id];
+  const w = currentW, h = currentH;
+  const pixelCount = w * h;
+
+  const c = canvases[idx.id].output;
+  const ctx = c.getContext('2d');
+  const outData = ctx.createImageData(w, h);
+  const d = outData.data;
+
+  let count = 0;
+  let sum = 0, sumSq = 0;
+  let minV = Infinity, maxV = -Infinity;
+
+  // 中央値計算用のスクラッチ配列(画像サイズ変更時のみ再確保して負荷を抑える)
+  if (!plantValuesScratch || plantValuesScratch.length !== pixelCount) {
+    plantValuesScratch = new Float32Array(pixelCount);
+  }
+
+  for (let p = 0; p < pixelCount; p++) {
+    const v = raw[p];
+    const isPlant = idx.invert ? (v <= threshold) : (v >= threshold);
+    const i = p * 4;
+
+    if (isPlant) {
+      plantValuesScratch[count] = v;
+      count++;
+      sum += v;
+      sumSq += v * v;
+      if (v < minV) minV = v;
+      if (v > maxV) maxV = v;
+
+      // 通常のカラーマッピングで着色
+      let val = (v - idx.min) / (idx.max - idx.min);
+      val = Math.max(0, Math.min(1, val));
+      if (idx.invert) val = 1 - val;
+      const color = getVegetationColor(val);
+      d[i] = color.r;
+      d[i + 1] = color.g;
+      d[i + 2] = color.b;
+      d[i + 3] = 255;
+    } else {
+      // 非選択部分は元画像のグレースケールで暗めに表示し、マスク範囲がわかるようにする
+      const si = i;
+      const gray = 0.299 * currentSrcData[si] + 0.587 * currentSrcData[si + 1] + 0.114 * currentSrcData[si + 2];
+      const dim = gray * 0.35;
+      d[i] = dim;
+      d[i + 1] = dim;
+      d[i + 2] = dim;
+      d[i + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(outData, 0, 0);
+
+  // ---- 基礎統計量の表示 ----
+  const els = statEls[idx.id];
+  const sumEls = summaryRowEls[idx.id];
+  if (sumEls) sumEls.thresh.textContent = threshold;
+  if (count > 0) {
+    const mean = sum / count;
+    const variance = sumSq / count - mean * mean;
+    const std = Math.sqrt(Math.max(0, variance));
+    const ratio = (count / pixelCount) * 100;
+
+    // 中央値(植物と判定された画素の値を昇順ソートして算出)
+    const sortedPlant = plantValuesScratch.subarray(0, count).sort();
+    const median = count % 2 === 1
+      ? sortedPlant[(count - 1) / 2]
+      : (sortedPlant[count / 2 - 1] + sortedPlant[count / 2]) / 2;
+
+    // ---- ミニヒストグラム(植物と判定された画素だけが対象。しきい値を変えるたびに再集計) ----
+    // sortedPlantは既に昇順ソート済みなので、1/99パーセンタイルは位置を求めるだけで良い(追加ソート不要)。
+    const p1 = sortedPlant[Math.floor(count * 0.01)];
+    const p99 = sortedPlant[Math.min(count - 1, Math.floor(count * 0.99))];
+    const HIST_BINS = 24;
+    const hist = new Uint32Array(HIST_BINS);
+    const hRange = (p99 - p1) || 1;
+    for (let k = 0; k < count; k++) {
+      let b = Math.floor((sortedPlant[k] - p1) / hRange * HIST_BINS);
+      if (b >= HIST_BINS) b = HIST_BINS - 1; if (b < 0) b = 0;
+      hist[b]++;
+    }
+    distCache[idx.id] = {
+      hist, loV: p1, hiV: p99,
+      box: {
+        min: sortedPlant[0],
+        q1: sortedPlant[Math.floor(count * 0.25)],
+        median,
+        q3: sortedPlant[Math.min(count - 1, Math.floor(count * 0.75))],
+        max: sortedPlant[count - 1]
+      }
+    }; // ヒストグラム/バイオリン/箱ひげ図 切り替え用にキャッシュ
+    renderMiniChart(idx);
+
+    els.count.textContent = count.toLocaleString();
+    els.ratio.textContent = ratio.toFixed(1) + '%';
+    els.mean.textContent = mean.toFixed(4);
+    els.median.textContent = median.toFixed(4);
+    els.std.textContent = std.toFixed(4);
+    els.min.textContent = minV.toFixed(4);
+    els.max.textContent = maxV.toFixed(4);
+
+    if (sumEls) {
+      sumEls.count.textContent = count.toLocaleString();
+      sumEls.ratio.textContent = ratio.toFixed(1) + '%';
+      sumEls.mean.textContent = mean.toFixed(4);
+      sumEls.median.textContent = median.toFixed(4);
+      sumEls.std.textContent = std.toFixed(4);
+      sumEls.min.textContent = minV.toFixed(4);
+      sumEls.max.textContent = maxV.toFixed(4);
+    }
+  } else {
+    els.count.textContent = '0';
+    els.ratio.textContent = '0.0%';
+    els.mean.textContent = '-';
+    els.median.textContent = '-';
+    els.std.textContent = '-';
+    els.min.textContent = '-';
+    els.max.textContent = '-';
+    delete distCache[idx.id];
+    clearMiniChart(canvases[idx.id].hist);
+
+    if (sumEls) {
+      sumEls.count.textContent = '0';
+      sumEls.ratio.textContent = '0.0%';
+      sumEls.mean.textContent = '-';
+      sumEls.median.textContent = '-';
+      sumEls.std.textContent = '-';
+      sumEls.min.textContent = '-';
+      sumEls.max.textContent = '-';
+    }
+  }
+}
+
+// ---- 共通カラーマップ(全指標で共通の低→中→高 のグラデーション) ----
+function getVegetationColor(val) {
+  if (val > 0.5) {
+    const t = (val - 0.5) * 2;
+    return {
+      r: Math.round(255 * (1 - t)),
+      g: Math.round(200 + 55 * t),
+      b: 30
+    };
+  } else {
+    const t = val * 2;
+    return {
+      r: 180,
+      g: Math.round(180 * t),
+      b: 50
+    };
+  }
+}
+
+// ---- 2指標間の相関分析(プルダウン選択 + 相関係数 + 散布図) ----
+const corrSelectA = document.getElementById('corrSelectA');
+const corrSelectB = document.getElementById('corrSelectB');
+const corrComputeBtn = document.getElementById('corrComputeBtn');
+const corrResultEl = document.getElementById('corrResult');
+const corrCanvas = document.getElementById('corrScatter');
+const corrNoteEl = document.getElementById('corrNote');
+
+INDICES.forEach((idx, i) => {
+  const label = `${i + 1}. ${idx.name}`;
+  const optA = document.createElement('option');
+  optA.value = idx.id; optA.textContent = label;
+  corrSelectA.appendChild(optA);
+  const optB = document.createElement('option');
+  optB.value = idx.id; optB.textContent = label;
+  corrSelectB.appendChild(optB);
+});
+// 初期選択(適当な2指標)
+if (INDICES.some(x => x.id === 'exg')) corrSelectA.value = 'exg';
+if (INDICES.some(x => x.id === 'vari')) corrSelectB.value = 'vari';
+
+corrComputeBtn.addEventListener('click', () => {
+  if (!currentSrcData) {
+    corrNoteEl.textContent = '先に画像を選択してください。';
+    return;
+  }
+  const idxA = INDICES.find(x => x.id === corrSelectA.value);
+  const idxB = INDICES.find(x => x.id === corrSelectB.value);
+  corrResultEl.textContent = '計算中…';
+  corrNoteEl.textContent = '';
+  // 一呼吸置いてボタン押下の反応を先に見せる(未計算の指標は生値計算がここで走る)
+  setTimeout(() => {
+    computeIndexRaw(idxA);
+    computeIndexRaw(idxB);
+    const rawA = rawValues[idxA.id], rawB = rawValues[idxB.id];
+    const n = rawA.length;
+
+    let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let p = 0; p < n; p++) {
+      const x = rawA[p], y = rawB[p];
+      sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y;
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    const mx = sx / n, my = sy / n;
+    const cov = sxy / n - mx * my;
+    const sdx = Math.sqrt(Math.max(0, sxx / n - mx * mx));
+    const sdy = Math.sqrt(Math.max(0, syy / n - my * my));
+    const r = cov / (sdx * sdy + EPS);
+
+    corrResultEl.textContent = `相関係数 r = ${r.toFixed(4)}(n=${n.toLocaleString()}画素)`;
+
+    // ---- 散布図: 全画素だと重く見づらいので無作為抽出して描画 ----
+    const SAMPLE_N = Math.min(8000, n);
+    const sampled = new Set();
+    while (sampled.size < SAMPLE_N) sampled.add(Math.floor(Math.random() * n));
+    const points = [...sampled].map(p => ({ x: rawA[p], y: rawB[p] }));
+
+    drawScatter(corrCanvas, points, minX, maxX, minY, maxY, idxA.name, idxB.name);
+    corrNoteEl.textContent = `散布図は無作為抽出した${SAMPLE_N.toLocaleString()}点の表示です(相関係数は全${n.toLocaleString()}画素で計算)。`;
+  }, 0);
+});
+
+function drawScatter(canvasEl, points, minX, maxX, minY, maxY, labelX, labelY) {
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvasEl.clientWidth || 500;
+  const cssH = 380;
+  canvasEl.width = cssW * dpr;
+  canvasEl.height = cssH * dpr;
+  canvasEl.style.height = cssH + 'px';
+  const ctx = canvasEl.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  const padL = 55, padR = 15, padT = 15, padB = 45;
+  const plotW = cssW - padL - padR, plotH = cssH - padT - padB;
+
+  ctx.strokeStyle = '#232a20';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, padT + plotH);
+  ctx.lineTo(padL + plotW, padT + plotH);
+  ctx.stroke();
+
+  const xRange = (maxX - minX) || 1;
+  const yRange = (maxY - minY) || 1;
+  const toPx = (x, y) => ({
+    px: padL + (x - minX) / xRange * plotW,
+    py: padT + plotH - (y - minY) / yRange * plotH
+  });
+
+  ctx.fillStyle = 'rgba(63,107,59,0.4)';
+  points.forEach(({ x, y }) => {
+    const { px, py } = toPx(x, y);
+    ctx.beginPath();
+    ctx.arc(px, py, 2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.fillStyle = '#6e6f62';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center';
+  [0, 0.5, 1].forEach(t => {
+    const xv = minX + t * xRange;
+    const { px } = toPx(xv, minY);
+    ctx.fillText(xv.toFixed(2), px, padT + plotH + 14);
+  });
+  [0, 0.5, 1].forEach(t => {
+    const yv = minY + t * yRange;
+    const { py } = toPx(minX, yv);
+    ctx.save();
+    ctx.textAlign = 'right';
+    ctx.fillText(yv.toFixed(2), padL - 6, py + 3);
+    ctx.restore();
+  });
+
+  ctx.textAlign = 'center';
+  ctx.fillText(labelX, padL + plotW / 2, cssH - 4);
+
+  ctx.save();
+  ctx.translate(12, padT + plotH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.fillText(labelY, 0, 0);
+  ctx.restore();
+}
+
+// ---- ミニ分布チャート(ヒストグラム/バイオリン/箱ひげ図)はSVG(ベクター)で描画する。
+// 　　ラスター(canvas)と違い拡大表示しても輪郭がぼやけない。座標系は常に固定の
+// 　　論理サイズ(W×H)で組み立て、CSS側の実表示サイズには viewBox で自動追従させる。
+const MINI_CHART_W = 380, MINI_CHART_H = 74;
+
+function clearMiniChart(hostEl) {
+  hostEl.innerHTML = '';
+}
+
+// ---- ミニ分布チャートを、選択中の種類(ヒストグラム/バイオリン/箱ひげ図)で再描画する。
+// 　　集計済みのビンをキャッシュから使うので、切り替え自体に追加計算は発生しない。 ----
+function renderMiniChart(idx) {
+  const cached = distCache[idx.id];
+  const hostEl = canvases[idx.id].hist;
+  if (!cached) { clearMiniChart(hostEl); return; }
+  const select = document.getElementById(`chartType_${idx.id}`);
+  const mode = select ? select.value : 'hist';
+  if (mode === 'violin') {
+    drawViolin(hostEl, cached.hist, cached.loV, cached.hiV, '#3f6b3b', cached.box.median);
+  } else if (mode === 'box') {
+    drawBoxPlot(hostEl, cached.box, '#3f6b3b');
+  } else {
+    drawHistogram(hostEl, cached.hist, cached.loV, cached.hiV, '#3f6b3b', cached.box.median);
+  }
+}
+
+function svgWrap(inner) {
+  return `<svg viewBox="0 0 ${MINI_CHART_W} ${MINI_CHART_H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">${inner}</svg>`;
+}
+
+function drawHistogram(hostEl, bins, minV, maxV, color, median) {
+  const W = MINI_CHART_W, H = MINI_CHART_H;
+  const padL = 8, padR = 4, padT = 4, padB = 14;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxCount = Math.max(...bins) || 1;
+  const barW = plotW / bins.length;
+
+  let bars = '';
+  bins.forEach((cnt, i) => {
+    const h = (cnt / maxCount) * plotH;
+    const x = padL + i * barW;
+    const y = padT + plotH - h;
+    bars += `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${Math.max(1, barW - 1).toFixed(2)}" height="${Math.max(0, h).toFixed(2)}" fill="${color}"/>`;
+  });
+
+  // 中央値の位置に目印(点線)を1本だけ加える(情報を増やしすぎないよう、これ以外は足さない)
+  let medianMark = '';
+  if (typeof median === 'number' && isFinite(median)) {
+    const range = (maxV - minV) || 1;
+    const t = Math.min(1, Math.max(0, (median - minV) / range));
+    const mx = padL + t * plotW;
+    const labelX = Math.min(Math.max(mx, padL + 16), padL + plotW - 16);
+    const labelText = median.toFixed(2);
+    medianMark = `
+    <line x1="${mx.toFixed(2)}" y1="${padT}" x2="${mx.toFixed(2)}" y2="${padT + plotH}" stroke="#9c5a34" stroke-width="1.2" stroke-dasharray="3,2"/>
+    <rect x="${(labelX - labelText.length * 3.1).toFixed(2)}" y="${padT}" width="${(labelText.length * 6.2).toFixed(2)}" height="10" fill="#f6f5ee" fill-opacity="0.9"/>
+    <text x="${labelX.toFixed(2)}" y="${padT + 8}" font-size="9" fill="#9c5a34" font-family="sans-serif" text-anchor="middle">${labelText}</text>`;
+  }
+
+  const inner = `
+    ${bars}
+    ${medianMark}
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="#232a20" stroke-width="1"/>
+    <line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#232a20" stroke-width="1"/>
+    <text x="${padL}" y="${H - 3}" font-size="9" fill="#6e6f62" font-family="sans-serif">${minV.toFixed(2)}</text>
+    <text x="${padL + plotW}" y="${H - 3}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${maxV.toFixed(2)}</text>`;
+  hostEl.innerHTML = svgWrap(inner);
+}
+
+// ---- バイオリンプロット: ヒストグラムと同じビンデータを使い、値の範囲を縦軸にとって
+// 　　各ビンの度数を左右対称の幅として輪郭を描く(見た目のみヒストグラムと切り替え可能)。 ----
+function drawViolin(hostEl, bins, minV, maxV, color, median) {
+  const W = MINI_CHART_W, H = MINI_CHART_H;
+  const padL = 30, padR = 8, padT = 4, padB = 4;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const cx = padL + plotW / 2;
+  const maxCount = Math.max(...bins) || 1;
+  const n = bins.length;
+
+  // 下(最小値)→上(最大値)の順に、各ビン位置での左右対称の幅を結んで輪郭にする
+  const rightPts = [];
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n;
+    const y = padT + plotH - t * plotH;
+    const w = (bins[i] / maxCount) * (plotW / 2) * 0.92;
+    rightPts.push([cx + w, y]);
+  }
+  const leftPts = rightPts.map(([x, y]) => [cx - (x - cx), y]);
+
+  let d = `M ${cx} ${padT + plotH} `;
+  rightPts.forEach(([x, y]) => { d += `L ${x.toFixed(2)} ${y.toFixed(2)} `; });
+  d += `L ${cx} ${padT} `;
+  for (let i = leftPts.length - 1; i >= 0; i--) d += `L ${leftPts[i][0].toFixed(2)} ${leftPts[i][1].toFixed(2)} `;
+  d += 'Z';
+
+  // 中央値の位置に目印(点線)を1本だけ加える
+  let medianMark = '';
+  if (typeof median === 'number' && isFinite(median)) {
+    const range = (maxV - minV) || 1;
+    const t = Math.min(1, Math.max(0, (median - minV) / range));
+    const my = padT + plotH - t * plotH;
+    medianMark = `
+    <line x1="${padL}" y1="${my.toFixed(2)}" x2="${padL + plotW}" y2="${my.toFixed(2)}" stroke="#9c5a34" stroke-width="1.2" stroke-dasharray="3,2"/>
+    <text x="${padL - 2}" y="${(my + 3).toFixed(2)}" font-size="9" fill="#9c5a34" font-family="sans-serif" text-anchor="end">${median.toFixed(2)}</text>`;
+  }
+
+  const inner = `
+    <path d="${d}" fill="${color}" fill-opacity="0.75" stroke="#232a20" stroke-width="1"/>
+    <line x1="${cx}" y1="${padT}" x2="${cx}" y2="${padT + plotH}" stroke="#dad6c7" stroke-width="1"/>
+    ${medianMark}
+    <text x="${padL - 2}" y="${padT + 7}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${maxV.toFixed(2)}</text>
+    <text x="${padL - 2}" y="${padT + plotH}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${minV.toFixed(2)}</text>`;
+  hostEl.innerHTML = svgWrap(inner);
+}
+
+// ---- 箱ひげ図: 植物判定画素の最小・第1四分位・中央値・第3四分位・最大値を縦軸で描く。
+// 　　値はupdateMaskAndStatsで既にソート済みの配列からO(1)で取り出し済み(追加ソート不要)。 ----
+function drawBoxPlot(hostEl, box, color) {
+  const W = MINI_CHART_W, H = MINI_CHART_H;
+  const padL = 30, padR = 8, padT = 6, padB = 6;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const cx = padL + plotW / 2;
+  const boxWidth = Math.min(plotW * 0.5, 26);
+  const range = (box.max - box.min) || 1;
+  const yFor = (v) => padT + plotH - ((v - box.min) / range) * plotH;
+  const yMin = yFor(box.min), yMax = yFor(box.max);
+  const yQ1 = yFor(box.q1), yQ3 = yFor(box.q3), yMed = yFor(box.median);
+  const capHalf = boxWidth / 2.4;
+
+  const inner = `
+    <line x1="${cx}" y1="${yMin.toFixed(2)}" x2="${cx}" y2="${yQ1.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
+    <line x1="${cx}" y1="${yQ3.toFixed(2)}" x2="${cx}" y2="${yMax.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
+    <line x1="${(cx - capHalf).toFixed(2)}" y1="${yMin.toFixed(2)}" x2="${(cx + capHalf).toFixed(2)}" y2="${yMin.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
+    <line x1="${(cx - capHalf).toFixed(2)}" y1="${yMax.toFixed(2)}" x2="${(cx + capHalf).toFixed(2)}" y2="${yMax.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
+    <rect x="${(cx - boxWidth / 2).toFixed(2)}" y="${yQ3.toFixed(2)}" width="${boxWidth.toFixed(2)}" height="${Math.max(1, yQ1 - yQ3).toFixed(2)}" fill="${color}" fill-opacity="0.75" stroke="#232a20" stroke-width="1"/>
+    <line x1="${(cx - boxWidth / 2).toFixed(2)}" y1="${yMed.toFixed(2)}" x2="${(cx + boxWidth / 2).toFixed(2)}" y2="${yMed.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
+    <text x="${padL - 2}" y="${(yMax + 3).toFixed(2)}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${box.max.toFixed(2)}</text>
+    <text x="${padL - 2}" y="${(yMin + 3).toFixed(2)}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${box.min.toFixed(2)}</text>
+    <text x="${padL - 2}" y="${(yMed + 3).toFixed(2)}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${box.median.toFixed(2)}</text>`;
+  hostEl.innerHTML = svgWrap(inner);
+}
+
+// ---- ダブルクリックで写真・グラフを拡大表示するライトボックス ----
+// キャンバス/画像/SVGミニチャートを個別に配線するのではなく、documentへの委譲(dblclick)で
+// 「canvas・img#source・SVGミニチャートのいずれかをダブルクリックしたら開く」という
+// 単一の仕組みにしている。SVGはラスター化せず、SVGのままdata URIにして<img>へ渡すことで
+// ライトボックス側で拡大してもベクターのままぼやけずに表示される。
+function openLightbox(dataUrl) {
+  let overlay = document.getElementById('lightboxOverlay');
+  let img;
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'lightboxOverlay';
+    overlay.className = 'lightbox-overlay';
+    img = document.createElement('img');
+    img.id = 'lightboxImg';
+    overlay.appendChild(img);
+    overlay.addEventListener('click', () => { overlay.style.display = 'none'; });
+    document.body.appendChild(overlay);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && overlay.style.display === 'flex') overlay.style.display = 'none';
+    });
+  } else {
+    img = document.getElementById('lightboxImg');
+  }
+  img.src = dataUrl;
+  overlay.style.display = 'flex';
+}
+
+// SVG要素をimgのsrcに渡せるdata URIに変換する。viewBoxはそのままに、
+// 明示的なwidth/height属性を持たせて、外部画像として使われたときの
+// 縦横比(intrinsic aspect ratio)をブラウザが正しく認識できるようにする。
+function svgToDataUri(svgEl) {
+  const clone = svgEl.cloneNode(true);
+  const vb = svgEl.viewBox && svgEl.viewBox.baseVal;
+  clone.setAttribute('width', (vb && vb.width) || MINI_CHART_W);
+  clone.setAttribute('height', (vb && vb.height) || MINI_CHART_H);
+  const markup = new XMLSerializer().serializeToString(clone);
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markup);
+}
+
+document.addEventListener('dblclick', (e) => {
+  const chartHost = e.target.closest('.mini-hist-chart');
+  if (chartHost) {
+    const svgEl = chartHost.querySelector('svg');
+    if (!svgEl) return; // まだ何も描かれていない
+    openLightbox(svgToDataUri(svgEl));
+    return;
+  }
+  const el = e.target.closest('canvas, img#source');
+  if (!el) return;
+  let dataUrl;
+  if (el.tagName === 'CANVAS') {
+    if (!el.width || !el.height) return; // まだ何も描かれていない
+    try { dataUrl = el.toDataURL('image/png'); } catch (err) { return; }
+  } else {
+    // img#source: 読み込み直後にblob URLを解放しているため、el.srcをそのまま
+    // 別のimgに渡すと壊れた画像になる。既にデコード済みのビットマップを
+    // canvas経由で新しいdata URLに変換することで、解放済みURLを回避する。
+    if (!el.naturalWidth || !el.naturalHeight) return;
+    try {
+      const tmp = document.createElement('canvas');
+      tmp.width = el.naturalWidth;
+      tmp.height = el.naturalHeight;
+      tmp.getContext('2d').drawImage(el, 0, 0);
+      dataUrl = tmp.toDataURL('image/png');
+    } catch (err) { return; }
+  }
+  openLightbox(dataUrl);
+});
+</script>
+</body>
+</html>
