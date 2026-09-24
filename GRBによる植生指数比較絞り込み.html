@@ -3,24 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#eeede4">
+  <meta name="theme-color" content="#efe9dc">
   <title>可視光植生指数(RGBベース)一括変換</title>
   <style>
     :root {
       color-scheme: light;
-      --bg: #eeede4;
-      --surface: #ffffff;
-      --surface-alt: #f6f5ee;
-      --border: #dad6c7;
-      --text: #232a20;
-      --text-muted: #6e6f62;
-      --accent: #3f6b3b;
-      --accent-dark: #2b4c29;
-      --soil: #9c5a34;
-      --soil-dark: #7a4527;
+      --bg: #efe9dc;
+      --surface: #fbf8f1;
+      --surface-alt: #f2ece0;
+      --border: #d9d0bd;
+      --text: #241f1c;
+      --text-muted: #7a6f60;
+      --accent: #5c2430;
+      --accent-dark: #3d1720;
+      --soil: #48443d;
+      --soil-dark: #2c2925;
       --mono: ui-monospace, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
       --sans: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Segoe UI", sans-serif;
-      --radius: 8px;
+      --serif: Georgia, "Hiragino Mincho ProN", "Yu Mincho", "Times New Roman", serif;
+      --radius: 3px;
     }
     * { box-sizing: border-box; }
     body {
@@ -33,12 +34,15 @@
       font-size: 14px;
     }
     .section-title {
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-      margin: 0 0 10px;
-      padding-left: 10px;
-      border-left: 3px solid var(--accent);
+      font-family: var(--serif);
+      font-style: italic;
+      font-weight: 500;
+      font-size: 19px;
+      letter-spacing: 0.01em;
+      margin: 0 0 14px;
+      padding: 0 0 8px;
+      border-left: none;
+      border-bottom: 1px solid var(--border);
       color: var(--text);
     }
     .controls {
@@ -51,18 +55,19 @@
     .controls input[type="file"] { font-family: var(--sans); font-size: 13px; }
     .hint { font-size: 12px; color: var(--text-muted); margin: 8px 0 0; }
     button {
-      font-family: var(--sans);
-      font-size: 13px;
-      font-weight: 600;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      padding: 8px 16px;
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 13.5px;
+      font-weight: 500;
+      background: transparent;
+      color: var(--accent-dark);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 7px 15px;
       cursor: pointer;
-      transition: background 0.15s ease;
+      transition: background 0.15s ease, color 0.15s ease;
     }
-    button:hover { background: var(--accent-dark); }
+    button:hover { background: var(--accent); color: var(--surface); }
     button:focus-visible { outline: 2px solid var(--soil); outline-offset: 2px; }
 
     .progress-box { margin-top: 10px; max-width: 420px; }
@@ -71,17 +76,17 @@
     .progress-text { font-size: 12px; color: var(--text-muted); margin: 5px 0 0; }
 
     .images { display: flex; gap: 18px; flex-wrap: wrap; }
-    .card { width: 340px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 14px; box-sizing: border-box; }
-    .card h3 { margin: 0 0 3px; font-size: 14px; font-weight: 700; }
+    .card { width: 340px; background: var(--surface); border: 1px solid var(--border); border-top: 2px solid var(--accent); border-radius: var(--radius); padding: 14px; box-sizing: border-box; }
+    .card h3 { margin: 0 0 3px; font-size: 14.5px; font-weight: 500; font-family: var(--serif); font-style: italic; }
     canvas.output, img#source {
       width: 100%; height: auto;
       border: 1px solid var(--border);
-      border-radius: 4px;
+      border-radius: 2px;
       display: block;
       background: var(--surface-alt);
     }
     #placeholder { color: var(--text-muted); font-size: 13px; }
-    h3 { margin-bottom: 2px; font-size: 15px; }
+    h3 { margin-bottom: 2px; font-size: 15px; font-family: var(--serif); font-weight: 500; }
     .formula { font-size: 11.5px; color: var(--text-muted); margin: 0 0 8px 0; font-family: var(--mono); }
     .note { font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.5; }
     .legend { margin-top: 8px; }
@@ -98,8 +103,9 @@
     .auto-thresh-btn {
       display: block; margin-top: 8px; width: 100%;
       background: transparent; color: var(--soil-dark);
-      border: 1px solid var(--soil); font-size: 11.5px; font-weight: 600;
-      padding: 5px 8px; border-radius: 5px;
+      border: 1px solid var(--soil); font-size: 11.5px; font-weight: 500;
+      font-family: var(--serif); font-style: italic;
+      padding: 5px 8px; border-radius: var(--radius);
     }
     .auto-thresh-btn:hover { background: var(--soil); color: #fff; }
     .auto-thresh-btn.applied {
@@ -131,7 +137,8 @@
     .summary-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }
     table.summary-table { border-collapse: collapse; font-size: 12px; white-space: nowrap; width: 100%; }
     table.summary-table thead th {
-      background: var(--accent); color: #fff; padding: 8px 10px; text-align: left; font-weight: 600;
+      background: var(--accent-dark); color: var(--surface); padding: 8px 10px; text-align: left; font-weight: 500;
+      font-family: var(--serif); font-style: italic;
       position: sticky; top: 0;
     }
     table.summary-table thead th:first-child { position: sticky; left: 0; z-index: 2; }
@@ -172,7 +179,7 @@
 
     canvas, img#source { cursor: zoom-in; }
     .lightbox-overlay {
-      position: fixed; inset: 0; background: rgba(20, 22, 17, 0.82);
+      position: fixed; inset: 0; background: rgba(24, 19, 17, 0.85);
       display: none; align-items: center; justify-content: center;
       z-index: 9999; cursor: zoom-out; padding: 24px;
     }
@@ -1134,11 +1141,11 @@ function renderMiniChart(idx) {
   const select = document.getElementById(`chartType_${idx.id}`);
   const mode = select ? select.value : 'hist';
   if (mode === 'violin') {
-    drawViolin(hostEl, cached.hist, cached.loV, cached.hiV, '#3f6b3b', cached.box.median);
+    drawViolin(hostEl, cached.hist, cached.loV, cached.hiV, '#5c2430', cached.box.median);
   } else if (mode === 'box') {
-    drawBoxPlot(hostEl, cached.box, '#3f6b3b');
+    drawBoxPlot(hostEl, cached.box, '#5c2430');
   } else {
-    drawHistogram(hostEl, cached.hist, cached.loV, cached.hiV, '#3f6b3b', cached.box.median);
+    drawHistogram(hostEl, cached.hist, cached.loV, cached.hiV, '#5c2430', cached.box.median);
   }
 }
 
@@ -1170,18 +1177,18 @@ function drawHistogram(hostEl, bins, minV, maxV, color, median) {
     const labelX = Math.min(Math.max(mx, padL + 16), padL + plotW - 16);
     const labelText = median.toFixed(2);
     medianMark = `
-    <line x1="${mx.toFixed(2)}" y1="${padT}" x2="${mx.toFixed(2)}" y2="${padT + plotH}" stroke="#9c5a34" stroke-width="1.2" stroke-dasharray="3,2"/>
+    <line x1="${mx.toFixed(2)}" y1="${padT}" x2="${mx.toFixed(2)}" y2="${padT + plotH}" stroke="#48443d" stroke-width="1.2" stroke-dasharray="3,2"/>
     <rect x="${(labelX - labelText.length * 3.1).toFixed(2)}" y="${padT}" width="${(labelText.length * 6.2).toFixed(2)}" height="10" fill="#f6f5ee" fill-opacity="0.9"/>
-    <text x="${labelX.toFixed(2)}" y="${padT + 8}" font-size="9" fill="#9c5a34" font-family="sans-serif" text-anchor="middle">${labelText}</text>`;
+    <text x="${labelX.toFixed(2)}" y="${padT + 8}" font-size="9" fill="#48443d" font-family="sans-serif" text-anchor="middle">${labelText}</text>`;
   }
 
   const inner = `
     ${bars}
     ${medianMark}
-    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="#232a20" stroke-width="1"/>
-    <line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#232a20" stroke-width="1"/>
-    <text x="${padL}" y="${H - 3}" font-size="9" fill="#6e6f62" font-family="sans-serif">${minV.toFixed(2)}</text>
-    <text x="${padL + plotW}" y="${H - 3}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${maxV.toFixed(2)}</text>`;
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="#241f1c" stroke-width="1"/>
+    <line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#241f1c" stroke-width="1"/>
+    <text x="${padL}" y="${H - 3}" font-size="9" fill="#7a6f60" font-family="sans-serif">${minV.toFixed(2)}</text>
+    <text x="${padL + plotW}" y="${H - 3}" font-size="9" fill="#7a6f60" font-family="sans-serif" text-anchor="end">${maxV.toFixed(2)}</text>`;
   hostEl.innerHTML = svgWrap(inner);
 }
 
@@ -1218,16 +1225,16 @@ function drawViolin(hostEl, bins, minV, maxV, color, median) {
     const t = Math.min(1, Math.max(0, (median - minV) / range));
     const my = padT + plotH - t * plotH;
     medianMark = `
-    <line x1="${padL}" y1="${my.toFixed(2)}" x2="${padL + plotW}" y2="${my.toFixed(2)}" stroke="#9c5a34" stroke-width="1.2" stroke-dasharray="3,2"/>
-    <text x="${padL - 2}" y="${(my + 3).toFixed(2)}" font-size="9" fill="#9c5a34" font-family="sans-serif" text-anchor="end">${median.toFixed(2)}</text>`;
+    <line x1="${padL}" y1="${my.toFixed(2)}" x2="${padL + plotW}" y2="${my.toFixed(2)}" stroke="#48443d" stroke-width="1.2" stroke-dasharray="3,2"/>
+    <text x="${padL - 2}" y="${(my + 3).toFixed(2)}" font-size="9" fill="#48443d" font-family="sans-serif" text-anchor="end">${median.toFixed(2)}</text>`;
   }
 
   const inner = `
-    <path d="${d}" fill="${color}" fill-opacity="0.75" stroke="#232a20" stroke-width="1"/>
-    <line x1="${cx}" y1="${padT}" x2="${cx}" y2="${padT + plotH}" stroke="#dad6c7" stroke-width="1"/>
+    <path d="${d}" fill="${color}" fill-opacity="0.75" stroke="#241f1c" stroke-width="1"/>
+    <line x1="${cx}" y1="${padT}" x2="${cx}" y2="${padT + plotH}" stroke="#d9d0bd" stroke-width="1"/>
     ${medianMark}
-    <text x="${padL - 2}" y="${padT + 7}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${maxV.toFixed(2)}</text>
-    <text x="${padL - 2}" y="${padT + plotH}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${minV.toFixed(2)}</text>`;
+    <text x="${padL - 2}" y="${padT + 7}" font-size="9" fill="#7a6f60" font-family="sans-serif" text-anchor="end">${maxV.toFixed(2)}</text>
+    <text x="${padL - 2}" y="${padT + plotH}" font-size="9" fill="#7a6f60" font-family="sans-serif" text-anchor="end">${minV.toFixed(2)}</text>`;
   hostEl.innerHTML = svgWrap(inner);
 }
 
@@ -1246,15 +1253,15 @@ function drawBoxPlot(hostEl, box, color) {
   const capHalf = boxWidth / 2.4;
 
   const inner = `
-    <line x1="${cx}" y1="${yMin.toFixed(2)}" x2="${cx}" y2="${yQ1.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
-    <line x1="${cx}" y1="${yQ3.toFixed(2)}" x2="${cx}" y2="${yMax.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
-    <line x1="${(cx - capHalf).toFixed(2)}" y1="${yMin.toFixed(2)}" x2="${(cx + capHalf).toFixed(2)}" y2="${yMin.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
-    <line x1="${(cx - capHalf).toFixed(2)}" y1="${yMax.toFixed(2)}" x2="${(cx + capHalf).toFixed(2)}" y2="${yMax.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
-    <rect x="${(cx - boxWidth / 2).toFixed(2)}" y="${yQ3.toFixed(2)}" width="${boxWidth.toFixed(2)}" height="${Math.max(1, yQ1 - yQ3).toFixed(2)}" fill="${color}" fill-opacity="0.75" stroke="#232a20" stroke-width="1"/>
-    <line x1="${(cx - boxWidth / 2).toFixed(2)}" y1="${yMed.toFixed(2)}" x2="${(cx + boxWidth / 2).toFixed(2)}" y2="${yMed.toFixed(2)}" stroke="#232a20" stroke-width="1"/>
-    <text x="${padL - 2}" y="${(yMax + 3).toFixed(2)}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${box.max.toFixed(2)}</text>
-    <text x="${padL - 2}" y="${(yMin + 3).toFixed(2)}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${box.min.toFixed(2)}</text>
-    <text x="${padL - 2}" y="${(yMed + 3).toFixed(2)}" font-size="9" fill="#6e6f62" font-family="sans-serif" text-anchor="end">${box.median.toFixed(2)}</text>`;
+    <line x1="${cx}" y1="${yMin.toFixed(2)}" x2="${cx}" y2="${yQ1.toFixed(2)}" stroke="#241f1c" stroke-width="1"/>
+    <line x1="${cx}" y1="${yQ3.toFixed(2)}" x2="${cx}" y2="${yMax.toFixed(2)}" stroke="#241f1c" stroke-width="1"/>
+    <line x1="${(cx - capHalf).toFixed(2)}" y1="${yMin.toFixed(2)}" x2="${(cx + capHalf).toFixed(2)}" y2="${yMin.toFixed(2)}" stroke="#241f1c" stroke-width="1"/>
+    <line x1="${(cx - capHalf).toFixed(2)}" y1="${yMax.toFixed(2)}" x2="${(cx + capHalf).toFixed(2)}" y2="${yMax.toFixed(2)}" stroke="#241f1c" stroke-width="1"/>
+    <rect x="${(cx - boxWidth / 2).toFixed(2)}" y="${yQ3.toFixed(2)}" width="${boxWidth.toFixed(2)}" height="${Math.max(1, yQ1 - yQ3).toFixed(2)}" fill="${color}" fill-opacity="0.75" stroke="#241f1c" stroke-width="1"/>
+    <line x1="${(cx - boxWidth / 2).toFixed(2)}" y1="${yMed.toFixed(2)}" x2="${(cx + boxWidth / 2).toFixed(2)}" y2="${yMed.toFixed(2)}" stroke="#241f1c" stroke-width="1"/>
+    <text x="${padL - 2}" y="${(yMax + 3).toFixed(2)}" font-size="9" fill="#7a6f60" font-family="sans-serif" text-anchor="end">${box.max.toFixed(2)}</text>
+    <text x="${padL - 2}" y="${(yMin + 3).toFixed(2)}" font-size="9" fill="#7a6f60" font-family="sans-serif" text-anchor="end">${box.min.toFixed(2)}</text>
+    <text x="${padL - 2}" y="${(yMed + 3).toFixed(2)}" font-size="9" fill="#7a6f60" font-family="sans-serif" text-anchor="end">${box.median.toFixed(2)}</text>`;
   hostEl.innerHTML = svgWrap(inner);
 }
 
