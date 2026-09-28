@@ -1205,6 +1205,27 @@ function drawBreakEvenD3(svgId, d) {
       .attr("stroke", p.color)
       .attr("stroke-width", isPrint ? 2.4 : 3.6);
 
+    if (p.bep !== null && isFinite(p.bep) && p.bep >= 0 && p.bep <= maxX) {
+      svg.append("line")
+        .attr("x1", x(p.bep)).attr("y1", y(p.bep))
+        .attr("x2", x(p.bep)).attr("y2", y(0))
+        .attr("stroke", p.color)
+        .attr("stroke-width", isPrint ? 1 : 1.5)
+        .attr("stroke-dasharray", isPrint ? "2 2" : "4 3");
+
+      svg.append("text")
+        .attr("x", x(p.bep))
+        .attr("y", y(0) - (isPrint ? 2 : 3))
+        .attr("text-anchor", "middle")
+        .attr("font-size", isPrint ? "7px" : "10px")
+        .attr("font-weight", "bold")
+        .attr("fill", p.color)
+        .attr("stroke", "#ffffff")
+        .attr("stroke-width", isPrint ? 2 : 3)
+        .attr("paint-order", "stroke")
+        .text(`${Math.round(p.bep).toLocaleString()}万円`);
+    }
+
     svg.append("text")
       .attr("x", offsetX + margin.left + (isPrint ? 3 : 4))
       .attr("y", margin.top + (isPrint ? 8 : 11))
