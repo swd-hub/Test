@@ -802,7 +802,7 @@ function drawMatrixScatterD3(svgId, crops) {
 
   const defs = svg.append("defs");
   defs.append("marker").attr("id", `arrow-${svgId}`).attr("viewBox", "0 0 10 10")
-    .attr("refX", 6).attr("refY", 5).attr("markerWidth", 6).attr("markerHeight", 6)
+    .attr("refX", 10).attr("refY", 5).attr("markerWidth", 6).attr("markerHeight", 6)
     .attr("orient", "auto-start-reverse").append("path")
     .attr("d", "M 0 0 L 10 5 L 0 10 z").attr("fill", "#666666");
 
@@ -823,11 +823,16 @@ function drawMatrixScatterD3(svgId, crops) {
 
   crops.forEach(c => {
     const x1 = x(c.yieldPlan), y1 = y(c.pricePlan), x2 = x(c.yieldActual), y2 = y(c.priceActual);
-    svg.append("line").attr("x1", x1).attr("y1", y1).attr("x2", x2).attr("y2", y2)
+    const dx = x2 - x1, dy = y2 - y1;
+    const distance = Math.hypot(dx, dy);
+    const pointRadius = isPrint ? 3 : 4.5;
+    const endX = distance > 0 ? x2 - dx / distance * pointRadius : x2;
+    const endY = distance > 0 ? y2 - dy / distance * pointRadius : y2;
+    svg.append("line").attr("x1", x1).attr("y1", y1).attr("x2", endX).attr("y2", endY)
       .attr("stroke", "#666666").attr("stroke-width", isPrint ? 1.2 : 1.8)
       .attr("stroke-dasharray", "3,3").attr("marker-end", `url(#arrow-${svgId})`);
-    svg.append("circle").attr("cx", x1).attr("cy", y1).attr("r", isPrint ? 3 : 4.5).attr("fill", "#4a86c8");
-    svg.append("circle").attr("cx", x2).attr("cy", y2).attr("r", isPrint ? 3 : 4.5).attr("fill", "#e08030");
+    svg.append("circle").attr("cx", x1).attr("cy", y1).attr("r", pointRadius).attr("fill", "#4a86c8");
+    svg.append("circle").attr("cx", x2).attr("cy", y2).attr("r", pointRadius).attr("fill", "#e08030");
     svg.append("text").attr("x", x2 + (isPrint ? 4 : 6)).attr("y", y2 + (isPrint ? 3 : 4))
       .attr("font-size", isPrint ? "8px" : "13px").attr("font-weight", "bold").attr("fill", "#222").text(c.name);
   });
