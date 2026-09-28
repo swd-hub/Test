@@ -1171,7 +1171,12 @@ function buildScalarComparison(label, plan, actual, unit) {
 function buildBreakEvenCommentary(data) {
   const plan = data.breakEvenPlan;
   const actual = data.breakEvenActual;
-  if (actual === null) return "実績の変動費率が100%以上のため、損益分岐点を算出できません。";
+  if (actual === null) {
+    if (data.variableRatioActual > 1) {
+      return "実績の変動費率が100%を超えており、売上が増えるほど赤字が拡大する状態です。損益分岐点を算出できません。";
+    }
+    return "実績の変動費率が100%のため、売上が増えても固定費を回収できず、損益分岐点を算出できません。";
+  }
 
   const clauses = [];
   if (plan !== null) {
