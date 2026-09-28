@@ -148,6 +148,21 @@ textarea.csv-input {
   width: 180px;
 }
 
+.cost-classification-wrap { overflow-x: auto; }
+.cost-classification-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cost-classification-table th, .cost-classification-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+.cost-classification-table th:first-child, .cost-classification-table td:first-child { text-align: left; }
+.cost-classification-table th:last-child, .cost-classification-table td:last-child { text-align: center; }
+.cost-classification-table thead { background: #f4f5f7; }
+.cost-fixed-toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.cost-fixed-toggle input { width: 16px; height: 16px; margin: 0; accent-color: var(--plan); }
+.cost-classification-summary { margin: 10px 0 0; font-size: 13px; font-weight: 600; }
+
 /* グラフ内白文字の黒縁取り定義 */
 .chart-text-stroked {
   paint-order: stroke fill;
@@ -339,6 +354,13 @@ textarea.csv-input {
       <textarea class="csv-input" id="csv-crop" spellcheck="false" rows="4"></textarea>
       <div class="row-actions"><span class="parse-note" id="note-crop"></span></div>
     </div>
+
+    <div class="card">
+      <h2>費用分解（損益分岐点分析）</h2>
+      <p class="hint">固定費に含める科目にチェックしてください。未チェックの科目は変動費として計算します。</p>
+      <div class="cost-classification-wrap" id="cost-classification"></div>
+      <p class="cost-classification-summary" id="cost-classification-summary"></p>
+    </div>
   </section>
 
   <section id="tab-chart" class="tab-panel">
@@ -487,8 +509,9 @@ document.getElementById("csv-crop").value = DEFAULT_CROP_CSV;
 
 const YEN_TO_MAN = v => v / 10000;
 
-/* ---- 損益分岐図：固定費の科目区分（暫定） ---- */
+/* ---- 損益分岐図：固定費の初期科目区分 ---- */
 const FIXED_COST_CATEGORIES = ["減価償却費", "雇用労賃（雇人費）", "利子割引料","地代・賃借料","土地改良費","販売促進費","支払手数料","リース料","その他経費","雑費"];
+const fixedCostCategories = new Set(FIXED_COST_CATEGORIES);
 
 function splitLines(text) {
   return text.split(/\r?\n/).filter(l => l.trim().length > 0);
@@ -574,6 +597,79 @@ function readState() {
   document.getElementById("note-expense").textContent = `${expense.length}件を読み込みました`;
   document.getElementById("note-crop").textContent = `${crop.length}品目を読み込みました`;
   return { income, expense, crop };
+}
+
+function renderCostClassification(expenses) {
+  const container = document.getElementById("cost-classification");
+  const summary = document.getElementById("cost-classification-summary");
+  container.replaceChildren();
+
+  const categories = new Map();
+  expenses.forEach(expense => {
+    const totals = categories.get(expense.category) || { category: expense.category, plan: 0, actual: 0 };
+    totals.plan += Number(expense.plan) || 0;
+    totals.actual += Number(expense.actual) || 0;
+    categories.set(expense.category, totals);
+  });
+  const rows = [...categories.values()];
+  if (rows.length === 0) {
+    container.textContent = "経費科目を入力すると、ここで固定費・変動費を分類できます。";
+    summary.textContent = "";
+    return;
+  }
+
+  const table = document.createElement("table");
+  table.className = "cost-classification-table";
+  const thead = table.createTHead();
+  const headerRow = thead.insertRow();
+  ["科目", "計画（円）", "実績（円）", "損益分岐点の分類"].forEach(label => {
+    const th = document.createElement("th");
+    th.textContent = label;
+    headerRow.appendChild(th);
+  });
+
+  const tbody = table.createTBody();
+  const formatYen = value => Math.round(value).toLocaleString("ja-JP");
+  rows.forEach(expense => {
+    const row = tbody.insertRow();
+    row.insertCell().textContent = expense.category;
+    row.insertCell().textContent = formatYen(expense.plan);
+    row.insertCell().textContent = formatYen(expense.actual);
+    const classificationCell = row.insertCell();
+    const label = document.createElement("label");
+    label.className = "cost-fixed-toggle";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = fixedCostCategories.has(expense.category);
+    checkbox.setAttribute("aria-label", `${expense.category}を固定費に分類`);
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) fixedCostCategories.add(expense.category);
+      else fixedCostCategories.delete(expense.category);
+      renderCostClassification(expenses);
+      if (document.getElementById("tab-chart").classList.contains("active")) renderAllCharts();
+    });
+    label.append(checkbox, document.createTextNode("固定費"));
+    classificationCell.appendChild(label);
+  });
+  container.appendChild(table);
+
+  const fixed = rows.filter(expense => fixedCostCategories.has(expense.category));
+  const fixedPlan = fixed.reduce((sum, expense) => sum + expense.plan, 0);
+  const fixedActual = fixed.reduce((sum, expense) => sum + expense.actual, 0);
+  const totalPlan = rows.reduce((sum, expense) => sum + expense.plan, 0);
+  const totalActual = rows.reduce((sum, expense) => sum + expense.actual, 0);
+  summary.textContent = `固定費 ${fixed.length}科目: 計画 ${formatYen(fixedPlan)}円 / 実績 ${formatYen(fixedActual)}円　|　変動費: 計画 ${formatYen(totalPlan - fixedPlan)}円 / 実績 ${formatYen(totalActual - fixedActual)}円`;
+}
+
+function resetCostClassification(expenses, importedClassifications = new Map()) {
+  fixedCostCategories.clear();
+  expenses.forEach(expense => {
+    const isFixed = importedClassifications.has(expense.category)
+      ? importedClassifications.get(expense.category)
+      : FIXED_COST_CATEGORIES.includes(expense.category);
+    if (isFixed) fixedCostCategories.add(expense.category);
+  });
+  renderCostClassification(expenses);
 }
 
 function showTab(name) {
@@ -1298,10 +1394,10 @@ function renderAllCharts() {
   const revenueActual = salesActual + householdActual;
 
   const fixedCostPlan = state.expense
-    .filter(e => FIXED_COST_CATEGORIES.includes(e.category))
+    .filter(e => fixedCostCategories.has(e.category))
     .reduce((s, e) => s + Number(e.plan), 0);
   const fixedCostActual = state.expense
-    .filter(e => FIXED_COST_CATEGORIES.includes(e.category))
+    .filter(e => fixedCostCategories.has(e.category))
     .reduce((s, e) => s + Number(e.actual), 0);
   const variableCostPlan = expenseTotalPlan - fixedCostPlan;
   const variableCostActual = expenseTotalActual - fixedCostActual;
@@ -1480,6 +1576,7 @@ function loadCsv(text) {
   let name = "";
   const incomeRows = [];
   const expenseRows = [];
+  const costClassifications = new Map();
   const cropMap = new Map();
 
   lines.slice(1).forEach(line => {
@@ -1494,6 +1591,8 @@ function loadCsv(text) {
       incomeRows.push({ category: item, plan: toNum(plan) || 0, actual: toNum(actual) || 0 });
     } else if (type === "経費") {
       expenseRows.push({ category: item, plan: toNum(plan) || 0, actual: toNum(actual) || 0 });
+    } else if (type === "費用区分") {
+      costClassifications.set(item, subtype === "固定費");
     } else if (type === "農業収入") {
       if (!cropMap.has(item)) cropMap.set(item, { name: item, landPlan: 0, landActual: 0, prodPlan: 0, prodActual: 0, revPlan: 0, revActual: 0 });
       const c = cropMap.get(item);
@@ -1518,6 +1617,7 @@ function loadCsv(text) {
   expenseRows.forEach(r => expenseLines.push(`${r.category}\t${fmt(r.plan)}\t${fmt(r.actual)}`));
   expenseLines.push(`計\t${fmt(expenseRows.reduce((s, r) => s + r.plan, 0))}\t${fmt(expenseRows.reduce((s, r) => s + r.actual, 0))}`);
   document.getElementById("csv-expense").value = expenseLines.join("\n");
+  resetCostClassification(parseIncomeExpenseCsv(expenseLines.join("\n")), costClassifications);
 
   const cropLines = ["作目名等\t\t計画\t実績"];
   cropMap.forEach(c => {
@@ -1737,6 +1837,7 @@ function loadFromExcelGrid(grid) {
   if (expenseText) document.getElementById("csv-expense").value = expenseText;
   if (cropText) document.getElementById("csv-crop").value = cropText;
 
+  renderCostClassification(parseIncomeExpenseCsv(document.getElementById("csv-expense").value));
   readState();
   renderAllCharts();
 
@@ -1778,6 +1879,9 @@ function saveCsv() {
   ];
   state.income.forEach(item => rows.push(["収入", item.category, "", item.plan, item.actual]));
   state.expense.forEach(item => rows.push(["経費", item.category, "", item.plan, item.actual]));
+  [...new Set(state.expense.map(item => item.category))].forEach(category => {
+    rows.push(["費用区分", category, fixedCostCategories.has(category) ? "固定費" : "変動費", "", ""]);
+  });
   state.crop.forEach(item => {
     rows.push(["農業収入", item.name, "経営規模 a", item.landPlan, item.landActual]);
     rows.push(["農業収入", item.name, "生産量 kg", item.prodPlan, item.prodActual]);
@@ -1793,6 +1897,11 @@ function saveCsv() {
   a.download = `${csvFiscalYear}_${csvName}.csv`;
   a.click();
 }
+
+document.getElementById("csv-expense").addEventListener("input", event => {
+  renderCostClassification(parseIncomeExpenseCsv(event.target.value));
+});
+renderCostClassification(parseIncomeExpenseCsv(document.getElementById("csv-expense").value));
 </script>
 <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="handleCsvFileChange(this)">
 <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display:none" onchange="handleExcelFileChange(this)">
