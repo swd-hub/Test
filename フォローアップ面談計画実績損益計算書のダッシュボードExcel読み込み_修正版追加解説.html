@@ -213,7 +213,7 @@ textarea.csv-input {
   .print-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(6, 165px);
+    grid-template-rows: repeat(6, 167px);
     gap: 4px;
     row-gap: 4px;
   }
@@ -230,7 +230,7 @@ textarea.csv-input {
     padding: 2px 4px;
     display: flex;
     flex-direction: column;
-    height: 165px;
+    height: 167px;
     box-sizing: border-box;
     page-break-inside: avoid;
   }
@@ -245,8 +245,8 @@ textarea.csv-input {
 
   .print-chart svg {
     width: 100% !important;
-    height: 94px !important;
-    flex: 0 0 94px;
+    height: 90px !important;
+    flex: 0 0 90px;
   }
 
   .print-insight {
@@ -255,7 +255,7 @@ textarea.csv-input {
     overflow: hidden;
     margin: 2px 1px 0;
     color: #222;
-    font-size: 9px;
+    font-size: 10.5px;
     line-height: 1.2;
   }
 
@@ -738,6 +738,22 @@ function drawGroupedBarD3(svgId, data, keys, groupKey) {
       .text(d => d.value !== 0 ? d.value.toFixed(0) : "");
 }
 
+// 縦軸ラベルが長い場合に2段へ折り返す（1行あたり maxChars 文字を超えたら半分で分割）
+function wrapAxisLabels(axisG, maxChars) {
+  axisG.selectAll(".tick text").each(function () {
+    const t = d3.select(this);
+    const label = String(t.text());
+    if (label.length <= maxChars) return;
+    const cut = Math.ceil(label.length / 2);
+    const clip = str => str.length > maxChars + 1 ? str.slice(0, maxChars) + "…" : str;
+    const lines = [clip(label.slice(0, cut)), clip(label.slice(cut))];
+    const x = t.attr("x");
+    t.attr("dy", "0").text(null);
+    t.append("tspan").attr("x", x).attr("dy", "-0.23em").text(lines[0]);
+    t.append("tspan").attr("x", x).attr("dy", "1.1em").text(lines[1]);
+  });
+}
+
 function drawGroupedHorizontalBarD3(svgId, data, keys, groupKey) {
   const svg = d3.select(`#${svgId}`);
   svg.selectAll("*").remove();
@@ -760,7 +776,8 @@ function drawGroupedHorizontalBarD3(svgId, data, keys, groupKey) {
   svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x).ticks(4))
     .selectAll("text").attr("font-size", isPrint ? "9px" : "14px");
   svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y0))
-    .selectAll("text").attr("font-size", isPrint ? "9px" : "14px");
+    .call(g => { g.selectAll("text").attr("font-size", isPrint ? "9px" : "14px");
+      wrapAxisLabels(g, Math.max(2, Math.floor((margin.left - 10) / (isPrint ? 9 : 14)))); });
 
   const group = svg.append("g").selectAll("g").data(data).join("g")
     .attr("transform", d => `translate(0,${y0(d[groupKey])})`);
@@ -865,8 +882,8 @@ function drawStackedHorizontalBarD3(svgId, data, keys, groupKey) {
   svg.append("g")
     .attr("transform", `translate(${margin.left},0)`)
     .call(d3.axisLeft(y))
-    .selectAll("text")
-      .attr("font-size", isPrint ? "10px" : "16px");
+    .call(g => { g.selectAll("text").attr("font-size", isPrint ? "10px" : "16px");
+      wrapAxisLabels(g, Math.max(2, Math.floor((margin.left - 10) / (isPrint ? 10 : 16)))); });
 
   svg.append("g")
     .selectAll("rect")
