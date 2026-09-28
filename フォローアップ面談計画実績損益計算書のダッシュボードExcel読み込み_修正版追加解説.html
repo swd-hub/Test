@@ -243,13 +243,14 @@ textarea.csv-input {
   .print-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(6, 167px);
+    grid-template-rows: repeat(5, 185px);
     gap: 4px;
     row-gap: 4px;
   }
 
   .print-page-two {
-    grid-template-rows: 175px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: 240px 175px;
     break-before: page;
     page-break-before: always;
     margin-top: 10mm;
@@ -260,7 +261,7 @@ textarea.csv-input {
     padding: 2px 4px;
     display: flex;
     flex-direction: column;
-    height: 167px;
+    height: 185px;
     box-sizing: border-box;
     page-break-inside: avoid;
   }
@@ -275,8 +276,8 @@ textarea.csv-input {
 
   .print-chart svg {
     width: 100% !important;
-    height: 90px !important;
-    flex: 0 0 90px;
+    height: 105px !important;
+    flex: 0 0 105px;
   }
 
   .print-insight {
@@ -303,6 +304,18 @@ textarea.csv-input {
   .print-full svg {
     height: 94px !important;
     flex-basis: 94px;
+  }
+
+  .print-page-two .print-full {
+    grid-column: 1 / -1;
+  }
+
+  .print-pareto {
+    height: 240px;
+  }
+  .print-pareto svg {
+    height: 160px !important;
+    flex-basis: 160px;
   }
 
   .chart-text-stroked {
@@ -445,10 +458,10 @@ textarea.csv-input {
     <div class="print-chart"><h4>単価（売上高/生産量） 円/kg</h4><svg id="print-chart-price"></svg><p class="print-insight" id="print-insight-price"></p></div>
     <div class="print-chart"><h4>10aあたり売上高 万円/10a</h4><svg id="print-chart-sales-per-10a"></svg><p class="print-insight" id="print-insight-sales-per-10a"></p></div>
     <div class="print-chart"><h4>単価×単収マトリクス</h4><svg id="print-chart-matrix-scatter"></svg><p class="print-insight" id="print-insight-matrix-scatter"></p></div>
-    <div class="print-chart"><h4>計画経費のパレート 万円</h4><svg id="print-chart-pareto-plan"></svg><p class="print-insight" id="print-insight-pareto-plan"></p></div>
-    <div class="print-chart"><h4>実績経費のパレート 万円</h4><svg id="print-chart-pareto-actual"></svg><p class="print-insight" id="print-insight-pareto-actual"></p></div>
   </div>
   <div class="print-grid print-page-two">
+    <div class="print-chart print-pareto"><h4>計画経費のパレート 万円</h4><svg id="print-chart-pareto-plan"></svg><p class="print-insight" id="print-insight-pareto-plan"></p></div>
+    <div class="print-chart print-pareto"><h4>実績経費のパレート 万円</h4><svg id="print-chart-pareto-actual"></svg><p class="print-insight" id="print-insight-pareto-actual"></p></div>
     <div class="print-chart print-full"><h4>経費 内訳（計画 vs 実績）万円</h4><svg id="print-chart-expensebreakdown"></svg><p class="print-insight" id="print-insight-expensebreakdown"></p></div>
   </div>
 </div>
