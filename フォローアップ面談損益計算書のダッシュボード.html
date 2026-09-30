@@ -421,6 +421,11 @@ textarea.csv-input {
         <div class="summary-line" id="matrix-scatter-note"></div>
         <p class="chart-insight" id="insight-matrix-scatter"></p>
       </div>
+      <div class="chart-box">
+        <h3>作目別売上構成比 %（計画 vs 実績）</h3>
+        <svg id="chart-crop-sales-mix"></svg>
+        <p class="chart-insight" id="insight-crop-sales-mix"></p>
+      </div>
 
       <div class="chart-box row-start-left">
         <h3>計画経費のパレート分析 万円</h3>
@@ -463,6 +468,7 @@ textarea.csv-input {
     <div class="print-chart"><h4>単価（売上高/生産量） 円/kg</h4><svg id="print-chart-price"></svg><p class="print-insight" id="print-insight-price"></p></div>
     <div class="print-chart"><h4>10aあたり売上高 万円/10a</h4><svg id="print-chart-sales-per-10a"></svg><p class="print-insight" id="print-insight-sales-per-10a"></p></div>
     <div class="print-chart"><h4>単価×単収マトリクス</h4><svg id="print-chart-matrix-scatter"></svg><p class="print-insight" id="print-insight-matrix-scatter"></p></div>
+    <div class="print-chart"><h4>作目別売上構成比 %（計画 vs 実績）</h4><svg id="print-chart-crop-sales-mix"></svg><p class="print-insight" id="print-insight-crop-sales-mix"></p></div>
     <div class="print-chart print-pareto"><h4>計画経費のパレート 万円</h4><svg id="print-chart-pareto-plan"></svg><p class="print-insight" id="print-insight-pareto-plan"></p></div>
     <div class="print-chart print-pareto"><h4>実績経費のパレート 万円</h4><svg id="print-chart-pareto-actual"></svg><p class="print-insight" id="print-insight-pareto-actual"></p></div>
     <div class="print-chart print-full"><h4>経費 内訳（計画 vs 実績）万円</h4><svg id="print-chart-expensebreakdown"></svg><p class="print-insight" id="print-insight-expensebreakdown"></p></div>
@@ -988,7 +994,9 @@ function drawGroupedHorizontalBarD3(svgId, data, keys, groupKey) {
   const color = d3.scaleOrdinal().domain(keys).range(["#4a86c8", "#e08030"]);
   addLegend(svg, keys, color, margin, isPrint ? 8 : 18, isPrint);
 
-  svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x).ticks(4))
+  const xAxis = d3.axisBottom(x).ticks(4);
+  if (svgId.includes("crop-sales-mix")) xAxis.tickFormat(value => `${value}%`);
+  svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(xAxis)
     .selectAll("text").attr("font-size", isPrint ? "9px" : "14px");
   svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y0))
     .call(g => { g.selectAll("text").attr("font-size", isPrint ? "9px" : "14px");
@@ -1415,6 +1423,25 @@ function buildPlanComparison(label, items, unit, digits = 0) {
   return clauses.join(" ");
 }
 
+function buildCropSalesMixCommentary(crops) {
+  const planTotal = crops.reduce((sum, crop) => sum + Math.max(0, crop.revPlan), 0);
+  const actualTotal = crops.reduce((sum, crop) => sum + Math.max(0, crop.revActual), 0);
+  if (actualTotal === 0 && planTotal === 0) return "作目別の売上データがないため、構成比を算出できません。";
+
+  const actualLeader = crops
+    .filter(crop => crop.revActual > 0)
+    .sort((a, b) => b.revActual - a.revActual)[0];
+  if (!actualLeader) return "実績の作目別売上がないため、構成比を比較できません。";
+
+  const actualShare = actualLeader.revActual / actualTotal * 100;
+  const planShare = planTotal > 0 ? Math.max(0, actualLeader.revPlan) / planTotal * 100 : 0;
+  const difference = actualShare - planShare;
+  const changeText = planTotal > 0
+    ? `計画から${formatInsightValue(Math.abs(difference), 1)}ポイント${difference >= 0 ? "上昇" : "低下"}しています。`
+    : "計画の作目別売上がないため、計画との比較はできません。";
+  return `各作目の売上高合計を100%として比較しています。実績では${actualLeader.name}が${formatInsightValue(actualShare, 1)}%で最大です。${changeText}`;
+}
+
 function buildScalarComparison(label, plan, actual, unit) {
   const difference = Number(actual) - Number(plan);
   if (difference < 0) return `${label}は計画より${formatInsightValue(-difference)}${unit}少なく、計画に届いていません。`;
@@ -1650,6 +1677,20 @@ function renderAllCharts() {
   drawMatrixScatterD3("print-chart-matrix-scatter", crops);
   document.getElementById("matrix-scatter-note").textContent = "点：青(計画) ➔ 橙(実績) 矢印ベクトル表示";
 
+  const cropSalesMixData = crops.map(crop => ({
+    name: crop.name,
+    計画: crop.revPlan,
+    実績: crop.revActual
+  }));
+  const cropPlanTotal = cropSalesMixData.reduce((sum, crop) => sum + Math.max(0, crop.計画), 0);
+  const cropActualTotal = cropSalesMixData.reduce((sum, crop) => sum + Math.max(0, crop.実績), 0);
+  cropSalesMixData.forEach(crop => {
+    crop.計画 = cropPlanTotal > 0 ? Math.max(0, crop.計画) / cropPlanTotal * 100 : 0;
+    crop.実績 = cropActualTotal > 0 ? Math.max(0, crop.実績) / cropActualTotal * 100 : 0;
+  });
+  drawGroupedHorizontalBarD3("chart-crop-sales-mix", cropSalesMixData, ["計画", "実績"], "name");
+  drawGroupedHorizontalBarD3("print-chart-crop-sales-mix", cropSalesMixData, ["計画", "実績"], "name");
+
   const paretoPlan = paretoAnalysis(state.expense.map(e => ({ category: e.category, value: Number(e.plan) })));
   const paretoActual = paretoAnalysis(state.expense.map(e => ({ category: e.category, value: Number(e.actual) })));
   const paretoMaxY = Math.max(
@@ -1694,6 +1735,7 @@ function renderAllCharts() {
   setChartInsight("insight-price", buildPlanComparison("単価", priceData.map(c => ({ name: c.name, plan: c.計画, actual: c.実績 })), "円/kg", 1), "print-insight-price");
   setChartInsight("insight-sales-per-10a", buildPlanComparison("10aあたり売上高", salesPer10aData.map(c => ({ name: c.name, plan: c.計画, actual: c.実績 })), "万円/10a", 1), "print-insight-sales-per-10a");
   setChartInsight("insight-matrix-scatter", buildMatrixCommentary(crops.filter(c => c.yieldPlan > 0 || c.pricePlan > 0)), "print-insight-matrix-scatter");
+  setChartInsight("insight-crop-sales-mix", buildCropSalesMixCommentary(crops), "print-insight-crop-sales-mix");
   setChartInsight("insight-pareto-plan", buildParetoCommentary(state.expense, "plan", "計画経費"), "print-insight-pareto-plan");
   setChartInsight("insight-pareto-actual", buildParetoCommentary(state.expense, "actual", "実績経費"), "print-insight-pareto-actual");
   setChartInsight("insight-expensebreakdown", buildExpenseBreakdownCommentary(state.expense, expenseTotalPlan, expenseTotalActual), "print-insight-expensebreakdown");
