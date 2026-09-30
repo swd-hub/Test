@@ -104,6 +104,7 @@ textarea.csv-input {
   row-gap: 24px;
 }
 .grid .full { grid-column: 1 / -1; }
+.grid .row-start-left { grid-column: 1; }
 
 .chart-box { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
 .chart-box h3 { font-size: 16px; margin: 0 0 8px; text-align: center; color: var(--text); font-weight: 600; }
@@ -250,7 +251,7 @@ textarea.csv-input {
 
   .print-page-two {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(3, 240px);
+    grid-template-rows: repeat(4, 240px);
     break-before: page;
     page-break-before: always;
     margin-top: 10mm;
@@ -402,10 +403,11 @@ textarea.csv-input {
       <div class="chart-box"><h3>収入の内訳 万円</h3><svg id="chart-revenue-income"></svg><p class="chart-insight" id="insight-revenue-income"></p></div>
       <div class="chart-box"><h3>売上高＋家事消費 万円</h3><svg id="chart-revenue"></svg><p class="chart-insight" id="insight-revenue"></p></div>
       <div class="chart-box"><h3>経費差引金額 万円</h3><svg id="chart-netincome"></svg><p class="chart-insight" id="insight-netincome"></p></div>
+      <div class="chart-box"><h3>費用と売上高＋家事消費の構成 万円</h3><svg id="chart-cost-revenue-composition"></svg><p class="chart-insight" id="insight-cost-revenue-composition"></p></div>
       <div class="chart-box"><h3>損益分岐図（売上高＋家事消費）万円</h3><svg id="chart-breakeven"></svg><div class="summary-line" id="breakeven-note"></div><p class="chart-insight" id="insight-breakeven"></p></div>
       <div class="chart-box"><h3>生産量 kg</h3><svg id="chart-production"></svg><p class="chart-insight" id="insight-production"></p></div>
       <div class="chart-box"><h3>単収 kg/10a</h3><svg id="chart-yield"></svg><p class="chart-insight" id="insight-yield"></p></div>
-      <div class="chart-box"><h3>単価（売上高/性産量） 円/kg</h3><svg id="chart-price"></svg><p class="chart-insight" id="insight-price"></p></div>
+      <div class="chart-box"><h3>単価（売上高/生産量） 円/kg</h3><svg id="chart-price"></svg><p class="chart-insight" id="insight-price"></p></div>
 
       <div class="chart-box">
         <h3>作目別 10aあたり売上高 万円/10a</h3>
@@ -420,7 +422,7 @@ textarea.csv-input {
         <p class="chart-insight" id="insight-matrix-scatter"></p>
       </div>
 
-      <div class="chart-box">
+      <div class="chart-box row-start-left">
         <h3>計画経費のパレート分析 万円</h3>
         <svg id="chart-pareto-plan"></svg>
         <div class="summary-line" id="pareto-plan-note"></div>
@@ -462,6 +464,7 @@ textarea.csv-input {
     <div class="print-chart"><h4>単価×単収マトリクス</h4><svg id="print-chart-matrix-scatter"></svg><p class="print-insight" id="print-insight-matrix-scatter"></p></div>
     <div class="print-chart print-pareto"><h4>計画経費のパレート 万円</h4><svg id="print-chart-pareto-plan"></svg><p class="print-insight" id="print-insight-pareto-plan"></p></div>
     <div class="print-chart print-pareto"><h4>実績経費のパレート 万円</h4><svg id="print-chart-pareto-actual"></svg><p class="print-insight" id="print-insight-pareto-actual"></p></div>
+    <div class="print-chart"><h4>費用と売上高＋家事消費の構成 万円</h4><svg id="print-chart-cost-revenue-composition"></svg><p class="print-insight" id="print-insight-cost-revenue-composition"></p></div>
     <div class="print-chart print-full"><h4>経費 内訳（計画 vs 実績）万円</h4><svg id="print-chart-expensebreakdown"></svg><p class="print-insight" id="print-insight-expensebreakdown"></p></div>
   </div>
 </div>
@@ -861,6 +864,93 @@ function drawGroupedBarD3(svgId, data, keys, groupKey) {
       .attr("font-size", isPrint ? "10px" : "15px")
       .attr("font-weight", "bold")
       .text(d => d.value !== 0 ? d.value.toFixed(0) : "");
+}
+
+function drawCostRevenueCompositionD3(svgId, data) {
+  const svg = d3.select(`#${svgId}`);
+  svg.selectAll("*").remove();
+  const isPrint = svgId.startsWith("print-");
+  const bounds = svg.node().getBoundingClientRect();
+  const width = bounds.width || (isPrint ? 290 : 900);
+  const height = bounds.height || (isPrint ? 110 : 305);
+  const margin = { top: isPrint ? 34 : 48, right: 16, bottom: isPrint ? 48 : 45, left: isPrint ? 42 : 58 };
+  const keys = ["変動費", "固定費", "売上高", "家事消費"];
+  const colors = { "変動費": "#5fa777", "固定費": "#a56bbd", "売上高": "#4a86c8", "家事消費": "#c8975a" };
+  const color = key => colors[key];
+  const stack = d3.stack().keys(keys).offset(d3.stackOffsetDiverging)(data);
+  const minValue = d3.min(stack, series => d3.min(series, point => point[0])) || 0;
+  const maxValue = d3.max(stack, series => d3.max(series, point => point[1])) || 0;
+  const y = d3.scaleLinear()
+    .domain([Math.min(0, minValue * 1.12), Math.max(1, maxValue * 1.12)])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
+  const plotWidth = width - margin.left - margin.right;
+  const centers = [0.12, 0.34, 0.66, 0.88].map(ratio => margin.left + plotWidth * ratio);
+  const barWidth = Math.min(isPrint ? 34 : 92, plotWidth * 0.14);
+
+  svg.attr("viewBox", `0 0 ${width} ${height}`).attr("preserveAspectRatio", "none");
+  addLegend(svg, keys, color, { left: isPrint ? 4 : 8 }, isPrint ? 7 : 13, isPrint);
+
+  svg.append("g")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y).ticks(isPrint ? 3 : 5).tickFormat(value => Number(value).toLocaleString("ja-JP")))
+    .selectAll("text")
+      .attr("font-size", isPrint ? "7px" : "12px");
+
+  svg.append("line")
+    .attr("x1", margin.left).attr("x2", width - margin.right)
+    .attr("y1", y(0)).attr("y2", y(0))
+    .attr("stroke", "#555").attr("stroke-width", 1);
+
+  stack.forEach(series => {
+    svg.append("g")
+      .selectAll("rect")
+      .data(series)
+      .join("rect")
+        .attr("x", (point, index) => centers[index] - barWidth / 2)
+        .attr("y", point => y(Math.max(point[0], point[1])))
+        .attr("width", barWidth)
+        .attr("height", point => Math.abs(y(point[0]) - y(point[1])))
+        .attr("fill", color(series.key));
+  });
+
+  data.forEach((item, index) => {
+    const positiveTotal = keys.reduce((sum, key) => sum + Math.max(0, Number(item[key]) || 0), 0);
+    svg.append("text")
+      .attr("x", centers[index]).attr("y", y(positiveTotal) - (isPrint ? 3 : 5))
+      .attr("text-anchor", "middle")
+      .attr("font-size", isPrint ? "7px" : "12px")
+      .attr("font-weight", "bold")
+      .text(Math.round(positiveTotal).toLocaleString("ja-JP"));
+
+    const categoryLines = item.category === "売上高＋家事消費" ? ["売上高＋", "家事消費"] : [item.category];
+    categoryLines.forEach((line, lineIndex) => {
+      svg.append("text")
+        .attr("x", centers[index])
+        .attr("y", height - margin.bottom + (isPrint ? 12 + lineIndex * 7 : 14 + lineIndex * 12))
+        .attr("text-anchor", "middle")
+        .attr("font-size", isPrint ? "7px" : "12px")
+        .text(line);
+    });
+  });
+
+  [[0, 1, "計画"], [2, 3, "実績"]].forEach(([start, end, label]) => {
+    svg.append("text")
+      .attr("x", (centers[start] + centers[end]) / 2)
+      .attr("y", height - 3)
+      .attr("text-anchor", "middle")
+      .attr("font-size", isPrint ? "8px" : "13px")
+      .attr("font-weight", "bold")
+      .text(label);
+  });
+
+  svg.append("line")
+    .attr("x1", (centers[1] + centers[2]) / 2)
+    .attr("x2", (centers[1] + centers[2]) / 2)
+    .attr("y1", margin.top - (isPrint ? 3 : 5))
+    .attr("y2", height - margin.bottom + (isPrint ? 2 : 3))
+    .attr("stroke", "#c8ccd2")
+    .attr("stroke-dasharray", "3,3");
 }
 
 // 縦軸ラベルが長い場合に2段へ折り返す（1行あたり maxChars 文字を超えたら半分で分割）
@@ -1464,6 +1554,19 @@ function renderAllCharts() {
     .reduce((s, e) => s + Number(e.actual), 0);
   const variableCostPlan = expenseTotalPlan - fixedCostPlan;
   const variableCostActual = expenseTotalActual - fixedCostActual;
+  const costRevenueComposition = [
+    { group: "計画", category: "経費", "変動費": YEN_TO_MAN(variableCostPlan), "固定費": YEN_TO_MAN(fixedCostPlan), "売上高": 0, "家事消費": 0 },
+    { group: "計画", category: "売上高＋家事消費", "変動費": 0, "固定費": 0, "売上高": YEN_TO_MAN(salesPlan), "家事消費": YEN_TO_MAN(householdPlan) },
+    { group: "実績", category: "経費", "変動費": YEN_TO_MAN(variableCostActual), "固定費": YEN_TO_MAN(fixedCostActual), "売上高": 0, "家事消費": 0 },
+    { group: "実績", category: "売上高＋家事消費", "変動費": 0, "固定費": 0, "売上高": YEN_TO_MAN(salesActual), "家事消費": YEN_TO_MAN(householdActual) }
+  ];
+  const costRevenueCommentary = [
+    `計画：経費合計${formatInsightValue(YEN_TO_MAN(expenseTotalPlan))}万円（変動費${formatInsightValue(YEN_TO_MAN(variableCostPlan))}万円・固定費${formatInsightValue(YEN_TO_MAN(fixedCostPlan))}万円）、売上高＋家事消費${formatInsightValue(YEN_TO_MAN(revenuePlan))}万円、差引収支${formatInsightValue(YEN_TO_MAN(revenuePlan - expenseTotalPlan))}万円。`,
+    `実績：経費合計${formatInsightValue(YEN_TO_MAN(expenseTotalActual))}万円（変動費${formatInsightValue(YEN_TO_MAN(variableCostActual))}万円・固定費${formatInsightValue(YEN_TO_MAN(fixedCostActual))}万円）、売上高＋家事消費${formatInsightValue(YEN_TO_MAN(revenueActual))}万円、差引収支${formatInsightValue(YEN_TO_MAN(revenueActual - expenseTotalActual))}万円。`
+  ].join(" ");
+  drawCostRevenueCompositionD3("chart-cost-revenue-composition", costRevenueComposition);
+  drawCostRevenueCompositionD3("print-chart-cost-revenue-composition", costRevenueComposition);
+  setChartInsight("insight-cost-revenue-composition", costRevenueCommentary, "print-insight-cost-revenue-composition");
   const variableRatioPlan = revenuePlan > 0 ? variableCostPlan / revenuePlan : 0;
   const variableRatioActual = revenueActual > 0 ? variableCostActual / revenueActual : 0;
   const breakEvenPlan = variableRatioPlan < 1 ? fixedCostPlan / (1 - variableRatioPlan) : null;
