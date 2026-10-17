@@ -6,25 +6,132 @@
 <title>Excel横断検索</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  body { font-family: "Yu Gothic", "Meiryo", Arial, sans-serif; margin: 20px; background: #f4f4f4; color: #333; }
-  h1 { font-size: 1.4em; }
-  .panel { background: #fff; padding: 15px; border-radius: 6px; box-shadow: 0 0 8px rgba(0,0,0,.1); margin-bottom: 15px; }
-  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-  label { font-weight: bold; }
-  input[type=text] { width: 320px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
-  .path-display { overflow-wrap: anywhere; }
-  select, button { padding: 6px 12px; border-radius: 4px; border: 1px solid #888; background: #fff; cursor: pointer; }
-  button.primary { background: #007bff; color: #fff; border-color: #007bff; }
-  .table-wrap { overflow-x: auto; }
+  :root {
+    color-scheme: light;
+    --izumo-blue: #145b82;
+    --izumo-blue-dark: #104666;
+    --izumo-green: #5a8b3c;
+    --izumo-pale: #edf4f6;
+    --border: #d2dee3;
+    --text: #263640;
+  }
+  * { box-sizing: border-box; }
+  body {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
+    background: #f1f5f6;
+    color: var(--text);
+    font-family: "Yu Gothic", "Meiryo", Arial, sans-serif;
+    line-height: 1.6;
+  }
+  h1 {
+    margin: 0 0 20px;
+    padding: 20px 24px;
+    border-top: 5px solid var(--izumo-green);
+    border-radius: 5px;
+    background: linear-gradient(115deg, var(--izumo-blue-dark), var(--izumo-blue));
+    box-shadow: 0 3px 10px rgba(24, 57, 72, .14);
+    color: #fff;
+    font-size: 1.45em;
+    letter-spacing: .04em;
+  }
+  .panel {
+    margin-bottom: 20px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: #fff;
+    box-shadow: 0 2px 7px rgba(24, 57, 72, .06);
+  }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .row:last-child { margin-bottom: 0; }
+  label, .row strong { color: var(--izumo-blue-dark); font-weight: 700; }
+  input[type=text], select {
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid #aebfc7;
+    border-radius: 4px;
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+  }
+  input[type=text] { width: min(100%, 360px); }
+  input[type=text]:focus, select:focus, button:focus-visible, a:focus-visible {
+    outline: 3px solid rgba(43, 130, 174, .28);
+    outline-offset: 2px;
+    border-color: var(--izumo-blue);
+  }
+  .path-display {
+    overflow-wrap: anywhere;
+    padding: 5px 9px;
+    border-left: 3px solid var(--izumo-green);
+    background: var(--izumo-pale);
+    font-size: .92em;
+  }
+  select, button {
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid #9aabb3;
+    border-radius: 4px;
+    background: #fff;
+    color: var(--izumo-blue-dark);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  button:hover, select:hover { border-color: var(--izumo-blue); background: var(--izumo-pale); }
+  button.primary {
+    border-color: var(--izumo-blue);
+    background: var(--izumo-blue);
+    color: #fff;
+  }
+  button.primary:hover { border-color: var(--izumo-blue-dark); background: var(--izumo-blue-dark); }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 4px; }
   table { width: 100%; border-collapse: collapse; background: #fff; }
-  th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; font-size: .9em; }
-  th { background: #e0e0e0; }
-  tr:nth-child(even) { background: #f9f9f9; }
-  td.val { word-break: break-all; min-width: 200px; }
-  th:last-child, td:last-child { white-space: nowrap; min-width: 160px; }
-  a { color: #007bff; }
-  #status { margin-top: 8px; color: #555; white-space: pre-line; }
-  .note { color: #c00; font-size: .9em; margin: 0 0 10px; }
+  th, td {
+    padding: 9px 10px;
+    border-bottom: 1px solid #dce5e9;
+    text-align: left;
+    vertical-align: top;
+    font-size: .9em;
+  }
+  th {
+    background: var(--izumo-blue);
+    color: #fff;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  tbody tr:nth-child(even) { background: #f4f8f9; }
+  tbody tr:hover { background: #eaf3f5; }
+  td.val { min-width: 200px; word-break: break-all; }
+  th:last-child, td:last-child { min-width: 160px; white-space: nowrap; }
+  a { color: #145b82; font-weight: 600; }
+  a:hover { color: #0b3e5c; }
+  #status {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-left: 4px solid var(--izumo-green);
+    background: var(--izumo-pale);
+    color: #334a55;
+    white-space: pre-line;
+  }
+  .note {
+    margin: 0 0 14px;
+    padding: 9px 12px;
+    border-left: 4px solid #c78628;
+    background: #fff8e9;
+    color: #704b16;
+    font-size: .92em;
+  }
+  @media (max-width: 600px) {
+    body { padding: 14px; }
+    h1 { padding: 16px; font-size: 1.25em; }
+    .panel { padding: 14px; }
+    .row { align-items: stretch; }
+    input[type=text] { width: 100%; }
+  }
 </style>
 </head>
 <body>
