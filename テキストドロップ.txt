@@ -1,0 +1,36 @@
+<script>
+function enableTextDrop(box) {
+  const picker = document.createElement('input');
+  picker.type = 'file';
+  picker.accept = '.txt,.csv,.tsv,.json,.md,.log,text/*';
+  picker.hidden = true;
+  document.body.appendChild(picker);
+
+  async function loadFile(file) {
+    if (!file) return;
+    const buf = await file.arrayBuffer();
+    let text;
+    try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+    catch { text = new TextDecoder('shift_jis').decode(buf); }
+    box.value = text;
+    // 既存コードが input イベントで処理している場合に備えて通知する
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  box.addEventListener('dblclick', () => picker.click());
+  picker.addEventListener('change', () => { loadFile(picker.files[0]); picker.value = ''; });
+
+  box.addEventListener('dragover', e => {
+    if (e.dataTransfer.types.includes('Files')) e.preventDefault();
+  });
+  box.addEventListener('drop', e => {
+    if (e.dataTransfer.files.length) {
+      e.preventDefault();
+      loadFile(e.dataTransfer.files[0]);
+    }
+  });
+}
+
+// 既存のテキスト枠のIDを指定して呼ぶ（枠が作られた後に実行）
+enableTextDrop(document.getElementById('既存のテキスト枠のID'));
+</script>
