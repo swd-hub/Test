@@ -1,0 +1,1582 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>経営概況調書（現状・目標）作目別集計【Excel版・条件付き】</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --c-primary: #2f6b3a; --c-primary-dark: #245530; --c-accent: #9bb89b;
+    --c-bg: #f4f7f4; --c-card: #ffffff; --c-text: #1f2a1f; --c-muted: #66736a;
+    --c-border: #d5ded5; --c-head: #eef3ee; --c-danger: #c62828; --c-warn: #b35c00;
+    --radius: 10px; --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", "Meiryo", sans-serif;
+    background: var(--c-bg); color: var(--c-text); font-size: 14px; line-height: 1.6;
+  }
+  .app-header { background: var(--c-primary); color: #fff; padding: 14px 24px; box-shadow: var(--shadow); }
+  .app-header h1 { margin: 0; font-size: 19px; font-weight: 700; }
+  .app-header .note { color: #d9ead9; margin: 4px 0 0; }
+  .container { max-width: 1200px; margin: 20px auto; padding: 0 16px; display: grid; gap: 16px; }
+  .card { background: var(--c-card); border: 1px solid var(--c-border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow); }
+  .card h2 { font-size: 15px; margin: 0 0 12px; padding-left: 10px; border-left: 4px solid var(--c-primary); }
+  .card h2 .count { font-weight: normal; margin-left: 6px; }
+  .sec-head { display: flex; align-items: center; justify-content: flex-start; gap: 8px; margin: 0 0 12px; flex-wrap: wrap; }
+  .sec-head h2 { margin: 0; flex: 0 1 auto; min-width: 0; }
+  .sec-head.mt { margin-top: 20px; }
+  .toggle-btn { padding: 3px 12px; font-size: 12px; white-space: nowrap; flex: 0 0 auto; }
+  .note { color: var(--c-muted); font-size: 12px; }
+  .path-display {
+    margin: 4px 0 6px; padding: 6px 10px; background: #f7f9f7; border-left: 3px solid var(--c-primary);
+    font-family: Consolas, "Courier New", monospace; font-size: 12px; overflow-wrap: anywhere; user-select: all;
+  }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .toolbar .spacer { flex: 1; }
+  button {
+    font: inherit; padding: 7px 16px; border-radius: 6px; border: 1px solid var(--c-primary);
+    background: #fff; color: var(--c-primary); cursor: pointer; transition: background 0.15s, color 0.15s;
+  }
+  button:hover { background: var(--c-head); }
+  button:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+  button.btn-primary { background: var(--c-primary); color: #fff; }
+  button.btn-primary:hover { background: var(--c-primary-dark); }
+  button.btn-danger { border-color: var(--c-danger); color: var(--c-danger); }
+  button.btn-danger:hover { background: #fdecec; }
+  button.del { padding: 3px 10px; font-size: 12px; border-color: var(--c-danger); color: var(--c-danger); }
+  button.del:hover { background: #fdecec; }
+  textarea {
+    width: 100%; max-width: 420px; min-height: 74px; padding: 8px 10px;
+    border: 1px solid var(--c-border); border-radius: 6px;
+    font-family: Consolas, "Courier New", monospace; font-size: 13px; resize: vertical;
+  }
+  textarea.drag { border-color: var(--c-primary); background: #eef4ff; }
+  select, input[type="date"], input[type="number"] {
+    font: inherit; padding: 4px 8px; border: 1px solid var(--c-border); border-radius: 6px; background: #fff;
+  }
+  input[type="number"] { width: 90px; }
+  .form-row { margin: 0 0 12px; }
+  .form-row label { display: block; font-weight: 600; margin-bottom: 4px; }
+  .cond-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 18px; }
+  .cond > label { display: block; font-weight: 600; margin-bottom: 4px; }
+  .muni-box {
+    display: flex; flex-wrap: wrap; gap: 4px 14px; max-height: 130px; overflow: auto;
+    border: 1px solid var(--c-border); border-radius: 6px; padding: 6px 8px; background: #fff;
+  }
+  .muni-box label { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; margin: 0; }
+  .check { display: flex; align-items: center; gap: 6px; font-weight: 600; margin-bottom: 6px; }
+  .check input { accent-color: var(--c-primary); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; max-width: 640px; }
+  .crop-chip {
+    border: 1px solid var(--c-primary); color: var(--c-primary); background: #fff;
+    border-radius: 14px; padding: 2px 10px; font-size: 12px; cursor: pointer; user-select: none;
+  }
+  .crop-chip:hover { background: var(--c-head); }
+  .crop-chip.done { opacity: 0.45; text-decoration: line-through; }
+  .table-wrap { overflow: auto; border: 1px solid var(--c-border); border-radius: 8px; max-height: 520px; }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
+  th, td { border-bottom: 1px solid var(--c-border); padding: 6px 10px; text-align: right; white-space: nowrap; }
+  th {
+    background: var(--c-head); color: #33463a; font-weight: 600; position: sticky; top: 0;
+    z-index: 1; border-bottom: 2px solid var(--c-border);
+  }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { background: #e2ebe2; }
+  th.sortable::after { content: " ⇅"; color: var(--c-muted); font-size: 11px; }
+  th.sort-asc::after { content: " ▲"; color: var(--c-primary); }
+  th.sort-desc::after { content: " ▼"; color: var(--c-primary); }
+  tbody tr:nth-child(even) { background: #fafcfa; }
+  tbody tr:hover { background: #f1f7f1; }
+  td.l { text-align: left; }
+  td.c { text-align: center; }
+  td input {
+    width: 80px; text-align: right; border: 1px solid var(--c-border); border-radius: 4px;
+    padding: 3px 6px; font: inherit; background: #fff;
+  }
+  td input:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 2px rgba(47,107,58,0.15); }
+  td input.name { width: 140px; text-align: left; }
+  td input[type="checkbox"] { width: auto; accent-color: var(--c-primary); }
+  td input[data-k="crop"] { cursor: pointer; }
+  #filelist th, #filelist td { text-align: left; }
+  #filelist td:last-child, #filelist th:last-child { text-align: center; }
+  #log {
+    background: #f7f9f7; border: 1px solid var(--c-border); border-radius: 8px; padding: 10px 12px;
+    max-height: 200px; overflow: auto; white-space: pre-wrap;
+    font-family: Consolas, "Courier New", monospace; font-size: 12px; color: #333;
+  }
+  #log div { padding: 1px 0; }
+  #log .err { color: var(--c-danger); font-weight: 700; }
+  #log .warn { color: var(--c-warn); }
+  #condSummary {
+    margin-bottom: 10px; padding: 8px 12px; border-left: 4px solid var(--c-primary);
+    background: #f7f9f7; font-size: 12px; color: #33463a; white-space: pre-wrap;
+  }
+  #condInfo { font-weight: 600; color: var(--c-primary); }
+  .flag-cell { color: var(--c-danger); font-weight: 700; }
+  .sort-info { color: var(--c-primary); font-weight: 600; }
+  .price-input { width: 80px; }
+  @media (max-width: 640px) {
+    .app-header { padding: 12px 16px; }
+    .card { padding: 14px; }
+    .toolbar button { flex: 1 1 auto; }
+  }
+  .form-row label.alias-label {
+    display: block;
+    width: fit-content;
+    background: var(--c-primary);
+    color: #fff;
+    padding: 4px 14px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>経営概況調書（現状・目標）作目別集計【Excel版・条件付き】</h1>
+  <p class="note">Excelファイルはブラウザ内でのみ処理され、外部には送信されません。抽出結果は必ず目視で確認してください。</p>
+</header>
+
+<main class="container">
+
+  <section class="card">
+    <h2>対象フォルダの選定</h2>
+    <p class="note">※ Chrome または Edge で開いてください。選定したフォルダの中にあるサブフォルダ内のExcel（.xlsx / .xlsm）も対象になります。</p>
+    <div class="form-row">
+      <strong>デフォルトの選択フォルダ（フルパス）</strong>
+      <span id="base" class="path-display"></span>
+      <span class="note">※ ブラウザの仕様上、このパスを直接開くことはできません。初回は選定画面でこのフォルダまで移動してください。次回からは前回選んだフォルダが自動で開きます。</span>
+    </div>
+    <div class="toolbar">
+      <button id="btnPick" class="btn-primary">１．フォルダを選定</button>
+      <button id="btnClearList" class="btn-danger">一覧と結果をクリア</button>
+      <span class="spacer"></span>
+      <span class="note" id="pickedName"></span>
+    </div>
+
+    <div class="sec-head mt">
+      <h2>対象Excel <span id="count" class="count note"></span></h2>
+      <button class="toggle-btn" data-target="fileBody" aria-expanded="true">非表示</button>
+    </div>
+    <div id="fileBody">
+      <div class="table-wrap">
+        <table id="filelist">
+          <thead><tr><th>ファイル（フォルダ＋ファイル名）</th><th>状態</th><th>削除</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sec-head">
+      <h2>抽出の設定</h2>
+      <button class="toggle-btn" data-target="setBody" aria-expanded="true">非表示</button>
+    </div>
+    <div id="setBody">
+      <div class="form-row">
+        <label for="alias" class="alias-label">作目の別名（1行に「別名=正式名」）</label>
+        <textarea id="alias" rows="3" placeholder="米=水稲&#10;ブロッコリー=ブロッコリー"></textarea>
+        <input type="file" id="aliasPicker" accept=".txt,.csv,.tsv,.md,.log,text/*" hidden>
+        <div class="note" style="margin-top:6px">別名欄をダブルクリックすると別名ファイル（テキスト）を読み込めます（ドラッグ＆ドロップも可）。下の作目一覧、または抽出結果の作目欄をダブルクリックすると「作目名=」が追加されます。</div>
+        <div id="aliasMsg" class="note" style="margin-top:4px;min-height:18px;font-weight:600"></div>
+        <div class="chips" id="cropChips"><span class="note">（抽出後に作目の一覧が表示されます）</span></div>
+      </div>
+      <div class="form-row">
+        <label for="spaceMode">氏名の空白の表記</label>
+        <select id="spaceMode">
+          <option value="raw" selected>Excelの原文どおり</option>
+          <option value="half">半角に統一</option>
+          <option value="full">全角に統一</option>
+        </select>
+        <span class="note">（変更後は「全件を再処理」を押してください）</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>処理</h2>
+    <div class="toolbar">
+      <button id="run" class="btn-primary">２．データを抽出</button>
+      <button id="rerun">全件を再処理</button>
+      <button id="procCsv">処理ログCSVを保存</button>
+    </div>
+    <div id="log" style="margin-top:12px"></div>
+  </section>
+
+  <section class="card">
+    <h2>集計条件</h2>
+    <div class="cond-grid">
+      <div class="cond">
+        <label for="fKind">区分（現状／目標）</label>
+        <select id="fKind">
+          <option value="both" selected>両方</option>
+          <option value="現状">現状のみ</option>
+          <option value="目標">目標のみ</option>
+        </select>
+      </div>
+      <div class="cond">
+        <label>申請日（期間・西暦）</label>
+        <input type="date" id="fFrom"> ～ <input type="date" id="fTo">
+      </div>
+      <div class="cond">
+        <label for="fMuniSrc">地域の照合先</label>
+        <select id="fMuniSrc">
+          <option value="either" selected>申請者住所 または 農地所在地</option>
+          <option value="addr">申請者住所のみ</option>
+          <option value="field">農地所在地のみ</option>
+        </select>
+      </div>
+      <div class="cond">
+        <label>市町村（未選択＝すべて）</label>
+        <div class="muni-box" id="muniBox"><span class="note">（処理後に候補が表示されます）</span></div>
+      </div>
+      <div class="cond">
+        <label for="fCorp">経営体</label>
+        <select id="fCorp">
+          <option value="both" selected>個人・法人</option>
+          <option value="個人">個人のみ</option>
+          <option value="法人">法人のみ</option>
+        </select>
+      </div>
+      <div class="cond">
+        <label for="fFarm">営農類型</label>
+        <select id="fFarm"><option value="">すべて</option></select>
+      </div>
+      <div class="cond">
+        <label>経営者の年齢（範囲）</label>
+        <input type="number" id="fAgeMin" min="0" placeholder="下限"> ～ <input type="number" id="fAgeMax" min="0" placeholder="上限">
+      </div>
+      <div class="cond">
+        <label for="fSeason">作期</label>
+        <select id="fSeason">
+          <option value="both" selected>表作・裏作</option>
+          <option value="omote">表作のみ</option>
+          <option value="ura">裏作のみ</option>
+        </select>
+      </div>
+      <div class="cond">
+        <label class="check"><input type="checkbox" id="fSkipZero" checked> 単収0を平均から除外</label>
+        <label class="check"><input type="checkbox" id="fDedupe"> 同一氏名は申請日が最新のファイルのみ使用</label>
+      </div>
+    </div>
+    <div class="toolbar" style="margin-top:14px">
+      <button id="btnApply" class="btn-primary">３．条件を設定して集計</button>
+      <button id="btnReset">条件をリセット</button>
+      <span class="spacer"></span>
+      <span id="condInfo"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sec-head">
+      <h2>抽出結果（✓＝集計条件で除外 ／ 手動除外は別列）　ヘッダーでソート可能</h2>
+      <button class="toggle-btn" data-target="rawBody" aria-expanded="true">非表示</button>
+      <button id="rawCsv">CSVを保存</button>
+      <span class="note sort-info" id="rawSortInfo"></span>
+    </div>
+    <div id="rawBody">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>除外（条件）</th><th>手動除外</th><th>区分</th><th>個人・法人名</th><th>申請日</th><th>ファイル</th><th>シート</th>
+            <th>作目</th><th>作付面積</th><th>面積単位</th><th>単収</th><th>単収単位</th><th>単価</th><th>単価単位</th>
+          </tr></thead>
+          <tbody id="raw"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>集計結果</h2>
+    <div id="condSummary"></div>
+    <div class="toolbar" style="margin-bottom:10px">
+      <button id="csv">CSVを保存</button>
+      <span class="spacer"></span>
+      <span class="note sort-info" id="sumSortInfo"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>区分</th><th>作目</th><th>単収単位</th><th>n（単収）</th><th>単収 平均</th><th>単収 最大</th><th>単収 最小</th>
+          <th>経営体数</th><th>n（面積）</th><th>作付面積 合計(a)</th><th>作付面積 平均(a)</th><th>作付面積 最大(a)</th><th>作付面積 最小(a)</th>
+          <th>n（単価・使用）</th><th>単価 平均</th><th>n（粗収益・使用）</th><th>粗収益 平均（円/10a）</th><th>粗収益 合計（円）</th>
+        </tr></thead>
+        <tbody id="sum"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* ===== 定数 ===== */
+const SHADE_MIN = 170;   // 網掛けの輝度下限
+const SHADE_MAX = 240;   // 網掛けの輝度上限
+const DEFAULT_DIR = '\\\\fs.ad.pref.shimane.jp\\農林水産部\\東部農林水産振興センター　出雲事務所\\農業普及部\\R8\\084担い手\\02認定農業者\\050農業経営改善計画認定申請\\認定農業者経営改善計画';
+const SUPPORTED_EXT = ['xlsx', 'xlsm'];
+
+const LABEL_RE = /^(氏名|名称|法人名)$|^.{0,8}(氏名|法人名|名称)$/;
+const BAD_NAME_RE = /[0-9０-９]|平成|令和|昭和|大正|年|経営区分|認定|住所|生年|作目|作付|単収|現在|目標|経営概況/;
+// 作目ではない見出し（所得・労働・事業・加工・堆肥販売など）
+const NON_CROP_RE = /判定|年間労働時間|合計|計$|労働賃金|役員報酬|地代|年間農業所得|特記事項|[。、]|^その他$|^[（(]|単位|備考|記入|^注|主たる|従事者|所得|^単|労賃|雇用|事業|販売|加工|レストラン|受託|堆肥|万円|千円|土地利用型|畜産/;
+const CROP_LABEL_RE = /^(作目|作|目)$/;
+const CORP_RE = /(農事組合法人|農業生産法人|農業法人|株式会社|有限会社|合同会社|合資会社|一般社団法人|営農組合|（株）|（有）)/;
+const AREA_RE = /^(.*、)?作付面積[（(]/;                                  // 土地利用型：作付面積（a）
+const BED_RE = /^((栽培)?菌床数|飼育羽数|飼養羽数)/;                      // 菌床数・飼育羽数（養鶏）
+const LIVE_RE = /^(出荷頭数|採卵産量|出荷羽数|出荷数量)/;                  // 出荷頭数・採卵産量・出荷数量（鉢）
+const YIELD_RE = /^単収[（(]/;                                            // 単収（kg/10aなど）
+const PRICE_RE = /^(販売)?単価/;                                          // 単価（円/kg・円/鉢 など）
+const QTY_ROW_RE = /飼養頭数|飼育羽数|飼養羽数|菌床数|出荷頭数|採卵産量|出荷羽数|出荷数量|作付面積/; // この行にあれば単収行とみなさない
+// 値の右端を決める見出し（所得・労働時間・判定など）
+const RIGHT_LIMIT_RE = /^合計$|年間労働時間|年間農業所得|判定|所得合計|労働賃金|役員報酬|^地代|特記事項|通信欄|作付体系/;
+// 作目見出しとして使わない語
+const SKIP_HDR_RE = /土地利用型|飼養頭数|飼育羽数|飼養羽数|菌床数|判定|年間労働|所得|地代|役員|労働賃金|単収|作付面積|畜産|採卵産量/;
+const MUNI_RE = /^(?:.+?[都道府県])?(.+?[市町村])/;                       // 住所から市町村
+const MUNI_CELL_RE = /^[^\d県都道府]{1,5}?(市|町|村)$/;                    // 市町村名のセル
+const FACT = {'kg/10a': 1, 'kg/a': 10, 'kg/ha': 0.1, 't/10a': 1000, 't/a': 10000, 't/ha': 100};
+// 単価（kg 系）を「円/kg」に換算する係数
+const PRICE_FACT = {'円/kg': 1, '円/t': 0.001, '円/10kg': 0.1};
+
+/* ===== 状態 ===== */
+let fileList = [];
+let records = [];
+let lastRows = [];
+let lastCond = '';
+let selectedDirHandle = null;
+const $ = id => document.getElementById(id);
+const logEl = $('log');
+
+/* ===== ログ・文字列ユーティリティ ===== */
+const log = (m, cls = '') => {
+  const d = document.createElement('div');
+  d.textContent = m;
+  if (cls) d.className = cls;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+};
+const logErr = m => log(m, 'err');
+const logWarn = m => log(m, 'warn');
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm = s => String(s ?? '').replace(/\s/g, '');
+const toHalfNum = s => String(s).replace(/[０-９．，]/g, ch => ch === '，' ? ',' : String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+const parseNum = v => {
+  if (typeof v === 'number') return isFinite(v) ? v : null;
+  const t = toHalfNum(norm(v)).replace(/,/g, '');
+  return /^\d+(\.\d+)?$/.test(t) ? parseFloat(t) : null;
+};
+const isJa = s => /[\u3040-\u30ff\u4e00-\u9fff]/.test(s);
+
+// 「（kg/10a）」のように括弧内の単位を取り出す
+const unitInside = text => {
+  const m = String(text ?? '').match(/[（(]([^）)]*)[）)]/);
+  return m ? m[1].replace(/\s/g, '').replace(/／/g, '/') : '';
+};
+
+// 全角英数字を半角にし、空白を除く（例：「ｋｇ」→「kg」）
+const normUnit = s => String(s ?? '')
+  .replace(/[！-～]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+  .replace(/\s/g, '');
+
+/* ===== 前回選んだフォルダ・ファイルの記憶（IndexedDB） ===== */
+function openHandleDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('izumoAggDb', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('handles');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+// key（例：'lastDir' / 'lastAliasFile'）ごとに保存
+async function saveHandle(key, handle) {
+  const db = await openHandleDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(handle, key);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+async function loadHandle(key) {
+  try {
+    const db = await openHandleDb();
+    const handle = await new Promise((resolve, reject) => {
+      const req = db.transaction('handles').objectStore('handles').get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return handle;
+  } catch (e) {
+    return null;
+  }
+}
+const saveLastDir = h => saveHandle('lastDir', h);
+const loadLastDir = () => loadHandle('lastDir');
+
+/* ===== フォルダ選定・再帰走査 ===== */
+async function selectFolder() {
+  if (!window.showDirectoryPicker) {
+    alert('このブラウザは非対応です。Chrome か Edge をご利用ください。');
+    return;
+  }
+  try {
+    const lastHandle = await loadLastDir();
+    const dir = await window.showDirectoryPicker({mode: 'read', startIn: lastHandle || 'documents'});
+    await saveLastDir(dir).catch(() => {});
+    selectedDirHandle = dir;
+    $('pickedName').textContent = `選定フォルダ: ${dir.name}`;
+
+    const found = [];
+    log(`${dir.name}: 走査中…`);
+    await scanDir(dir, '', found);
+
+    let added = 0;
+    for (const f of found) {
+      const key = dir.name + '\\' + f.rel;
+      if (fileList.some(x => x.key === key)) continue;
+      fileList.push({key, rel: f.rel, name: f.name, folder: f.folder, handle: f.handle, done: false, status: '未処理'});
+      added++;
+    }
+    log(`${dir.name}: Excel ${found.length} 件を検出、新規 ${added} 件を追加しました`);
+    renderFiles();
+  } catch (e) {
+    if (e.name !== 'AbortError') alert('フォルダを開けませんでした: ' + e.message);
+  }
+}
+
+async function scanDir(dirHandle, relPath, found) {
+  for await (const entry of dirHandle.values()) {
+    if (entry.kind === 'directory') {
+      await scanDir(entry, relPath ? `${relPath}\\${entry.name}` : entry.name, found);
+    } else {
+      if (/^~\$/.test(entry.name)) continue;
+      const ext = entry.name.split('.').pop().toLowerCase();
+      if (!SUPPORTED_EXT.includes(ext)) continue;
+      const rel = relPath ? `${relPath}\\${entry.name}` : entry.name;
+      found.push({handle: entry, name: entry.name, folder: relPath || '(直下)', rel});
+    }
+  }
+}
+
+/* ===== 一覧管理 ===== */
+function removeFile(key) {
+  fileList = fileList.filter(x => x.key !== key);
+  records = records.filter(r => r.fkey !== key);
+  renderFiles();
+  refreshOptions();
+  renderRaw();
+  calc();
+}
+
+function renderFiles() {
+  $('filelist').querySelector('tbody').innerHTML = fileList.map(x => `<tr>
+    <td class="l">${esc(x.rel)}</td>
+    <td class="l ${x.status.startsWith('エラー') ? 'err' : ''}">${esc(x.status)}</td>
+    <td class="c"><button data-key="${esc(x.key)}" class="del">削除</button></td>
+  </tr>`).join('') || `<tr><td colspan="3" class="l note">（対象Excelがありません。「フォルダを選定」を押してください）</td></tr>`;
+  $('count').textContent = `（${fileList.length} 件 / 処理済 ${fileList.filter(x => x.done).length} 件）`;
+}
+
+$('filelist').addEventListener('click', e => {
+  const b = e.target.closest('button.del');
+  if (b) removeFile(b.dataset.key);
+});
+
+/* ===== 網掛けの判定（セルの塗りつぶし色） ===== */
+function isShaded(cell) {
+  if (!cell || !cell.s) return false;
+  const fill = cell.s.fill || cell.s;
+  if (!fill || fill.patternType === 'none') return false;
+  const fg = fill.fgColor;
+  if (!fg) return false;
+  let r, g, b;
+  if (fg.rgb && /^[0-9A-Fa-f]{6,8}$/.test(fg.rgb)) {
+    const h = fg.rgb.slice(-6);
+    r = parseInt(h.slice(0, 2), 16);
+    g = parseInt(h.slice(2, 4), 16);
+    b = parseInt(h.slice(4, 6), 16);
+  } else if (fg.theme !== undefined) {
+    const base = fg.theme === 0 ? 255 : fg.theme === 1 ? 0 : null;
+    if (base === null) return false;
+    const t = fg.tint || 0;
+    const L = t < 0 ? base * (1 + t) : base * (1 - t) + 255 * t;
+    r = g = b = L;
+  } else {
+    return false;
+  }
+  const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+  const sat = Math.max(r, g, b) - Math.min(r, g, b);
+  return lum >= SHADE_MIN && lum <= SHADE_MAX && sat < 15;
+}
+
+/* ===== シートの格子（結合セル対応） ===== */
+function makeGrid(ws) {
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const spans = new Map();
+  (ws['!merges'] || []).forEach(m => {
+    for (let r = m.s.r; r <= m.e.r; r++)
+      for (let c = m.s.c; c <= m.e.c; c++) spans.set(r + ',' + c, m);
+  });
+  const origin = (r, c) => { const m = spans.get(r + ',' + c); return m ? {r: m.s.r, c: m.s.c} : {r, c}; };
+  const isOrigin = (r, c) => { const o = origin(r, c); return o.r === r && o.c === c; };
+  const endC = (r, c) => { const m = spans.get(r + ',' + c); return m ? m.e.c : c; };
+  const cellAt = (r, c) => ws[XLSX.utils.encode_cell(origin(r, c))];
+  const txt = (r, c) => {
+    const x = cellAt(r, c);
+    return x && x.t !== 'e' ? String(x.v ?? x.w ?? '').trim() : '';
+  };
+  const numAt = (r, c) => {
+    const x = cellAt(r, c);
+    if (!x || x.t === 'e') return null;
+    return parseNum(x.v ?? x.w ?? '');
+  };
+  const items = [];
+  for (let r = range.s.r; r <= range.e.r; r++)
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      if (!isOrigin(r, c)) continue;
+      const raw = txt(r, c);
+      if (raw) items.push({r, c, raw, n: norm(raw)});
+    }
+  return {range, origin, isOrigin, endC, cellAt, txt, numAt, items};
+}
+
+/* ===== 条件用の情報（申請日・市町村・営農類型・年齢） ===== */
+function reiwaToISO(era, y, m, d) {
+  const base = era === '令和' ? 2018 : era === '平成' ? 1988 : era === '昭和' ? 1925 : null;
+  if (base === null) return null;
+  return `${base + Number(y)}-${String(Number(m)).padStart(2, '0')}-${String(Number(d)).padStart(2, '0')}`;
+}
+
+function dateFromName(name) {
+  const m = name.match(/(?:^|[^0-9])([RHS])(\d{2})\.(\d{1,2})\.(\d{1,2})/i);
+  if (!m) return null;
+  const era = {R: '令和', H: '平成', S: '昭和'}[m[1].toUpperCase()];
+  return reiwaToISO(era, m[2], m[3], m[4]);
+}
+
+// 申請書の「令和6年2月1日」形式（セルが分かれていても連結して判定）
+function extractDate(grids) {
+  for (const {g} of grids) {
+    for (let r = g.range.s.r; r <= g.range.e.r; r++) {
+      const cells = [];
+      for (let c = g.range.s.c; c <= g.range.e.c; c++) if (g.isOrigin(r, c)) cells.push(g.txt(r, c));
+      const s = cells.join('').replace(/\s/g, '');
+      const m = s.match(/(令和|平成|昭和)(\d+)年(\d+)月(\d+)(?:\.0+)?日/);
+      if (m) return reiwaToISO(m[1], m[2], m[3], m[4]);
+    }
+  }
+  return null;
+}
+
+// 申請書の「住所」の右側から市町村を取得
+function extractAddrMuni(grids) {
+  for (const {name, g} of grids) {
+    if (!/申請書/.test(name)) continue;
+    const lab = g.items.find(i => i.n === '住所');
+    if (!lab) continue;
+    const val = g.items
+      .filter(i => i.r === lab.r && i.c > g.endC(lab.r, lab.c))
+      .sort((a, b) => a.c - b.c)[0];
+    if (!val) continue;
+    const m = norm(val.raw).match(MUNI_RE);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+// 申請書２の農地の所在市町村（市町村名のセル）
+function extractFieldMunis(grids) {
+  const set = new Set();
+  for (const {name, g} of grids) {
+    if (!/申請書[２2]/.test(name)) continue;
+    g.items.forEach(i => { if (MUNI_CELL_RE.test(i.n)) set.add(i.n); });
+  }
+  return [...set];
+}
+
+// 「営農類型」見出しの下の値
+function extractFarmType(g) {
+  const lab = g.items.find(i => i.n === '営農類型');
+  if (!lab) return null;
+  const lc = g.endC(lab.r, lab.c);
+  for (let r = lab.r + 1; r <= lab.r + 2; r++) {
+    const v = g.items.find(i => i.r === r && i.c >= lab.c && i.c <= lc + 8 && isJa(i.raw) && !/^[①②③④]$/.test(i.n));
+    if (v) return v.raw.replace(/\s/g, '');
+  }
+  return null;
+}
+
+// 「年齢」見出しの下の数値
+function extractAge(g) {
+  const lab = g.items.find(i => i.n === '年齢');
+  if (!lab) return null;
+  for (let r = lab.r + 1; r <= lab.r + 3; r++) {
+    for (let c = lab.c; c <= g.endC(lab.r, lab.c); c++) {
+      const v = g.numAt(r, c);
+      if (v != null && v >= 15 && v <= 120) return v;
+    }
+  }
+  return null;
+}
+
+/* ===== 氏名の空白の表記 ===== */
+function applySpaceMode(s) {
+  const mode = $('spaceMode').value;
+  if (mode === 'half') return s.replace(/[ \u3000]+/g, ' ');
+  if (mode === 'full') return s.replace(/[ \u3000]+/g, '\u3000');
+  return s;
+}
+
+/* ===== 解析（1シート分：現在・目標の経営概況調書） ===== */
+function parseSheet(g, fileName, sheetName) {
+  const {range, endC, isOrigin, txt, numAt, items} = g;
+
+  // タイトルで「現在」「目標」を判定
+  const titleItem = items.find(i => /【現在】|【目標】/.test(i.n));
+  if (!titleItem) return {isForm: false, recs: []};
+  const kind = titleItem.n.includes('【現在】') ? '現状' : '目標';
+
+  // 数量の行（それぞれ最も上のもの）
+  const firstRow = re => items.filter(i => re.test(i.n)).sort((a, b) => a.r - b.r || a.c - b.c)[0] || null;
+  const AV = firstRow(AREA_RE);
+  const BV = firstRow(BED_RE);
+  const LV = firstRow(LIVE_RE);
+  const anchors = [AV, BV, LV].filter(Boolean);
+  if (!anchors.length) {
+    logWarn(`${fileName} [${sheetName}]: 数量の行（作付面積・菌床数・飼育羽数・出荷頭数・採卵産量・出荷数量）が見つからず、スキップ`);
+    return {isForm: false, recs: []};
+  }
+  const rowMin = Math.min(...anchors.map(a => a.r));
+  const rowMax = Math.max(...anchors.map(a => a.r));
+
+  // 値の左端（数量ラベルの右端のうち最も左）
+  const leftC = Math.min(...anchors.map(a => endC(a.r, a.c)));
+
+  // 値の右端（所得・労働時間などの表が始まる列より左まで）
+  const rightLimit = Math.min(range.e.c + 1, ...items
+    .filter(i => i.c > leftC && i.r >= rowMin - 6 && i.r <= rowMax + 2 && RIGHT_LIMIT_RE.test(i.n))
+    .map(i => i.c));
+
+  // 単収の行：数量行に近く、かつ飼養頭数・菌床数・出荷頭数などと同じ行ではないもの
+  const rowHasQty = r => items.some(i => i.r === r && QTY_ROW_RE.test(i.n));
+  const YV = items.filter(i => YIELD_RE.test(i.n) && !rowHasQty(i.r))
+                  .sort((a, b) => Math.abs(a.r - rowMin) - Math.abs(b.r - rowMin) || a.c - b.c)[0] || null;
+
+  // 数値が1つでも記入されているか
+  const anyValue = anchors.some(a => {
+    for (let c = leftC + 1; c < rightLimit && c <= range.e.c; c++)
+      if (isOrigin(a.r, c) && numAt(a.r, c) != null) return true;
+    return false;
+  });
+
+  // 作目の見出し行を取得
+  // 1) 「作目」ラベルのある行を優先（同じ行に作目名が並んでいる）
+  // 2) なければ数量行の上を探す（見出し語を含むセルは除外）
+  const rowCrops = r => {
+    const hs = [];
+    for (let c = leftC + 1; c < rightLimit && c <= range.e.c; c++) {
+      if (!isOrigin(r, c)) continue;
+      const s = norm(txt(r, c));
+      if (!s || !isJa(s)) continue;
+      if (CROP_LABEL_RE.test(s) || NON_CROP_RE.test(s) || SKIP_HDR_RE.test(s)) continue;
+      if (/^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭]$/.test(s) || /^\d/.test(s)) continue;
+      const e = Math.min(endC(r, c), rightLimit - 1);
+      hs.push({name: s, c0: c, c1: e, cx: (c + e) / 2});
+    }
+    return hs;
+  };
+
+  let headers = [];
+  let headerSrc = '';
+  const labelRow = items.filter(i => /^作目$/.test(i.n) && i.r < rowMin)
+                        .sort((a, b) => b.r - a.r)[0] || null;
+  if (labelRow) {
+    headers = rowCrops(labelRow.r);
+    if (headers.length) headerSrc = `作目行 ${labelRow.r + 1}行目`;
+  }
+  if (!headers.length) {
+    for (let r = rowMin - 1; r >= Math.max(range.s.r, rowMin - 6) && !headers.length; r--) {
+      headers = rowCrops(r);
+      if (headers.length) headerSrc = `推定 ${r + 1}行目`;
+    }
+  }
+
+  // 作目名がない場合：数値があればエラー、なければ新規就農などとして0件扱い
+  if (!headers.length) {
+    if (anyValue) logErr(`${fileName} [${sheetName}・${kind}]: 作目名の行が見つからないが、数値があります`);
+    else log(`${fileName} [${sheetName}・${kind}]: 作目名・数値とも未記入（新規就農などの場合は正常）`);
+    return {isForm: true, recs: []};
+  }
+
+  // 数値を作目の列に割り当て（網掛けは除外、対応しない数値は件数を記録）
+  let shaded = 0;
+  let unassigned = 0;
+  const assign = (row, fromC) => {
+    const m = new Map();
+    if (row == null) return m;
+    for (let c = fromC + 1; c < rightLimit && c <= range.e.c; c++) {
+      if (!isOrigin(row, c)) continue;
+      const v = numAt(row, c);
+      if (v == null) continue;
+      let k = headers.findIndex(h => c >= h.c0 && c <= h.c1);
+      if (k < 0) {
+        let bd = 2.5;
+        headers.forEach((h, i) => { const d = Math.abs(h.cx - c); if (d < bd) { bd = d; k = i; } });
+      }
+      if (k < 0) { unassigned++; continue; }
+      if (isShaded(g.cellAt(row, c))) {
+        shaded++;
+        log(`  網掛け除外: 「${txt(row, c)}」 作目=${headers[k].name}（${XLSX.utils.encode_cell({r: row, c})}）`);
+        continue;
+      }
+      if (!m.has(k)) m.set(k, v);
+    }
+    return m;
+  };
+  const am = AV ? assign(AV.r, endC(AV.r, AV.c)) : new Map();
+  const bm = BV ? assign(BV.r, endC(BV.r, BV.c)) : new Map();
+  const lm = LV ? assign(LV.r, endC(LV.r, LV.c)) : new Map();
+  const ym = YV ? assign(YV.r, leftC) : new Map();
+
+  // 単価の行（作目の列ごとの値）。現状・目標それぞれのシートから取得
+  const PV = items.filter(i => PRICE_RE.test(i.n) && Math.abs(i.r - rowMin) <= 10)
+                  .sort((a, b) => Math.abs(a.r - rowMin) - Math.abs(b.r - rowMin) || a.c - b.c)[0] || null;
+  const pm = PV ? assign(PV.r, leftC) : new Map();
+  // 括弧内の最初の区分だけを単位にする（「円/鉢、L、頭」→「円/鉢」）
+  const priceUnitSheet = (PV && normUnit(unitInside(PV.raw).split('、')[0])) || '円/kg';
+  if (!PV) logWarn(`${fileName} [${sheetName}・${kind}]: 単価の行が見つからず（該当作目は粗収益から除外）`);
+  else if (!PRICE_FACT[priceUnitSheet] && !/^円\//.test(priceUnitSheet))
+    logWarn(`${fileName} [${sheetName}・${kind}]: 単価の単位「${priceUnitSheet}」は未対応（粗収益から除外）`);
+
+  if (shaded) log(`${fileName} [${sheetName}]: 網掛けの数値 ${shaded} 件を除外`);
+  if (unassigned) logWarn(`${fileName} [${sheetName}・${kind}]: どの作目の列にも対応しない数値 ${unassigned} 件（合計列などの可能性）`);
+
+  // 単位
+  const adjUnit = (row, fromC) => {
+    for (let c = fromC + 1; c <= fromC + 12; c++) {
+      if (!isOrigin(row, c)) continue;
+      if (numAt(row, c) != null) return norm(txt(row, c + 1)).toLowerCase().replace(/ａ/g, 'a');
+    }
+    return '';
+  };
+  const adj = AV ? adjUnit(AV.r, endC(AV.r, AV.c)) : '';
+  const areaUnit = AV ? (/ha/i.test(AV.raw) || adj === 'ha' ? 'ha' : 'a') : 'a';
+  const yInner = YV ? unitInside(YV.raw) : '';
+  const yldUnit = yInner ? (/^(kg|t)\//i.test(normUnit(yInner)) ? normUnit(yInner).toLowerCase() : normUnit(yInner)) : 'kg/10a';
+  const bedUnit = (BV && normUnit(unitInside(BV.raw)))
+    || (BV && /飼育羽数|飼養羽数/.test(BV.raw) ? '羽' : '菌床');
+  const milkUnit = (LV && normUnit(unitInside(LV.raw))) || 'L';
+  const lvUnit = LV ? normUnit(unitInside(LV.raw)) : '';
+  // 作目ごとの出荷量の単位：乳→乳量の単位、乳量の行で乳以外→頭、その他→行の単位（なければ頭）
+  const liveUnitFor = name => {
+    if (/乳|搾乳/.test(name)) return milkUnit;
+    if (LV && /乳量/.test(LV.raw)) return '頭';
+    return lvUnit || '頭';
+  };
+
+  // 氏名（ラベルの下、または右隣）
+  const findName = () => {
+    const labels = items.filter(i => LABEL_RE.test(i.n)).sort((a, b) => a.r - b.r || a.c - b.c);
+    for (const L of labels) {
+      const lc = endC(L.r, L.c);
+      const sameRow = items.filter(i => i.r === L.r && i.c > lc);
+      const stopC = sameRow.length ? Math.min(...sameRow.map(i => i.c)) - 1 : lc + 8;
+      for (let r = L.r + 1; r <= L.r + 4; r++) {
+        const parts = [];
+        for (let c = L.c; c <= stopC; c++) {
+          if (!isOrigin(r, c)) continue;
+          const raw = txt(r, c), s = norm(raw);
+          if (!s || LABEL_RE.test(s) || BAD_NAME_RE.test(s)
+              || (/^[（(]/.test(s) && !CORP_RE.test(s))) continue;
+          parts.push(raw);
+        }
+        if (parts.length) return parts.join(' ').trim();
+      }
+      for (let c = lc + 1; c <= lc + 8; c++) {
+        if (!isOrigin(L.r, c)) continue;
+        const raw = txt(L.r, c), s = norm(raw);
+        if (!s) continue;
+        if (!LABEL_RE.test(s) && !BAD_NAME_RE.test(s)) return raw;
+        break;
+      }
+    }
+    const hit = items.find(i => CORP_RE.test(i.n) && !/作目|作付|単収/.test(i.n));
+    return hit ? hit.raw : null;
+  };
+  const name = findName();
+  if (!name) logWarn(`${fileName} [${sheetName}]: 氏名・名称を検出できず（ファイル名を使用）`);
+  const displayName = name ? applySpaceMode(name.replace(/\s+/g, ' ').trim()) : fileName;
+
+  // 抽出レコード
+  // 単価は、面積・単収の行は円/kg のみ、数量（鉢・頭など）の行は同じ単位の単価のみ付与する
+  const out = [];
+  const base = {name: displayName, sheet: sheetName, kind};
+  headers.forEach((h, k) => {
+    const area = am.has(k) && am.get(k) !== 0 ? am.get(k) : null;
+    const yld = ym.has(k) ? ym.get(k) : null;
+    if (area != null || yld != null) {
+      const price = PRICE_FACT[normUnit(priceUnitSheet)] ? (pm.get(k) ?? null) : null;
+      out.push({...base, crop: h.name, area, areaUnit, yld, yldUnit, exclude: false,
+                price, priceUnit: priceUnitSheet});
+    }
+    if (bm.has(k)) {
+      out.push({...base, crop: h.name, area: null, areaUnit, yld: bm.get(k), yldUnit: bedUnit, exclude: false,
+                price: null, priceUnit: ''});
+    }
+    if (lm.has(k)) {
+      const u = liveUnitFor(h.name);
+      out.push({...base, crop: h.name, area: null, areaUnit, yld: lm.get(k), yldUnit: u, exclude: false,
+                price: pm.get(k) ?? null, priceUnit: priceUnitSheet});
+    }
+  });
+
+  const used = [AV && '作付面積', BV && '菌床数・飼育羽数', LV && '出荷頭数・採卵産量・出荷数量', YV && '単収', PV && '単価'].filter(Boolean).join('・');
+  const hdrText = headers.map(h => h.name).join(' / ');
+  const srcText = headerSrc ? `（${headerSrc}）` : '';
+  if (out.length) {
+    log(`${fileName} [${sheetName}・${kind}]: 作目 [${hdrText}]${srcText} 数量行 [${used}] → 抽出 ${out.length} 件`);
+  } else if (anyValue) {
+    logErr(`${fileName} [${sheetName}・${kind}]: 作目 [${hdrText}]${srcText} 数量行 [${used}] → 抽出 0 件（数値はあるが対応せず）`);
+  } else {
+    log(`${fileName} [${sheetName}・${kind}]: 作目 [${hdrText}]${srcText} 数値未記入のため 0 件（新規就農などの場合は正常）`);
+  }
+  return {isForm: true, recs: out};
+}
+
+/* ===== ファイル処理 ===== */
+async function processFile(item) {
+  const file = await item.handle.getFile();
+  const wb = XLSX.read(await file.arrayBuffer(), {type: 'array', cellStyles: true});
+
+  const grids = [];
+  for (const sn of wb.SheetNames) {
+    const ws = wb.Sheets[sn];
+    if (!ws || !ws['!ref']) continue;
+    grids.push({name: sn, g: makeGrid(ws)});
+  }
+
+  const dateCell = extractDate(grids);
+  const date = dateCell || dateFromName(item.name);
+  if (!dateCell) logWarn(`${item.rel}: 申請日のセルを検出できず${date ? '、ファイル名から補完' : '（申請日なし）'}`);
+  const addrMuni = extractAddrMuni(grids);
+  const fieldMunis = extractFieldMunis(grids);
+
+  let hit = 0;
+  const recs = [];
+  for (const {name: sn, g} of grids) {
+    const r = parseSheet(g, item.rel, sn);
+    if (!r.isForm) continue;
+    hit++;
+    const farmType = extractFarmType(g);
+    const age = extractAge(g);
+    r.recs.forEach(x => recs.push({
+      ...x, file: item.rel, fkey: item.key,
+      meta: {
+        date, addrMuni, fieldMunis,
+        corpType: CORP_RE.test(x.name) ? '法人' : '個人',
+        farmType, age
+      }
+    }));
+  }
+  return {hit, recs};
+}
+
+/* ===== 集計条件に合うレコードの集合 ===== */
+// 集計条件に合うレコードの集合（同一氏名の重複除外を含む）
+function conditionSet(f) {
+  let pass = records.filter(r => passes(r, f));
+  if (f.dedupe) pass = dedupeLatest(pass);
+  return new Set(pass);
+}
+
+// 別名ファイルを選択（前回読み込んだファイルのフォルダを開始位置にする）
+async function pickAliasFile() {
+  if (!window.showOpenFilePicker) {
+    $('aliasPicker').click();   // 非対応ブラウザでは従来の方法
+    return;
+  }
+  try {
+    const startIn = await loadHandle('lastAliasFile');
+    const [handle] = await window.showOpenFilePicker({
+      startIn: startIn || 'documents',
+      multiple: false,
+      types: [{
+        description: '別名ファイル（テキスト）',
+        accept: {'text/plain': ['.txt', '.csv', '.tsv', '.md', '.log']}
+      }]
+    });
+    await saveHandle('lastAliasFile', handle).catch(() => {});
+    await loadAliasFile(await handle.getFile());
+  } catch (e) {
+    if (e.name !== 'AbortError') alert('別名ファイルを開けませんでした: ' + e.message);
+  }
+}
+
+/* ===== 別名欄・作目チップ ===== */
+// 別名欄に、その作目の別名が登録済みかどうか（空白・全角「＝」の揺れを吸収）
+function aliasHasKey(key) {
+  return Object.prototype.hasOwnProperty.call(parseAlias(), norm(key));
+}
+
+// 抽出された作目名を重複なしで一覧表示（別名設定済みは薄く表示）
+function refreshCropChips() {
+  const names = [...new Set(records.map(r => r.crop).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja'));
+  $('cropChips').innerHTML = names.map(n =>
+    `<span class="crop-chip${aliasHasKey(n) ? ' done' : ''}" data-crop="${esc(n)}" title="ダブルクリックで別名欄に追加">${esc(n)}</span>`
+  ).join('') || `<span class="note">（抽出後に作目の一覧が表示されます）</span>`;
+}
+
+// 別名欄の直下にメッセージを表示
+function showAliasMsg(text, isWarn) {
+  const el = $('aliasMsg');
+  el.textContent = text;
+  el.style.color = isWarn ? 'var(--c-warn)' : 'var(--c-primary)';
+}
+
+// 作目名を別名欄に1行追加（既にあれば追加しない）
+function addAliasLine(crop) {
+  crop = (crop || '').trim();
+  if (!crop) return;
+  const ta = $('alias');
+  ta.focus();
+  if (aliasHasKey(crop)) {
+    showAliasMsg(`「${crop}」は既に別名欄にあります`, true);
+    return;
+  }
+  const sep = ta.value && !ta.value.endsWith('\n') ? '\n' : '';
+  ta.value = ta.value + sep + `${crop}=`;
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+  ta.scrollTop = ta.scrollHeight;
+
+  // 追加されたことが分かるよう、別名欄を一瞬光らせる
+  ta.style.transition = 'box-shadow 0.3s';
+  ta.style.boxShadow = '0 0 0 3px var(--c-accent)';
+  setTimeout(() => { ta.style.boxShadow = ''; }, 900);
+
+  showAliasMsg(`追加しました: ${crop}=（右側に正式名を入力してください）`, false);
+  refreshCropChips();
+}
+
+// 別名ファイルの読込（UTF-8で読めなければShift_JISにフォールバック）
+async function readTextFile(file) {
+  const buf = await file.arrayBuffer();
+  try {
+    return {text: new TextDecoder('utf-8', {fatal: true}).decode(buf), enc: 'UTF-8'};
+  } catch {
+    return {text: new TextDecoder('shift_jis').decode(buf), enc: 'Shift_JIS'};
+  }
+}
+
+async function loadAliasFile(file) {
+  if (!file) return;
+  const ta = $('alias');
+  if (ta.value.trim() && !confirm('別名欄の内容を、読み込んだファイルの内容で置き換えますか？')) return;
+  const {text, enc} = await readTextFile(file);
+  ta.value = text.replace(/\r\n?/g, '\n');
+  refreshCropChips();
+  calc();
+  showAliasMsg(`読込: ${file.name}（${enc}）`, false);
+}
+
+/* ===== 単価（抽出結果の値から判定） ===== */
+// 別名を適用した作目名（別名表を引数で受け取る）
+const resolveCropWith = (al, crop) => al[norm(crop)] || crop;
+
+// kg 系の単価を「円/kg」に換算（単価が無い・換算できない単位なら null）
+function pricePerKg(r) {
+  if (r.price == null || !(r.price > 0)) return null;
+  const f = PRICE_FACT[normUnit(r.priceUnit || '円/kg')];
+  return f ? r.price * f : null;
+}
+
+// 数量（鉢・頭など）× 単価（円/鉢 など）の単価。単位が一致しなければ null
+const countPrice = r => (r.price != null && r.price > 0
+  && normUnit(r.priceUnit) === '円/' + normUnit(r.yldUnit)) ? r.price : null;
+
+/* ===== 条件の候補（市町村・営農類型）の更新 ===== */
+function refreshOptions() {
+  const munis = new Set(), farms = new Set();
+  records.forEach(r => {
+    if (r.meta.addrMuni) munis.add(r.meta.addrMuni);
+    r.meta.fieldMunis.forEach(m => munis.add(m));
+    if (r.meta.farmType) farms.add(r.meta.farmType);
+  });
+  const checked = new Set([...document.querySelectorAll('#muniBox input:checked')].map(x => x.value));
+  $('muniBox').innerHTML = [...munis].sort().map(m =>
+    `<label><input type="checkbox" value="${esc(m)}" ${checked.has(m) ? 'checked' : ''}>${esc(m)}</label>`
+  ).join('') || `<span class="note">（データがありません）</span>`;
+
+  const cur = $('fFarm').value;
+  $('fFarm').innerHTML = `<option value="">すべて</option>` + [...farms].sort().map(x =>
+    `<option value="${esc(x)}" ${x === cur ? 'selected' : ''}>${esc(x)}</option>`
+  ).join('');
+  refreshCropChips();
+}
+
+/* ===== 条件の読み取り・判定 ===== */
+function getFilters() {
+  const ageMin = $('fAgeMin').value === '' ? null : Number($('fAgeMin').value);
+  const ageMax = $('fAgeMax').value === '' ? null : Number($('fAgeMax').value);
+  return {
+    kind: $('fKind').value,
+    from: $('fFrom').value || null,
+    to: $('fTo').value || null,
+    muniSrc: $('fMuniSrc').value,
+    munis: new Set([...document.querySelectorAll('#muniBox input:checked')].map(x => x.value)),
+    corp: $('fCorp').value,
+    farmType: $('fFarm').value,
+    ageMin, ageMax,
+    season: $('fSeason').value,
+    skipZero: $('fSkipZero').checked,
+    dedupe: $('fDedupe').checked
+  };
+}
+
+function passes(r, f) {
+  const m = r.meta;
+  if (f.kind !== 'both' && r.kind !== f.kind) return false;
+  if (f.from && (!m.date || m.date < f.from)) return false;
+  if (f.to && (!m.date || m.date > f.to)) return false;
+  if (f.munis.size) {
+    const a = m.addrMuni != null && f.munis.has(m.addrMuni);
+    const b = m.fieldMunis.some(x => f.munis.has(x));
+    const ok = f.muniSrc === 'addr' ? a : f.muniSrc === 'field' ? b : (a || b);
+    if (!ok) return false;
+  }
+  if (f.corp !== 'both' && m.corpType !== f.corp) return false;
+  if (f.farmType && m.farmType !== f.farmType) return false;
+  if (f.ageMin != null && (m.age == null || m.age < f.ageMin)) return false;
+  if (f.ageMax != null && (m.age == null || m.age > f.ageMax)) return false;
+  const ura = /裏作/.test(r.crop);
+  if (f.season === 'omote' && ura) return false;
+  if (f.season === 'ura' && !ura) return false;
+  return true;
+}
+
+// 同一氏名・同一区分のうち、申請日が最新のファイルのみを残す
+function dedupeLatest(list) {
+  const best = new Map();
+  for (const r of list) {
+    const k = r.name + '\t' + r.kind;
+    const d = r.meta.date || '';
+    const cur = best.get(k);
+    if (!cur || d > cur.date) best.set(k, {fkey: r.fkey, date: d});
+  }
+  return list.filter(r => best.get(r.name + '\t' + r.kind).fkey === r.fkey);
+}
+
+function condText(f) {
+  const kindTxt = {both: '現状・目標', 現状: '現状', 目標: '目標'}[f.kind];
+  const dateTxt = (f.from || f.to) ? `${f.from || '…'}〜${f.to || '…'}` : '指定なし';
+  const muniTxt = f.munis.size
+    ? `${[...f.munis].join('・')}（照合: ${{either: '住所または農地', addr: '申請者住所', field: '農地所在地'}[f.muniSrc]}）`
+    : '指定なし';
+  const ageTxt = (f.ageMin != null || f.ageMax != null)
+    ? `${f.ageMin ?? '…'}〜${f.ageMax ?? '…'}歳` : '指定なし';
+  return `区分: ${kindTxt} / 申請日: ${dateTxt} / 市町村: ${muniTxt} / 経営体: ${{both: '個人・法人', 個人: '個人', 法人: '法人'}[f.corp]} / ` +
+         `営農類型: ${f.farmType || 'すべて'} / 年齢: ${ageTxt} / 作期: ${{both: '表作・裏作', omote: '表作のみ', ura: '裏作のみ'}[f.season]} / ` +
+         `単収0: ${f.skipZero ? '除外' : '含む'} / 同一氏名: ${f.dedupe ? '最新申請のみ' : '全件'}`;
+}
+
+/* ===== 別名（「別名=正式名」・空白と全角「＝」の揺れに対応） ===== */
+function parseAlias() {
+  const m = {};
+  $('alias').value.replace(/＝/g, '=').split('\n').forEach(l => {
+    const i = l.indexOf('=');
+    if (i < 0) return;
+    const a = norm(l.slice(0, i));
+    const b = l.slice(i + 1).trim();
+    if (a && b) m[a] = b;
+  });
+  return m;
+}
+
+const stat = arr => arr.length ? {
+  n: arr.length,
+  max: Math.max(...arr),
+  min: Math.min(...arr),
+  sum: arr.reduce((s, x) => s + x, 0)
+} : null;
+
+const mean = arr => arr.length ? arr.reduce((s, x) => s + x, 0) / arr.length : null;
+
+/* ===== 並べ替え（ヘッダークリック） ===== */
+const rawSort = {col: null, dir: 1};
+const sumSort = {col: null, dir: 1};
+
+const fmtNum = (x, d = 2) => (x == null || isNaN(x)) ? '' :
+  Number(x).toLocaleString('ja-JP', {maximumFractionDigits: d, minimumFractionDigits: d});
+
+// 空欄は昇順・降順にかかわらず常に末尾
+function sortRows(rows, getters, st) {
+  if (st.col == null || !getters[st.col]) return rows;
+  const get = getters[st.col];
+  return [...rows].sort((x, y) => {
+    const a = get(x), b = get(y);
+    const ea = a == null || a === '', eb = b == null || b === '';
+    if (ea || eb) return ea === eb ? 0 : (ea ? 1 : -1);
+    const c = typeof a === 'number' && typeof b === 'number'
+      ? a - b
+      : String(a).localeCompare(String(b), 'ja', {numeric: true});
+    return c * st.dir;
+  });
+}
+
+// ヘッダークリックで並べ替え（同じ列を再度クリックすると昇順・降順を切り替え）
+// infoId を指定すると、その要素に現在の並び順を表示する
+function bindSortHeaders(table, st, rerender, infoId) {
+  const ths = [...table.querySelectorAll('thead th')];
+  ths.forEach((th, i) => {
+    th.classList.add('sortable');
+    th.addEventListener('click', () => {
+      st.dir = st.col === i ? -st.dir : 1;
+      st.col = i;
+      ths.forEach((t, j) => {
+        t.classList.toggle('sort-asc', j === st.col && st.dir === 1);
+        t.classList.toggle('sort-desc', j === st.col && st.dir === -1);
+      });
+      if (infoId) $(infoId).textContent = `並び順: ${th.textContent.trim()}（${st.dir === 1 ? '昇順' : '降順'}）`;
+      rerender();
+    });
+  });
+}
+
+// 抽出結果の列ごとの並べ替えキー（x = {r: レコード, i: 元の位置}）
+const rawGetters = okSet => [
+  x => okSet.has(x.r) ? 0 : 1,      // 除外（条件）：対象が先
+  x => x.r.exclude ? 1 : 0,         // 手動除外
+  x => x.r.kind,
+  x => x.r.name,
+  x => x.r.meta.date || '',
+  x => x.r.file,
+  x => x.r.sheet,
+  x => x.r.crop,
+  x => x.r.area,
+  x => x.r.areaUnit,
+  x => x.r.yld,
+  x => x.r.yldUnit,
+  x => x.r.price,
+  x => x.r.priceUnit
+];
+
+// 集計結果の列ごとの並べ替えキー
+const sumGetters = [
+  o => o.kind, o => o.crop, o => o.unit, o => o.yn, o => o.avg, o => o.ymax, o => o.ymin, o => o.people,
+  o => o.A ? o.A.n : 0,
+  o => o.A ? o.A.sum : null,
+  o => o.A ? o.A.sum / o.A.n : null,
+  o => o.A ? o.A.max : null,
+  o => o.A ? o.A.min : null,
+  o => o.pn,
+  o => o.pavg,
+  o => o.rn,
+  o => o.rvAvg,
+  o => o.rvTotal
+];
+
+// 集計結果の表示（並べ替えを反映）
+function renderSum() {
+  const rows = sortRows(lastRows, sumGetters, sumSort);
+  $('sum').innerHTML = rows.map(o => {
+    const s = o.A;
+    const kg = o.unit === 'kg/10a';
+    return `<tr>
+      <td class="l">${esc(o.kind)}</td>
+      <td class="l">${esc(o.crop)}</td>
+      <td class="l">${esc(o.unit)}</td>
+      <td>${o.yn}</td>
+      <td>${fmtNum(o.avg)}</td>
+      <td>${fmtNum(o.ymax)}</td>
+      <td>${fmtNum(o.ymin)}</td>
+      <td>${o.people}</td>
+      <td>${s ? s.n : 0}</td>
+      <td>${s ? fmtNum(s.sum, 1) : ''}</td>
+      <td>${s ? fmtNum(s.sum / s.n, 1) : ''}</td>
+      <td>${s ? fmtNum(s.max, 1) : ''}</td>
+      <td>${s ? fmtNum(s.min, 1) : ''}</td>
+      <td>${o.pn}</td>
+      <td>${fmtNum(o.pavg, 1)}</td>
+      <td>${o.rn}</td>
+      <td>${kg ? fmtNum(o.rvAvg, 0) : ''}</td>
+      <td>${fmtNum(o.rvTotal, 0)}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ===== 集計 ===== */
+function calc() {
+  const f = getFilters();
+  const al = parseAlias();
+  const okSet = conditionSet(f);
+  const candidates = records.filter(r => passes(r, f)).length;
+  const pass = records.filter(r => !r.exclude && okSet.has(r));
+  const dedupeRemoved = f.dedupe ? candidates - okSet.size : 0;
+
+  // 除外の列で並べ替え中は表全体を再描画、それ以外は✓の更新のみ
+  if (rawSort.col === 0 || rawSort.col === 1) renderRaw();
+  else refreshRawFlags(okSet);
+  refreshCropChips();
+
+  // 区分×作目×単位ごとに集計（単位が違えば別の行）
+  const G = new Map();
+  let zeroSkipped = 0;
+  let noPriceN = 0;   // 単価がないため粗収益から除外した件数
+  let noAreaN = 0;    // 面積がないため粗収益から除外した件数（kg 系）
+  const getG = (kind, crop, unit) => {
+    const k = kind + '\t' + crop + '\t' + unit;
+    if (!G.has(k)) G.set(k, {kind, crop, unit, ys: [], areas: [], people: new Set(), prices: [], rev: []});
+    return G.get(k);
+  };
+
+  for (const r of pass) {
+    // 別名を適用（空白の揺れを無視して照合）
+    const crop = resolveCropWith(al, r.crop);
+
+    // 単位は大文字小文字を保持。換算できる単位だけ kg/10a に揃える
+    const yRaw = (r.yldUnit || 'kg/10a').replace(/\s/g, '');
+    const fac = FACT[yRaw.toLowerCase()];
+    const unit = fac ? 'kg/10a' : yRaw;
+    const isKg = unit === 'kg/10a';
+
+    const g = getG(r.kind, crop, unit);
+    g.people.add(r.name);
+
+    const areaA = r.area != null ? (r.areaUnit === 'ha' ? r.area * 100 : r.area) : null;
+    if (areaA != null) g.areas.push(areaA);
+
+    let y = null;
+    if (r.yld != null) {
+      y = fac ? r.yld * fac : r.yld;
+      if (f.skipZero && y === 0) zeroSkipped++;
+      else g.ys.push(y);
+    }
+
+    // 単価（kg 系は円/kg、数量系は円/鉢 など）
+    const p = isKg ? pricePerKg(r) : countPrice(r);
+    if (p != null) g.prices.push(p);
+
+    // 粗収益：単収（または数量）・単価がそろう行のみ。kg 系は面積も必要
+    if (y != null && !(f.skipZero && y === 0)) {
+      if (p == null) noPriceN++;
+      else if (isKg && areaA == null) noAreaN++;
+      else g.rev.push({y, p, a: isKg ? areaA : null});
+    }
+  }
+
+  const rowsOut = [...G.values()].map(g => {
+    const ys = g.ys;
+    const rv = g.rev;
+    return {
+      kind: g.kind, crop: g.crop, unit: g.unit,
+      yn: ys.length,
+      avg: mean(ys),
+      ymax: ys.length ? Math.max(...ys) : null,
+      ymin: ys.length ? Math.min(...ys) : null,
+      A: stat(g.areas),
+      people: g.people.size,
+      pn: g.prices.length,                 // 単価の n（使用した値の数）
+      pavg: mean(g.prices),
+      rn: rv.length,                       // 粗収益の n（計算に使った行数）
+      // 10a当たり粗収益 = 単収(kg/10a) × 単価(円/kg)（kg 系のみ）
+      rvAvg: g.unit === 'kg/10a' ? mean(rv.map(x => x.y * x.p)) : null,
+      // 粗収益合計：kg 系は 面積(a)÷10 × 単収 × 単価、数量系は 数量 × 単価
+      rvTotal: rv.length
+        ? rv.reduce((s, x) => s + (x.a == null ? x.y * x.p : (x.a / 10) * x.y * x.p), 0)
+        : null
+    };
+  });
+
+  const kindOrder = {'現状': 0, '目標': 1};
+  rowsOut.sort((a, b) => (kindOrder[a.kind] - kindOrder[b.kind])
+    || a.crop.localeCompare(b.crop, 'ja')
+    || a.unit.localeCompare(b.unit, 'ja'));
+
+  lastRows = rowsOut;
+  lastCond = condText(f);
+  renderSum();
+
+  const uniq = new Set(pass.map(r => r.name)).size;
+  const noDate = pass.filter(r => !r.meta.date).length;
+  const condOut = records.length - okSet.size;
+  const manual = records.filter(r => r.exclude && okSet.has(r)).length;
+  $('condSummary').textContent =
+    `【条件】${lastCond}\n` +
+    `【内訳】集計対象 ${pass.length} レコード、経営体 ${uniq} 件` +
+    (condOut ? `、条件で除外 ${condOut} 件` : '') +
+    (manual ? `、手動除外 ${manual} 件` : '') +
+    (noDate ? `、申請日不明 ${noDate} 件` : '') +
+    (noPriceN ? `、単価なしのため粗収益から除外 ${noPriceN} 件` : '') +
+    (noAreaN ? `、面積なしのため粗収益から除外 ${noAreaN} 件` : '') +
+    (zeroSkipped ? `、単収0の除外 ${zeroSkipped} 件` : '') +
+    (f.dedupe ? `、同一氏名の古い申請を除外 ${dedupeRemoved} 件` : '');
+  $('condInfo').textContent = `集計対象 ${pass.length} / 全 ${records.length} レコード（経営体 ${uniq} 件）`;
+
+  if (!pass.length && records.length) log('集計対象のレコードがありません', 'warn');
+}
+/* ===== 抽出結果の表示 ===== */
+function renderRaw() {
+  const okSet = conditionSet(getFilters());
+  const items = records.map((r, i) => ({r, i}));
+  const sorted = sortRows(items, rawGetters(okSet), rawSort);
+  $('raw').innerHTML = sorted.map(({r, i}) => {
+    const out = !okSet.has(r);
+    return `<tr data-row="${i}" style="${out ? 'opacity:0.5' : ''}">
+    <td class="c flag-cell">${out ? '✓' : ''}</td>
+    <td class="c"><input type="checkbox" data-i="${i}" data-k="exclude" ${r.exclude ? 'checked' : ''}></td>
+    <td class="l">${esc(r.kind)}</td>
+    <td class="l"><input class="name" data-i="${i}" data-k="name" value="${esc(r.name)}"></td>
+    <td class="l">${esc(r.meta.date || '（不明）')}</td>
+    <td class="l">${esc(r.file)}</td>
+    <td class="l">${esc(r.sheet)}</td>
+    <td class="l"><input class="name" style="width:110px" data-i="${i}" data-k="crop" value="${esc(r.crop)}" title="ダブルクリックで別名欄に取り込み"></td>
+    <td><input data-i="${i}" data-k="area" value="${r.area ?? ''}"></td>
+    <td><input style="width:50px" data-i="${i}" data-k="areaUnit" value="${esc(r.areaUnit)}"></td>
+    <td><input data-i="${i}" data-k="yld" value="${r.yld ?? ''}"></td>
+    <td><input style="width:70px" data-i="${i}" data-k="yldUnit" value="${esc(r.yldUnit)}"></td>
+    <td><input class="price-input" data-i="${i}" data-k="price" value="${r.price ?? ''}"></td>
+    <td><input style="width:70px" data-i="${i}" data-k="priceUnit" value="${esc(r.priceUnit)}"></td>
+  </tr>`;
+  }).join('');
+}
+
+// 抽出結果の ✓ と行の薄表示を、表を再描画せずに更新（行は元の位置で対応づけ）
+function refreshRawFlags(okSet) {
+  document.querySelectorAll('#raw tr').forEach(tr => {
+    const r = records[+tr.dataset.row];
+    if (!r) return;
+    const out = !okSet.has(r);
+    tr.style.opacity = out ? '0.5' : '';
+    tr.firstElementChild.textContent = out ? '✓' : '';
+  });
+}
+
+/* ===== 実行 ===== */
+// 処理時間の表示（10秒未満は小数1桁、それ以上は整数秒）
+const fmtSec = ms => {
+  const s = ms / 1000;
+  return (s < 10 ? s.toFixed(1) : Math.round(s).toString()) + 'sec';
+};
+
+async function runPending(onlyPending) {
+  const todo = fileList.filter(x => onlyPending ? !x.done : true);
+  if (!todo.length) return log('処理対象のExcelがありません（先に「フォルダを選定」してください）', 'warn');
+  if (!onlyPending) records = records.filter(r => !todo.some(t => t.key === r.fkey));
+
+  const t0 = performance.now();
+
+  for (const item of todo) {
+    item.status = '処理中…';
+    renderFiles();
+    try {
+      const {hit, recs} = await processFile(item);
+      records.push(...recs);
+      item.done = true;
+      item.status = `完了（対象${hit}シート / 抽出${recs.length}件）`;
+      if (hit === 0) logErr(`${item.rel}: 対象シート（【現在】【目標】の経営概況調書）が見つかりませんでした`);
+      else log(`${item.rel}: 対象シート ${hit} 件、抽出 ${recs.length} 件`);
+    } catch (err) {
+      item.done = false;
+      item.status = 'エラー: ' + err.message;
+      logErr(`${item.rel}: 読み込みエラー ${err.message}`);
+    }
+    renderFiles();
+  }
+  renderRaw();
+  refreshOptions();
+  calc();
+
+  const elapsed = performance.now() - t0;
+  log(`抽出レコード数（合計）: ${records.length}　処理：${fmtSec(elapsed)}`);
+}
+
+/* ===== 抽出結果CSV（画面の並び順どおり・1＝対象） ===== */
+function saveRecordsCsv() {
+  if (!records.length) return log('先にExcelを抽出してください', 'warn');
+  const okSet = conditionSet(getFilters());
+  const q = s => `"${String(s ?? '').replace(/"/g, '""')}"`;
+  const head = ['条件対象', '手動対象', '区分', '個人・法人名', '申請日', 'ファイル', 'シート', '作目', '作付面積', '面積単位', '単収', '単収単位', '単価', '単価単位'];
+  const lines = [head.join(',')];
+  // 画面の並び順を反映（未並べ替えなら抽出順）
+  const ordered = sortRows(records.map((r, i) => ({r, i})), rawGetters(okSet), rawSort).map(x => x.r);
+  ordered.forEach(r => {
+    lines.push([
+      okSet.has(r) ? 1 : 0,      // 集計条件に合う → 1（対象）
+      r.exclude ? 0 : 1,         // 手動で除外していない → 1（対象）
+      q(r.kind), q(r.name), q(r.meta.date || ''), q(r.file), q(r.sheet), q(r.crop),
+      r.area ?? '', q(r.areaUnit), r.yld ?? '', q(r.yldUnit),
+      r.price ?? '', q(r.priceUnit)
+    ].join(','));
+  });
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], {type: 'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'extracted_records.csv';
+  a.click();
+}
+
+/* ===== 処理ログCSV ===== */
+function saveLogCsv() {
+  const rows = [...logEl.querySelectorAll('div')];
+  if (!rows.length) {
+    alert('保存する処理ログがありません。');
+    return;
+  }
+  const q = s => `"${String(s ?? '').replace(/"/g, '""')}"`;
+  const lines = [['種別', '内容'].join(',')];
+  rows.forEach(d => {
+    const kind = d.classList.contains('err') ? 'エラー'
+               : d.classList.contains('warn') ? '警告' : '情報';
+    lines.push([q(kind), q(d.textContent)].join(','));
+  });
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], {type: 'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'processing_log.csv';
+  a.click();
+}
+
+/* ===== イベント ===== */
+$('btnPick').onclick = selectFolder;
+
+$('btnClearList').onclick = () => {
+  if (!confirm('対象一覧と抽出結果をすべて消去しますか？')) return;
+  fileList = []; records = []; lastRows = []; selectedDirHandle = null;
+  $('pickedName').textContent = '';
+  renderFiles();
+  refreshOptions();
+  renderRaw();
+  calc();
+  logEl.textContent = '';
+};
+
+$('run').onclick = () => runPending(true);
+
+$('rerun').onclick = () => {
+  fileList.forEach(x => { x.done = false; });
+  runPending(false);
+};
+
+$('procCsv').onclick = saveLogCsv;
+
+$('btnApply').onclick = () => calc();
+
+$('btnReset').onclick = () => {
+  $('fKind').value = 'both';
+  $('fFrom').value = '';
+  $('fTo').value = '';
+  $('fMuniSrc').value = 'either';
+  document.querySelectorAll('#muniBox input').forEach(x => { x.checked = false; });
+  $('fCorp').value = 'both';
+  $('fFarm').value = '';
+  $('fAgeMin').value = '';
+  $('fAgeMax').value = '';
+  $('fSeason').value = 'both';
+  $('fSkipZero').checked = true;
+  $('fDedupe').checked = false;
+  calc();
+};
+
+// 抽出結果の修正（表は再描画せず、集計だけ更新）
+$('raw').addEventListener('change', e => {
+  const el = e.target;
+  const i = +el.dataset.i, k = el.dataset.k;
+  if (k === undefined || isNaN(i) || !records[i]) return;
+  if (k === 'exclude') records[i].exclude = el.checked;
+  else if (k === 'area' || k === 'yld' || k === 'price') records[i][k] = parseNum(el.value);
+  else records[i][k] = el.value.trim();
+  calc();
+});
+
+// 別名欄の編集：作目チップの表示を更新し、少し待ってから自動で再集計
+let aliasTimer = null;
+$('alias').addEventListener('input', () => {
+  refreshCropChips();
+  clearTimeout(aliasTimer);
+  aliasTimer = setTimeout(() => { if (records.length) calc(); }, 300);
+});
+
+// 別名欄：ダブルクリックで別名ファイルを選択（前回のフォルダを記憶）、ドラッグ＆ドロップにも対応
+const aliasBox = $('alias');
+const aliasPicker = $('aliasPicker');
+aliasBox.addEventListener('dblclick', pickAliasFile);
+aliasPicker.addEventListener('change', () => {
+  loadAliasFile(aliasPicker.files[0]);
+  aliasPicker.value = '';
+});
+['dragenter', 'dragover'].forEach(t =>
+  aliasBox.addEventListener(t, e => { e.preventDefault(); aliasBox.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(t =>
+  aliasBox.addEventListener(t, e => { e.preventDefault(); aliasBox.classList.remove('drag'); }));
+aliasBox.addEventListener('drop', e => loadAliasFile(e.dataTransfer.files[0]));
+
+// 作目チップのダブルクリック
+$('cropChips').addEventListener('dblclick', e => {
+  const chip = e.target.closest('.crop-chip');
+  if (chip) addAliasLine(chip.dataset.crop);
+});
+
+// 抽出結果の作目欄のダブルクリック
+$('raw').addEventListener('dblclick', e => {
+  const inp = e.target.closest('input[data-k="crop"]');
+  if (inp) addAliasLine(inp.value);
+});
+
+// 表示・非表示ボタン
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const body = document.getElementById(btn.dataset.target);
+    const hide = !body.hidden;
+    body.hidden = hide;
+    btn.textContent = hide ? '表示' : '非表示';
+    btn.setAttribute('aria-expanded', String(!hide));
+  });
+});
+
+// 集計結果のCSV保存（区分×作目×単位ごと・画面の並び順どおり）
+$('csv').onclick = () => {
+  if (!lastRows.length) return log('先に集計してください', 'warn');
+  const q = s => `"${String(s).replace(/"/g, '""')}"`;
+  const head = ['条件', '区分', '作目', '単位', 'n(単収)', '単収平均', '単収最大', '単収最小', '経営体数',
+                'n(面積)', '面積合計(a)', '面積平均(a)', '面積最大(a)', '面積最小(a)',
+                'n(単価・使用)', '単価平均', 'n(粗収益・使用)', '粗収益平均(円/10a)', '粗収益合計(円)'];
+  const v = x => (x == null || isNaN(x)) ? '' : Number(x).toFixed(2);
+  const lines = [head.join(',')];
+  sortRows(lastRows, sumGetters, sumSort).forEach(o => {
+    const s = o.A;
+    const kg = o.unit === 'kg/10a';
+    lines.push([
+      q(lastCond), q(o.kind), q(o.crop), q(o.unit),
+      o.yn, v(o.avg), v(o.ymax), v(o.ymin), o.people,
+      s ? s.n : 0, s ? v(s.sum) : '', s ? v(s.sum / s.n) : '', s ? v(s.max) : '', s ? v(s.min) : '',
+      o.pn, v(o.pavg), o.rn, kg ? v(o.rvAvg) : '', v(o.rvTotal)
+    ].join(','));
+  });
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], {type: 'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'summary_by_crop_conditional.csv';
+  a.click();
+};
+
+// 抽出結果のCSV保存
+$('rawCsv').onclick = saveRecordsCsv;
+
+/* ===== 初期化 ===== */
+$('base').textContent = DEFAULT_DIR;
+bindSortHeaders($('raw').closest('table'), rawSort, renderRaw, 'rawSortInfo');
+bindSortHeaders($('sum').closest('table'), sumSort, renderSum, 'sumSortInfo');
+renderFiles();
+refreshOptions();
+renderRaw();
+</script>
+</body>
+</html>
