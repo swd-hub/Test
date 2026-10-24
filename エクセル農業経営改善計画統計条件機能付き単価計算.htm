@@ -22,7 +22,7 @@
   .app-header { background: var(--c-primary); color: #fff; padding: 14px 24px; box-shadow: var(--shadow); }
   .app-header h1 { margin: 0; font-size: 19px; font-weight: 700; }
   .app-header .note { color: #d9ead9; margin: 4px 0 0; }
-  .container { max-width: 1200px; margin: 20px auto; padding: 0 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .container { max-width: none; margin: 20px 0; padding: 0 24px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .container > * { min-width: 0; }
   .card { background: var(--c-card); border: 1px solid var(--c-border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow); }
   .card h2 { font-size: 15px; margin: 0 0 12px; padding-left: 10px; border-left: 4px solid var(--c-primary); }
@@ -1163,16 +1163,20 @@ function dedupeLatest(list) {
 }
 
 function condText(f) {
-  const kindTxt = {both: '現状・目標', 現状: '現状', 目標: '目標'}[f.kind];
-  const dateTxt = (f.from || f.to) ? `${f.from || '…'}〜${f.to || '…'}` : '指定なし';
-  const muniTxt = f.munis.size
-    ? `${[...f.munis].join('・')}（照合: ${{either: '住所または農地', addr: '申請者住所', field: '農地所在地'}[f.muniSrc]}）`
-    : '指定なし';
-  const ageTxt = (f.ageMin != null || f.ageMax != null)
-    ? `${f.ageMin ?? '…'}〜${f.ageMax ?? '…'}歳` : '指定なし';
-  return `区分: ${kindTxt} / 申請日: ${dateTxt} / 市町村: ${muniTxt} / 経営体: ${{both: '個人・法人', 個人: '個人', 法人: '法人'}[f.corp]} / ` +
-         `営農類型: ${f.farmType || 'すべて'} / 年齢: ${ageTxt} / 作期: ${{both: '表作・裏作', omote: '表作のみ', ura: '裏作のみ'}[f.season]} / ` +
-         `単収0: ${f.skipZero ? '除外' : '含む'} / 同一氏名: ${f.dedupe ? '最新申請のみ' : '全件'}`;
+  // 初期値のままの条件は表示しない（変更した条件だけを列挙）
+  const parts = [];
+  if (f.kind !== 'both') parts.push(`区分: ${f.kind}のみ`);
+  if (f.from || f.to) parts.push(`申請日: ${f.from || '…'}〜${f.to || '…'}`);
+  if (f.munis.size) {
+    parts.push(`市町村: ${[...f.munis].join('・')}（照合: ${{either: '住所または農地', addr: '申請者住所', field: '農地所在地'}[f.muniSrc]}）`);
+  }
+  if (f.corp !== 'both') parts.push(`経営体: ${f.corp}のみ`);
+  if (f.farmType) parts.push(`営農類型: ${f.farmType}`);
+  if (f.ageMin != null || f.ageMax != null) parts.push(`年齢: ${f.ageMin ?? '…'}〜${f.ageMax ?? '…'}歳`);
+  if (f.season !== 'both') parts.push(`作期: ${{omote: '表作のみ', ura: '裏作のみ'}[f.season]}`);
+  if (!f.skipZero) parts.push('単収0: 含む');
+  if (f.dedupe) parts.push('同一氏名: 最新申請のみ');
+  return parts.length ? parts.join(' / ') : '指定なし（初期設定）';
 }
 
 /* ===== 別名（「別名=正式名」・空白と全角「＝」の揺れに対応） ===== */
