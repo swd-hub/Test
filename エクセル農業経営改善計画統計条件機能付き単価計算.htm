@@ -22,7 +22,8 @@
   .app-header { background: var(--c-primary); color: #fff; padding: 14px 24px; box-shadow: var(--shadow); }
   .app-header h1 { margin: 0; font-size: 19px; font-weight: 700; }
   .app-header .note { color: #d9ead9; margin: 4px 0 0; }
-  .container { max-width: 1200px; margin: 20px auto; padding: 0 16px; display: grid; gap: 16px; }
+  .container { max-width: 1200px; margin: 20px auto; padding: 0 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .container > * { min-width: 0; }
   .card { background: var(--c-card); border: 1px solid var(--c-border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow); }
   .card h2 { font-size: 15px; margin: 0 0 12px; padding-left: 10px; border-left: 4px solid var(--c-primary); }
   .card h2 .count { font-weight: normal; margin-left: 6px; }
