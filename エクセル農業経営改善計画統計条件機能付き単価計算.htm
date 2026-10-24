@@ -306,7 +306,7 @@
         <thead><tr>
           <th>区分</th><th>作目</th><th>単収単位</th><th>n（単収）</th><th>単収 平均</th><th>単収 最大</th><th>単収 最小</th>
           <th>経営体数</th><th>n（面積）</th><th>作付面積 合計(a)</th><th>作付面積 平均(a)</th><th>作付面積 最大(a)</th><th>作付面積 最小(a)</th>
-          <th>n（単価・使用）</th><th>単価 平均</th><th>n（粗収益・使用）</th><th>粗収益 平均（円/10a）</th><th>粗収益 合計（円）</th>
+          <th>n（単価・使用）</th><th>単価 平均</th><th>n（粗収益・使用）</th><th>粗収益 平均（円/10a）</th>
         </tr></thead>
         <tbody id="sum"></tbody>
       </table>
@@ -1266,8 +1266,7 @@ const sumGetters = [
   o => o.pn,
   o => o.pavg,
   o => o.rn,
-  o => o.rvAvg,
-  o => o.rvTotal
+  o => o.rvAvg
 ];
 
 // 集計結果の表示（並べ替えを反映）
@@ -1291,10 +1290,9 @@ function renderSum() {
       <td>${s ? fmtNum(s.max, 1) : ''}</td>
       <td>${s ? fmtNum(s.min, 1) : ''}</td>
       <td>${o.pn}</td>
-      <td>${fmtNum(o.pavg, 1)}</td>
+      <td>${fmtNum(o.pavg, 0)}</td>
       <td>${o.rn}</td>
       <td>${kg ? fmtNum(o.rvAvg, 0) : ''}</td>
-      <td>${fmtNum(o.rvTotal, 0)}</td>
     </tr>`;
   }).join('');
 }
@@ -1374,11 +1372,7 @@ function calc() {
       pavg: mean(g.prices),
       rn: rv.length,                       // 粗収益の n（計算に使った行数）
       // 10a当たり粗収益 = 単収(kg/10a) × 単価(円/kg)（kg 系のみ）
-      rvAvg: g.unit === 'kg/10a' ? mean(rv.map(x => x.y * x.p)) : null,
-      // 粗収益合計：kg 系は 面積(a)÷10 × 単収 × 単価、数量系は 数量 × 単価
-      rvTotal: rv.length
-        ? rv.reduce((s, x) => s + (x.a == null ? x.y * x.p : (x.a / 10) * x.y * x.p), 0)
-        : null
+      rvAvg: g.unit === 'kg/10a' ? mean(rv.map(x => x.y * x.p)) : null
     };
   });
 
@@ -1635,8 +1629,9 @@ $('csv').onclick = () => {
   const q = s => `"${String(s).replace(/"/g, '""')}"`;
   const head = ['条件', '区分', '作目', '単位', 'n(単収)', '単収平均', '単収最大', '単収最小', '経営体数',
                 'n(面積)', '面積合計(a)', '面積平均(a)', '面積最大(a)', '面積最小(a)',
-                'n(単価・使用)', '単価平均', 'n(粗収益・使用)', '粗収益平均(円/10a)', '粗収益合計(円)'];
+                'n(単価・使用)', '単価平均', 'n(粗収益・使用)', '粗収益平均(円/10a)'];
   const v = x => (x == null || isNaN(x)) ? '' : Number(x).toFixed(2);
+  const vi = x => (x == null || isNaN(x)) ? '' : String(Math.round(x));   // 円は整数
   const lines = [head.join(',')];
   sortRows(lastRows, sumGetters, sumSort).forEach(o => {
     const s = o.A;
@@ -1645,7 +1640,7 @@ $('csv').onclick = () => {
       q(lastCond), q(o.kind), q(o.crop), q(o.unit),
       o.yn, v(o.avg), v(o.ymax), v(o.ymin), o.people,
       s ? s.n : 0, s ? v(s.sum) : '', s ? v(s.sum / s.n) : '', s ? v(s.max) : '', s ? v(s.min) : '',
-      o.pn, v(o.pavg), o.rn, kg ? v(o.rvAvg) : '', v(o.rvTotal)
+      o.pn, vi(o.pavg), o.rn, kg ? vi(o.rvAvg) : ''
     ].join(','));
   });
   const blob = new Blob(['\uFEFF' + lines.join('\n')], {type: 'text/csv;charset=utf-8'});
