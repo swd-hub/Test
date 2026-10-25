@@ -148,7 +148,7 @@
   <div class="row">
     <label for="base"><strong>保管フォルダのフルパス</strong></label>
     <input type="text" id="base" class="path-input" spellcheck="false"
-           placeholder="例: \\fs.ad.pref.shimane.jp\農林水産部\東部農林水産振興センター　出雲事務所\農業普及部\R8\084担い手\02認定農業者\050農業経営改善計画認定申請\認定農業者経営改善計画">
+           placeholder="フルパス：選定した検索フォルダのアドレス欄から貼付">
     <button id="btnPathReset">初期値に戻す</button>
   </div>
   <p class="hint">※ ここに入れたパスが、検索結果の「開く」リンクとコピー用パスの先頭になります（ブラウザの仕様上、フォルダ選定だけではフルパスを取得できないため）。入力内容はこのPCに自動保存されます。</p>
@@ -183,7 +183,7 @@
 const SUPPORTED_EXT = ['xlsx', 'xlsm'];
 
 // ===== 保管フォルダのフルパス（入力欄 #base。localStorage に保存）=====
-const INITIAL_BASE_PATH = '\\\\fs.ad.pref.shimane.jp\\農林水産部\\東部農林水産振興センター　出雲事務所\\農業普及部\\R8\\084担い手\\02認定農業者\\050農業経営改善計画認定申請\\認定農業者経営改善計画';
+const INITIAL_BASE_PATH = 'フルパス：選定した検索フォルダのアドレス欄から貼付';
 const BASE_KEY = 'ninteiBasePath';
 const baseInput = document.getElementById('base');
 

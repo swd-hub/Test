@@ -32,10 +32,6 @@
   .sec-head.mt { margin-top: 20px; }
   .toggle-btn { padding: 3px 12px; font-size: 12px; white-space: nowrap; flex: 0 0 auto; }
   .note { color: var(--c-muted); font-size: 12px; }
-  .path-display {
-    margin: 4px 0 6px; padding: 6px 10px; background: #f7f9f7; border-left: 3px solid var(--c-primary);
-    font-family: Consolas, "Courier New", monospace; font-size: 12px; overflow-wrap: anywhere; user-select: all;
-  }
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .toolbar .spacer { flex: 1; }
   button {
@@ -148,11 +144,6 @@
   <section class="card">
     <h2>対象フォルダの選定</h2>
     <p class="note">※ Chrome または Edge で開いてください。選定したフォルダの中にあるサブフォルダ内のExcel（.xlsx / .xlsm）も対象になります。</p>
-    <div class="form-row">
-      <strong>デフォルトの選択フォルダ（フルパス）</strong>
-      <span id="base" class="path-display"></span>
-      <span class="note">※ ブラウザの仕様上、このパスを直接開くことはできません。初回は選定画面でこのフォルダまで移動してください。次回からは前回選んだフォルダが自動で開きます。</span>
-    </div>
     <div class="toolbar">
       <button id="btnPick" class="btn-primary">１．フォルダを選定</button>
       <button id="btnClearList" class="btn-danger">一覧と結果をクリア</button>
@@ -320,7 +311,6 @@
 /* ===== 定数 ===== */
 const SHADE_MIN = 170;   // 網掛けの輝度下限
 const SHADE_MAX = 240;   // 網掛けの輝度上限
-const DEFAULT_DIR = '\\\\fs.ad.pref.shimane.jp\\農林水産部\\東部農林水産振興センター　出雲事務所\\農業普及部\\R8\\084担い手\\02認定農業者\\050農業経営改善計画認定申請\\認定農業者経営改善計画';
 const SUPPORTED_EXT = ['xlsx', 'xlsm'];
 
 const LABEL_RE = /^(氏名|名称|法人名)$|^.{0,8}(氏名|法人名|名称)$/;
@@ -1659,7 +1649,6 @@ $('csv').onclick = () => {
 $('rawCsv').onclick = saveRecordsCsv;
 
 /* ===== 初期化 ===== */
-$('base').textContent = DEFAULT_DIR;
 bindSortHeaders($('raw').closest('table'), rawSort, renderRaw, 'rawSortInfo');
 bindSortHeaders($('sum').closest('table'), sumSort, renderSum, 'sumSortInfo');
 renderFiles();
