@@ -57,7 +57,7 @@
     font: inherit;
   }
   input[type=text] { width: min(100%, 360px); }
-  input[type=text]:focus, select:focus, button:focus-visible, a:focus-visible {
+  input[type=text]:focus, select:focus, button:focus-visible, a:focus-visible, th.sortable:focus-visible {
     outline: 3px solid rgba(103, 87, 29, .28);
     outline-offset: 2px;
     border-color: var(--izumo-olive);
@@ -81,13 +81,14 @@
     font-weight: 600;
     transition: background-color .15s ease, border-color .15s ease;
   }
-  button:hover, select:hover { border-color: var(--izumo-olive); background: var(--izumo-warm-dark); }
+  button:hover:not(:disabled), select:hover { border-color: var(--izumo-olive); background: var(--izumo-warm-dark); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
   button.primary {
     border-color: var(--izumo-olive);
     background: var(--izumo-olive);
     color: #fff;
   }
-  button.primary:hover { border-color: var(--izumo-olive-light); background: var(--izumo-olive-light); }
+  button.primary:hover:not(:disabled) { border-color: var(--izumo-olive-light); background: var(--izumo-olive-light); }
   .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 4px; }
   table { width: 100%; border-collapse: collapse; background: #fff; }
   th, td {
@@ -103,6 +104,10 @@
     font-weight: 700;
     white-space: nowrap;
   }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { background: var(--izumo-olive-light); }
+  th .arrow { display: inline-block; margin-left: 4px; opacity: .55; font-size: .85em; }
+  th[aria-sort="ascending"] .arrow, th[aria-sort="descending"] .arrow { opacity: 1; }
   tbody tr:nth-child(even) { background: var(--izumo-warm); }
   tbody tr:hover { background: var(--izumo-warm-dark); }
   td.val { min-width: 200px; word-break: break-all; }
@@ -168,11 +173,20 @@
   <div class="row">
     <label for="resFilter">結果の絞り込み</label>
     <input type="text" id="resFilter" placeholder="ファイル名・フォルダ・内容などで絞り込み">
+    <button id="btnCsv" disabled>CSV保存（表示中・並び順どおり）</button>
   </div>
   <div class="table-wrap">
     <table id="tbl">
       <thead>
-        <tr><th>No</th><th>ファイル名</th><th>フォルダ</th><th>シート</th><th>セル</th><th>内容</th><th>リンク</th></tr>
+        <tr>
+          <th class="sortable" data-col="0" tabindex="0" aria-sort="none">No<span class="arrow">⇅</span></th>
+          <th class="sortable" data-col="1" tabindex="0" aria-sort="none">ファイル名<span class="arrow">⇅</span></th>
+          <th class="sortable" data-col="2" tabindex="0" aria-sort="none">フォルダ<span class="arrow">⇅</span></th>
+          <th class="sortable" data-col="3" tabindex="0" aria-sort="none">シート<span class="arrow">⇅</span></th>
+          <th class="sortable" data-col="4" tabindex="0" aria-sort="none">セル<span class="arrow">⇅</span></th>
+          <th class="sortable" data-col="5" tabindex="0" aria-sort="none">内容<span class="arrow">⇅</span></th>
+          <th>リンク</th>
+        </tr>
       </thead>
       <tbody></tbody>
     </table>
@@ -204,9 +218,24 @@ document.getElementById('btnPathReset').addEventListener('click', () => {
   saveBasePath();
   setStatus('保管フォルダのパスを初期値に戻しました。');
 });
+
 let rows = [];                       // 検索結果（複数回の検索で追加される）
 let stats = { files: 0, errors: 0 }; // 今回の検索の統計
 let selectedDirHandle = null;
+
+// ===== ソート状態 =====
+let sortKey = null;      // 現在のソート列（data-col の番号）。null は検索順
+let sortDir = 'asc';     // 'asc' | 'desc'
+let seqCounter = 0;      // 検索順の連番（No 列のソートに使用）
+const collator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' });
+const SORT_GETTERS = [
+  r => r._seq,    // 0: No（検索順）
+  r => r.file,    // 1: ファイル名
+  r => r.folder,  // 2: フォルダ
+  r => r.sheet,   // 3: シート
+  r => r.cell,    // 4: セル
+  r => r.text     // 5: 内容
+];
 
 document.getElementById('btnPick').addEventListener('click', selectSearchFolder);
 document.getElementById('kw').addEventListener('keydown', event => {
@@ -221,6 +250,17 @@ document.getElementById('btnClear').addEventListener('click', () => {
   setStatus('結果をクリアしました。');
 });
 document.getElementById('resFilter').addEventListener('input', applyResultFilter);
+document.getElementById('btnCsv').addEventListener('click', exportCsv);
+
+document.querySelectorAll('#tbl thead th.sortable').forEach(th => {
+  th.addEventListener('click', () => setSort(Number(th.dataset.col)));
+  th.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setSort(Number(th.dataset.col));
+    }
+  });
+});
 
 // ===== 前回選んだフォルダの記憶（IndexedDB を使用）=====
 function openHandleDb() {
@@ -376,8 +416,53 @@ async function searchFile(fh, relFolder, keys, isAnd, base) {
   }));
 }
 
+// ===== ソート処理 =====
+function compareValues(a, b) {
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  return collator.compare(String(a ?? ''), String(b ?? ''));
+}
+
+function sortRows() {
+  if (sortKey === null) return;
+  const get = SORT_GETTERS[sortKey];
+  const dir = sortDir === 'asc' ? 1 : -1;
+  rows.sort((x, y) => {
+    const c = compareValues(get(x), get(y));
+    return c !== 0 ? c * dir : (x._seq - y._seq);  // 同値は検索順を維持
+  });
+}
+
+function setSort(col) {
+  if (sortKey === col) {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortKey = col;
+    sortDir = 'asc';
+  }
+  renderResults();
+}
+
+function updateSortIndicators() {
+  document.querySelectorAll('#tbl thead th.sortable').forEach(th => {
+    const col = Number(th.dataset.col);
+    const arrow = th.querySelector('.arrow');
+    if (col === sortKey) {
+      th.setAttribute('aria-sort', sortDir === 'asc' ? 'ascending' : 'descending');
+      arrow.textContent = sortDir === 'asc' ? '▲' : '▼';
+    } else {
+      th.setAttribute('aria-sort', 'none');
+      arrow.textContent = '⇅';
+    }
+  });
+}
+
 // 結果テーブルを描画（textContent を使用して安全に表示）
 function renderResults() {
+  // 検索順の連番を付与（未付与の行のみ）
+  rows.forEach(r => { if (r._seq === undefined) r._seq = ++seqCounter; });
+  sortRows();
+  updateSortIndicators();
+
   const tbody = document.querySelector('#tbl tbody');
   tbody.textContent = '';
 
@@ -423,15 +508,63 @@ function applyResultFilter() {
   Array.from(document.querySelector('#tbl tbody').rows).forEach(tr => {
     tr.style.display = (!q || tr.textContent.toLowerCase().includes(q)) ? '' : 'none';
   });
+  updateCsvButton();
+}
+
+// ===== CSV保存 =====
+function updateCsvButton() {
+  const visibleCount = Array.from(document.querySelector('#tbl tbody').rows)
+    .filter(tr => tr.style.display !== 'none').length;
+  document.getElementById('btnCsv').disabled = visibleCount === 0;
+}
+
+// 表示中（絞り込み後）の行を、現在の並び順のままCSVで保存
+function exportCsv() {
+  const tbody = document.querySelector('#tbl tbody');
+  const trs = Array.from(tbody.rows);
+  const targets = [];
+  trs.forEach((tr, i) => {
+    if (tr.style.display !== 'none') targets.push(rows[i]);
+  });
+  if (targets.length === 0) {
+    alert('保存する結果がありません。');
+    return;
+  }
+
+  const header = ['No', 'ファイル名', 'フォルダ', 'シート', 'セル', '内容', 'パス'];
+  const toCsvLine = values => values
+    .map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"')
+    .join(',');
+
+  const lines = [toCsvLine(header)];
+  targets.forEach((r, i) => {
+    lines.push(toCsvLine([i + 1, r.file, r.folder, r.sheet, r.cell, r.text, r.path ?? '']));
+  });
+
+  // BOM 付き UTF-8（Excel で文字化けしないように）
+  const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_` +
+                `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const fileName = `検索結果_${stamp}.csv`;
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  setStatus(`CSVを保存しました: ${fileName}（${targets.length} 件）`);
 }
 
 // ===== ユーティリティ =====
 function normalizeKeys(s) {
   return s.replace(/\u3000/g, ' ').trim().split(/\s+/).filter(Boolean).map(k => k.toLowerCase());
-}
-
-function normalizeBase(s) {
-  return s.trim().replace(/[\\\/]+$/, '');
 }
 
 // UNCパス・ローカルパスを file:// のURLに変換
@@ -455,6 +588,9 @@ async function copyText(t) {
 function setStatus(msg) {
   document.getElementById('status').textContent = msg;
 }
+
+// 初期状態のCSVボタン制御
+updateCsvButton();
 </script>
 </body>
 </html>
