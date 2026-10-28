@@ -1,64 +1,148 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>気象データ表示トップ</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #f4f7f6;
-            color: #333;
-        }
-        .container {
-            background-color: #ffffff;
-            padding: 40px 60px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        h1 {
-            color: #4CAF50;
-            margin-bottom: 30px;
-            font-size: 2.5em;
-        }
-        p {
-            font-size: 1.1em;
-            margin-bottom: 25px;
-        }
-        .button-link {
-            display: inline-block;
-            background-color: #4CAF50;
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 8px;
-            text-decoration: none;
-            font-size: 1.2em;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        .button-link:hover {
-            background-color: #45a049;
-            transform: translateY(-2px);
-        }
-        .button-link:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>農業経営計画 ツール一覧</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      background-color: #f1f8f4;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    header {
+      background-color: #2e7d32;
+      color: #fff;
+      padding: 24px 16px;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.6rem;
+    }
+
+    header p {
+      margin: 8px 0 0;
+      font-size: 0.95rem;
+      opacity: 0.9;
+    }
+
+    main {
+      max-width: 960px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+
+    .card-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      display: flex;
+      flex-direction: column;
+      background-color: #fff;
+      border-radius: 10px;
+      border-top: 5px solid #43a047;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      padding: 20px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    }
+
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+      color: #1b5e20;
+    }
+
+    .card p {
+      flex-grow: 1;
+      margin: 0 0 16px;
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    .card a {
+      display: inline-block;
+      align-self: flex-start;
+      background-color: #43a047;
+      color: #fff;
+      text-decoration: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      transition: background-color 0.15s ease;
+    }
+
+    .card a:hover {
+      background-color: #2e7d32;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #777;
+      padding: 24px 16px;
+    }
+
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 1.3rem;
+      }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>ｔｅｓｔ</h1>
-        <p>ＴＥＳＴ．ＨＴＭを読む</p>
-        <a href="nightlength_izumoFetch.htm" class="button-link">テスト用</a>
+  <header>
+    <h1>農業経営計画 ツール一覧</h1>
+    <p>確認したい資料・検索ツールを選んでください</p>
+  </header>
+
+  <main>
+    <div class="card-list">
+      <section class="card">
+        <h2>エクセルシート内検索</h2>
+        <p>エクセルシートの中身から農業経営計画の情報を検索します。</p>
+        <a href="HTML/エクセルシート内検索＿農業経営計画.htm">開く</a>
+      </section>
+
+      <section class="card">
+        <h2>ファイル名検索</h2>
+        <p>ファイル名から農業経営計画関連のファイルを検索します。</p>
+        <a href="HTML/ファイル名検索_農業経営計画.htm">開く</a>
+      </section>
+
+      <section class="card">
+        <h2>農業経営改善計画統計</h2>
+        <p>農業経営改善計画に関する統計データを確認します。</p>
+        <a href="HTML/農業経営改善計画統計.htm">開く</a>
+      </section>
+
+      <section class="card">
+        <h2>生産施設・機械の抽出</h2>
+        <p>農業経営計画に記載された生産施設や機械の情報を抽出して確認します。</p>
+        <a href="HTML/農業経営計画_生産施設_機械の抽出.htm">開く</a>
+      </section>
     </div>
+  </main>
+
+  <footer>
+    &copy; 農業経営計画 ツール一覧
+  </footer>
 </body>
 </html>

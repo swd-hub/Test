@@ -47,7 +47,8 @@
   .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
   .row:last-child { margin-bottom: 0; }
   label, .row strong { color: var(--izumo-olive); font-weight: 700; }
-  input[type=text], select {
+  input[type=text] {
+    width: min(100%, 360px);
     min-height: 40px;
     padding: 8px 10px;
     border: 1px solid #B1A887;
@@ -56,20 +57,12 @@
     color: var(--text);
     font: inherit;
   }
-  input[type=text] { width: min(100%, 360px); }
-  input[type=text]:focus, select:focus, button:focus-visible, a:focus-visible, th.sortable:focus-visible {
+  input[type=text]:focus, button:focus-visible, a:focus-visible, th.sortable:focus-visible {
     outline: 3px solid rgba(103, 87, 29, .28);
     outline-offset: 2px;
     border-color: var(--izumo-olive);
   }
-  .path-display {
-    overflow-wrap: anywhere;
-    padding: 5px 9px;
-    border-left: 3px solid var(--izumo-olive-light);
-    background: var(--izumo-warm-dark);
-    font-size: .92em;
-  }
-  select, button {
+  button {
     min-height: 40px;
     padding: 8px 14px;
     border: 1px solid #B1A887;
@@ -81,7 +74,7 @@
     font-weight: 600;
     transition: background-color .15s ease, border-color .15s ease;
   }
-  button:hover:not(:disabled), select:hover { border-color: var(--izumo-olive); background: var(--izumo-warm-dark); }
+  button:hover:not(:disabled) { border-color: var(--izumo-olive); background: var(--izumo-warm-dark); }
   button:disabled { opacity: .45; cursor: not-allowed; }
   button.primary {
     border-color: var(--izumo-olive);
@@ -166,7 +159,7 @@
   <div class="row">
     <label for="resFilter">結果の絞り込み</label>
     <input type="text" id="resFilter" placeholder="ファイル名・フォルダ・種別・名称などで絞り込み">
-    <button id="btnCsv" disabled>CSV保存（表示中・並び順どおり）</button>
+    <button id="btnCsv" disabled>CSV保存</button>
   </div>
   <div class="table-wrap">
     <table id="tbl">
@@ -210,10 +203,11 @@ function saveBasePath() {
   baseInput.value = v || INITIAL_BASE_PATH;
 })();
 baseInput.addEventListener('input', saveBasePath);
-document.getElementById('btnPathReset').addEventListener('click', () => {
+document.getElementById('btnPathReset').addEventListener('click', async () => {
   baseInput.value = INITIAL_BASE_PATH;
   saveBasePath();
-  setStatus('保管フォルダのパスを初期値に戻しました。');
+  await clearLastDir().catch(() => {});
+  setStatus('保管フォルダのパスを初期値に戻し、IndexedDB に保存された前回フォルダ情報も削除しました。');
 });
 
 let rows = [];                       // 抽出結果（抽出のたびに作り直す）
@@ -270,27 +264,33 @@ function openHandleDb() {
   });
 }
 
-async function saveLastDir(handle) {
+// handles ストアに対して処理を1回実行する共通関数
+// fn(store) が返したリクエストの結果を返す（書き込み系は undefined）
+async function withHandleStore(mode, fn) {
   const db = await openHandleDb();
-  await new Promise((resolve, reject) => {
-    const tx = db.transaction('handles', 'readwrite');
-    tx.objectStore('handles').put(handle, 'lastDir');
-    tx.oncomplete = resolve;
-    tx.onerror = () => reject(tx.error);
-  });
-  db.close();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', mode);
+      const req = fn(tx.objectStore('handles'));
+      tx.oncomplete = () => resolve(req ? req.result : undefined);
+      tx.onerror = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+function saveLastDir(handle) {
+  return withHandleStore('readwrite', store => store.put(handle, 'lastDir'));
+}
+
+function clearLastDir() {
+  return withHandleStore('readwrite', store => store.clear());
 }
 
 async function loadLastDir() {
   try {
-    const db = await openHandleDb();
-    const handle = await new Promise((resolve, reject) => {
-      const req = db.transaction('handles').objectStore('handles').get('lastDir');
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => reject(req.error);
-    });
-    db.close();
-    return handle;
+    return (await withHandleStore('readonly', store => store.get('lastDir'))) || null;
   } catch (e) {
     return null;
   }
@@ -339,7 +339,7 @@ async function runExtract() {
   stats = { files: 0, errors: 0, hitFiles: 0, noTable: 0, facility: 0, machine: 0 };
   try {
     setStatus('抽出中...');
-    await scanDir(selectedDirHandle, '', base);
+    await scanDir(selectedDirHandle, '');
   } finally {
     running = false;
   }
@@ -353,15 +353,15 @@ async function runExtract() {
 }
 
 // フォルダを再帰的に巡回
-async function scanDir(dirHandle, relPath, base) {
+async function scanDir(dirHandle, relPath) {
   for await (const entry of dirHandle.values()) {
     if (entry.kind === 'directory') {
       const sub = relPath ? `${relPath}\\${entry.name}` : entry.name;
-      await scanDir(entry, sub, base);
+      await scanDir(entry, sub);
     } else {
       const ext = entry.name.split('.').pop().toLowerCase();
       if (entry.name.startsWith('~$') || !SUPPORTED_EXT.includes(ext)) continue;
-      await extractFile(entry, relPath, base);
+      await extractFile(entry, relPath, getBasePath());
     }
   }
 }
@@ -403,10 +403,17 @@ function isStopText(s) {
   const t = String(s).normalize('NFKC').trim();
   return /^[ア-オ]\s/.test(t) ||
          /^[①-⑩]/.test(t) ||
-         /^\(\d+\)/.test(t) ||
+         /^$$\d+$$/.test(t) ||
          /^\d+(\s+|、|．)\S/.test(t) ||
          /^[※＊*]/.test(t) ||
-         /^\(注\)/.test(t);
+         /^$$注$$/.test(t);
+}
+
+// 表の注釈（説明文）かどうか
+// 括弧で始まる文、「。」を含む文、「欄」「記載」を含む文を注釈とみなす
+function isNoteText(s) {
+  const t = String(s ?? '').normalize('NFKC').trim();
+  return /^\(/.test(t) || t.includes('。') || t.includes('欄') || t.includes('記載');
 }
 
 // シートを「行 → 列 → 文字列」の表にする
@@ -510,6 +517,10 @@ function readTable(grid, merges, anchor, t) {
       if (v) any = true;
     });
 
+    // 表の注釈（「（②…に記載しているものは記載不要。）」「…欄には、…」など）は抽出しない
+    const filled = Object.values(vals).filter(Boolean);
+    if (filled.length > 0 && filled.every(isNoteText)) continue;
+
     if (!any) {
       blank++;
       if (blank >= 4) break;
@@ -592,7 +603,7 @@ function extractWorkbook(wb) {
       if (!res) continue;
       tableFound = true;
       res.forEach(x => result.push({
-        kind: t.kind, id: t.id, sheet: sn,
+        kind: t.kind, id: t.id,
         name: x.vals.name || '', cur: x.vals.cur || '', goal: x.vals.goal || '', qty: x.vals.qty || '',
         pos: `${sn}!${XLSX.utils.encode_cell({ r: x.row - 1, c: x.col })}`
       }));
@@ -623,13 +634,14 @@ async function extractFile(fh, relFolder, base) {
         file: fh.name, folder: folderLabel, kind: x.kind,
         date: applyDate ? applyDate.text : '', dateSort: applyDate ? applyDate.sort : 0,
         name: x.name, cur: x.cur, goal: x.goal, qty: x.qty, pos: x.pos,
-        path: fullPath, error: false
+        path: fullPath
       });
     });
   } catch (e) {
     stats.errors++;
-    rows.push({ file: fh.name, folder: folderLabel, date: '', dateSort: 0, kind: '-', name: '開けませんでした（' + e.message + '）',
-                cur: '', goal: '', qty: '', pos: '-', path: fullPath, error: true });
+    rows.push({ file: fh.name, folder: folderLabel, date: '', dateSort: 0, kind: '-',
+                name: '開けませんでした（' + e.message + '）',
+                cur: '', goal: '', qty: '', pos: '-', path: fullPath });
   }
 }
 
@@ -683,7 +695,7 @@ function renderResults() {
   const tbody = document.querySelector('#tbl tbody');
   tbody.textContent = '';
 
-  rows.forEach((r, i) => {
+  rows.forEach(r => {
     const tr = document.createElement('tr');
 
     [r._seq, r.date, r.file, r.folder, r.kind, r.name, r.cur, r.goal, r.qty, r.pos].forEach((v, idx) => {
@@ -737,8 +749,7 @@ function updateCsvButton() {
 
 // 表示中（絞り込み後）の行を、現在の並び順のままCSVで保存
 function exportCsv() {
-  const tbody = document.querySelector('#tbl tbody');
-  const trs = Array.from(tbody.rows);
+  const trs = Array.from(document.querySelector('#tbl tbody').rows);
   const targets = [];
   trs.forEach((tr, i) => {
     if (tr.style.display !== 'none') targets.push(rows[i]);
@@ -754,7 +765,7 @@ function exportCsv() {
     .join(',');
 
   const lines = [toCsvLine(header)];
-  targets.forEach((r, i) => {
+  targets.forEach(r => {
     lines.push(toCsvLine([r._seq, r.date, r.file, r.folder, r.kind, r.name, r.cur, r.goal, r.qty, r.pos, r.path ?? '']));
   });
 

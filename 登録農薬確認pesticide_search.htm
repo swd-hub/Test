@@ -1134,27 +1134,83 @@
         }
         
         // CSVを解析する関数
-        function parseCSV(text) {
-            const lines = text.trim().split('\n');
-            if (lines.length === 0) {
-                throw new Error('CSVファイルが空です');
-            }
-            
-            const headers = lines[0].split(',').map(h => h.trim());
-            const data = [];
-            
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
-                const values = lines[i].split(',').map(v => v.trim());
-                const row = {};
-                for (let j = 0; j < headers.length; j++) {
-                    row[headers[j]] = values[j] || '';
+// CSVを解析する関数（ダブルクォーテーション対応）
+function parseCSV(text) {
+    const rows = parseCSVRows(text);
+
+    // 空行を除外
+    const nonEmptyRows = rows.filter(r => r.some(c => c.trim() !== ''));
+    if (nonEmptyRows.length === 0) {
+        throw new Error('CSVファイルが空です');
+    }
+
+    const headers = nonEmptyRows[0].map(h => h.trim());
+    const data = [];
+
+    for (let i = 1; i < nonEmptyRows.length; i++) {
+        const values = nonEmptyRows[i];
+        const row = {};
+        headers.forEach((header, j) => {
+            row[header] = (values[j] ?? '').trim();
+        });
+        data.push(row);
+    }
+
+    return { headers, data };
+}
+
+// CSV文字列を「行 → フィールド配列」に分解する（RFC 4180準拠の簡易版）
+function parseCSVRows(text) {
+    const rows = [];
+    let row = [];
+    let field = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+
+        if (inQuotes) {
+            if (c === '"') {
+                if (text[i + 1] === '"') {
+                    // "" は引用符1文字としてエスケープされている
+                    field += '"';
+                    i++;
+                } else {
+                    // 閉じ引用符
+                    inQuotes = false;
                 }
-                data.push(row);
+            } else {
+                // 引用符内のカンマ・改行・その他はそのまま値の一部
+                field += c;
             }
-            
-            return { headers, data };
+        } else {
+            if (c === '"' && field === '') {
+                // フィールドの先頭で開始する引用符のみ有効
+                inQuotes = true;
+            } else if (c === ',') {
+                row.push(field);
+                field = '';
+            } else if (c === '\n') {
+                row.push(field);
+                rows.push(row);
+                row = [];
+                field = '';
+            } else if (c === '\r') {
+                // CRLFの場合は無視
+            } else {
+                field += c;
+            }
         }
+    }
+
+    // 最終行（末尾に改行がない場合）
+    if (field !== '' || row.length > 0) {
+        row.push(field);
+        rows.push(row);
+    }
+
+    return rows;
+}
         
         // すべてチェック
         function checkAllHeaders() {
