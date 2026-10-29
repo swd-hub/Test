@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>認定農業者 農業経営計画の検索</title>
+<style>
+  :root {
+    color-scheme: light;
+    --izumo-olive: #67571D;
+    --izumo-olive-light: #8B7831;
+    --izumo-warm: #F7F6F4;
+    --izumo-warm-dark: #F0EFE9;
+    --border: #E0DDC9;
+    --text: #000;
+  }
+  * { box-sizing: border-box; }
+  body {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
+    background: var(--izumo-warm);
+    color: var(--text);
+    font-family: "Yu Gothic", "Meiryo", Arial, sans-serif;
+    line-height: 1.6;
+  }
+  h1 {
+    margin: 0 0 20px;
+    padding: 20px 24px;
+    border-top: 5px solid var(--izumo-olive-light);
+    border-radius: 5px;
+    background: var(--izumo-olive);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, .14);
+    color: #fff;
+    font-size: 1.45em;
+    letter-spacing: .04em;
+  }
+  .panel {
+    margin-bottom: 20px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: #fff;
+    box-shadow: 0 2px 7px rgba(0, 0, 0, .06);
+  }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .row:last-child { margin-bottom: 0; }
+  label, .row strong { color: var(--izumo-olive); font-weight: 700; }
+  input[type=text], select {
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid #B1A887;
+    border-radius: 4px;
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+  }
+  input[type=text] { width: min(100%, 360px); }
+  input[type=text]:focus, select:focus, button:focus-visible, a:focus-visible {
+    outline: 3px solid rgba(103, 87, 29, .28);
+    outline-offset: 2px;
+    border-color: var(--izumo-olive);
+  }
+  .path-display {
+    overflow-wrap: anywhere;
+    padding: 5px 9px;
+    border-left: 3px solid var(--izumo-olive-light);
+    background: var(--izumo-warm-dark);
+    font-size: .92em;
+  }
+  select, button {
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid #B1A887;
+    border-radius: 4px;
+    background: #fff;
+    color: var(--izumo-olive);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  button:hover, select:hover { border-color: var(--izumo-olive); background: var(--izumo-warm-dark); }
+  button.primary {
+    border-color: var(--izumo-olive);
+    background: var(--izumo-olive);
+    color: #fff;
+  }
+  button.primary:hover { border-color: var(--izumo-olive-light); background: var(--izumo-olive-light); }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; }
+  th, td {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+    font-size: .9em;
+  }
+  th {
+    background: var(--izumo-olive);
+    color: #fff;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  tbody tr:nth-child(even) { background: var(--izumo-warm); }
+  tbody tr:hover { background: var(--izumo-warm-dark); }
+  td.folder { word-break: break-all; }
+  th:last-child, td:last-child { min-width: 170px; white-space: nowrap; }
+  a { color: var(--izumo-olive); font-weight: 600; }
+  a:hover { color: var(--izumo-olive-light); }
+  #status {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-left: 4px solid var(--izumo-olive-light);
+    background: var(--izumo-warm-dark);
+    color: var(--text);
+    white-space: pre-line;
+  }
+  .note {
+    margin: 0 0 14px;
+    padding: 9px 12px;
+    border-left: 4px solid #D11313;
+    background: #F5DFDF;
+    color: #A33131;
+    font-size: .92em;
+  }
+  input.path-input { flex: 1 1 520px; min-width: 260px; font-family: Consolas, "Meiryo", monospace; font-size: .9em; }
+  .hint { margin: 0 0 14px; color: #666; font-size: .85em; }
+  @media (max-width: 600px) {
+    body { padding: 14px; }
+    h1 { padding: 16px; font-size: 1.25em; }
+    .panel { padding: 14px; }
+    .row { align-items: stretch; }
+    input[type=text] { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<h1>認定農業者 農業経営計画の検索（ファイル名検索）</h1>
+
+<div class="panel">
+  <p class="note">※ Chrome または Edge で、このHTMLファイルを開いて使用してください。データは外部に送信されません。</p>
+
+  <div class="row">
+    <button class="primary" id="btnPick">検索フォルダを選定</button>
+    <button id="btnReuse" disabled>前回のフォルダで読込</button>
+    <span id="lastDirName" style="font-size:.85em;color:#555"></span>
+    <button id="btnClear">結果をクリア</button>
+  </div>
+  <div class="row">
+    <label for="base"><strong>保管フォルダのフルパス</strong></label>
+    <input type="text" id="base" class="path-input" spellcheck="false"
+           placeholder="フルパス：選定した検索フォルダのアドレス欄から貼付">
+    <button id="btnPathReset">初期値に戻す</button>
+  </div>
+  <p class="hint">※ ここに入れたパスが、検索結果の「開く」リンクとコピー用パスの先頭になります（ブラウザの仕様上、フォルダ選定だけではフルパスを取得できないため）。入力内容はこのPCに自動保存されます。</p>
+  <div class="row">
+    <label for="kw">検索語（ファイル名）</label>
+    <input type="text" id="kw" placeholder="例: 三島 出雲（スペース区切り）">
+    <label for="mode">条件</label>
+    <select id="mode">
+      <option value="OR">いずれかを含む（OR）</option>
+      <option value="AND">すべて含む（AND）</option>
+    </select>
+    <button class="primary" id="btnSearch">検索</button>
+  </div>
+  <div id="status"></div>
+</div>
+
+<div class="panel">
+  <div class="row">
+    <label for="resFilter">結果の絞り込み</label>
+    <input type="text" id="resFilter" placeholder="ファイル名・フォルダなどで絞り込み">
+  </div>
+  <div class="table-wrap">
+    <table id="tbl">
+      <thead>
+        <tr><th>No</th><th>ファイル名</th><th>フォルダ</th><th>更新日時</th><th>操作</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ===== 設定 =====
+// 保管フォルダのフルパスは、画面の入力欄（#base）から読み取ります。
+// 入力内容は localStorage に保存され、次回起動時に自動で復元されます。
+const INITIAL_BASE_PATH = 'フルパス：選定した検索フォルダのアドレス欄から貼付';
+const BASE_KEY = 'ninteiBasePath';
+const baseInput = document.getElementById('base');
+
+function getBasePath() {
+  return baseInput.value.trim().replace(/[\\\/]+$/, '');
+}
+function saveBasePath() {
+  try { localStorage.setItem(BASE_KEY, baseInput.value.trim()); } catch (e) { }
+}
+(function initBasePath() {
+  let v = null;
+  try { v = localStorage.getItem(BASE_KEY); } catch (e) { }
+  baseInput.value = v || INITIAL_BASE_PATH;
+})();
+baseInput.addEventListener('input', saveBasePath);
+document.getElementById('btnPathReset').addEventListener('click', () => {
+  baseInput.value = INITIAL_BASE_PATH;
+  saveBasePath();
+  setStatus('保管フォルダのパスを初期値に戻しました。');
+});
+
+const SUPPORTED_EXT = ['xlsx', 'xlsm', 'xls'];
+
+let rows = [];                        // 検索結果（複数回の検索で追加される）
+let stats = { files: 0, errors: 0 }; // 今回の検索の統計
+let selectedDirHandle = null;
+
+document.getElementById('btnPick').addEventListener('click', selectSearchFolder);
+document.getElementById('btnReuse').addEventListener('click', reuseSearchFolder);
+document.getElementById('btnSearch').addEventListener('click', runSearch);
+document.getElementById('kw').addEventListener('keydown', event => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    runSearch();
+  }
+});
+document.getElementById('btnClear').addEventListener('click', () => {
+  rows = [];
+  renderResults();
+  setStatus('結果をクリアしました。');
+});
+document.getElementById('resFilter').addEventListener('input', applyResultFilter);
+
+// ===== 前回選んだフォルダの記憶（IndexedDB を使用）=====
+function openHandleDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('izumoSearchDb', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('handles');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveLastDir(handle) {
+  const db = await openHandleDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(handle, 'lastDir');
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+async function loadLastDir() {
+  try {
+    const db = await openHandleDb();
+    const handle = await new Promise((resolve, reject) => {
+      const req = db.transaction('handles').objectStore('handles').get('lastDir');
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return handle;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ===== 「前回のフォルダで読込」ボタンの状態 =====
+async function refreshLastDirUi() {
+  const h = await loadLastDir();
+  document.getElementById('btnReuse').disabled = !h;
+  document.getElementById('lastDirName').textContent = h ? `記憶中: ${h.name}` : '';
+  return h;
+}
+refreshLastDirUi();
+
+// 前回のフォルダの読取権限を確認（必要なら許可を求める）。許可されたら handle を返す
+async function getReusableDir() {
+  const h = await loadLastDir();
+  if (!h) { await refreshLastDirUi(); return null; }
+  try {
+    let perm = await h.queryPermission({ mode: 'read' });
+    if (perm !== 'granted') perm = await h.requestPermission({ mode: 'read' });
+    if (perm !== 'granted') { alert('フォルダへのアクセスが許可されませんでした。'); return null; }
+  } catch (e) {
+    alert('前回のフォルダを開けませんでした: ' + e.message);
+    return null;
+  }
+  return h;
+}
+
+// 前回のフォルダでそのまま読込（フォルダ選択ダイアログを開かない）
+async function reuseSearchFolder() {
+  const h = await getReusableDir();
+  if (!h) return;
+  selectedDirHandle = h;
+  const basePath = getBasePath();
+  const baseName = basePath.split('\\').pop();
+  const warn = !basePath
+    ? '\n※ 保管フォルダのフルパスが未入力です。上の入力欄に入力してください。'
+    : (selectedDirHandle.name === baseName)
+    ? ''
+    : `\n※ 選定フォルダ名が保管フォルダ名（${baseName}）と異なるため、表示されるパスが実際の場所と違う可能性があります。`;
+  setStatus(`前回のフォルダを読み込みました: ${selectedDirHandle.name}${warn}\n検索語を入力して「検索」を押してください。`);
+}
+
+// 検索フォルダを選定（前回のフォルダ、なければ「ドキュメント」から開く）
+async function selectSearchFolder() {
+  if (!window.showDirectoryPicker) {
+    alert('このブラウザは非対応です。Chrome か Edge をご利用ください。');
+    return;
+  }
+
+  try {
+    const lastHandle = await loadLastDir();
+    const options = { mode: 'read', startIn: lastHandle || 'documents' };
+
+    selectedDirHandle = await window.showDirectoryPicker(options);
+    await saveLastDir(selectedDirHandle).catch(() => {});
+    await refreshLastDirUi();
+
+    const basePath = getBasePath();
+    const baseName = basePath.split('\\').pop();
+    const warn = !basePath
+      ? '\n※ 保管フォルダのフルパスが未入力です。上の入力欄に入力してください。'
+      : (selectedDirHandle.name === baseName)
+      ? ''
+      : '\n※ 選定フォルダ名が保管フォルダ名（' + baseName + '）と異なるため、表示されるパスが実際の場所と違う可能性があります。';
+    setStatus('検索フォルダを選定しました: ' + selectedDirHandle.name + warn +
+              '\n検索語を入力して「検索」を押してください。');
+  } catch (e) {
+    if (e.name !== 'AbortError') alert('フォルダを開けませんでした: ' + e.message);
+  }
+}
+
+// 検索
+async function runSearch() {
+  if (!getBasePath()) {
+    alert('保管フォルダのフルパスを入力してください。');
+    baseInput.focus();
+    return;
+  }
+  const keys = normalizeKeys(document.getElementById('kw').value);
+  if (keys.length === 0) {
+    alert('検索語を入力してください。');
+    return;
+  }
+  if (!selectedDirHandle) {
+    alert('先に「検索フォルダを選定」してください。');
+    return;
+  }
+
+  const isAnd = document.getElementById('mode').value === 'AND';
+  stats = { files: 0, errors: 0 };
+  setStatus('検索中...');
+
+  await scanDir(selectedDirHandle, '', keys, isAnd);
+  renderResults();
+
+  setStatus('今回の確認ファイル数: ' + stats.files +
+            ' ／ 結果の合計件数: ' + rows.length +
+            ' ／ 今回読めなかったフォルダ数: ' + stats.errors);
+}
+
+// フォルダを再帰的に巡回（ファイル名のみ判定）
+async function scanDir(dirHandle, relPath, keys, isAnd) {
+  try {
+    for await (const entry of dirHandle.values()) {
+      if (entry.kind === 'directory') {
+        const sub = relPath ? relPath + '\\' + entry.name : entry.name;
+        await scanDir(entry, sub, keys, isAnd);
+      } else {
+        const name = entry.name;
+        if (name.startsWith('~$')) continue;   // Excelの一時ファイルを除外
+        const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+        if (!SUPPORTED_EXT.includes(ext)) continue;
+
+        stats.files++;
+        setStatus('検索中... ' + stats.files + ' 件目: ' + name);
+        if (matchName(name.toLowerCase(), keys, isAnd)) {
+          await addResult(entry, relPath);
+        }
+      }
+    }
+  } catch (e) {
+    stats.errors++;
+  }
+}
+
+// 結果に追加（同じパスの重複は追加しない）
+async function addResult(fh, relPath) {
+  const path = [getBasePath(), relPath, fh.name].filter(Boolean).join('\\');
+  if (rows.some(r => r.path === path)) return;
+
+  let modified = '-';
+  try {
+    const file = await fh.getFile();
+    modified = new Date(file.lastModified).toLocaleString('ja-JP');
+  } catch (e) { }
+
+  rows.push({
+    file: fh.name,
+    folder: relPath || '(選択フォルダ直下)',
+    modified: modified,
+    path: path
+  });
+}
+
+// 結果テーブルを描画（textContent を使用して安全に表示）
+function renderResults() {
+  const tbody = document.querySelector('#tbl tbody');
+  tbody.textContent = '';
+
+  rows.forEach((r, i) => {
+    const tr = document.createElement('tr');
+
+    [i + 1, r.file, r.folder, r.modified].forEach((v, idx) => {
+      const td = document.createElement('td');
+      td.textContent = v;
+      if (idx === 2) td.className = 'folder';
+      tr.appendChild(td);
+    });
+
+    const tdOp = document.createElement('td');
+
+    const a = document.createElement('a');
+    a.href = toFileUrl(r.path);
+    a.textContent = '開く';
+    a.target = '_blank';
+    a.rel = 'noopener';
+    tdOp.appendChild(a);
+
+    const btn = document.createElement('button');
+    btn.textContent = 'パスコピー';
+    btn.style.marginLeft = '6px';
+    btn.addEventListener('click', () => copyText(r.path));
+    tdOp.appendChild(btn);
+
+    tr.appendChild(tdOp);
+    tbody.appendChild(tr);
+  });
+
+  applyResultFilter();
+}
+
+// 結果の絞り込み
+function applyResultFilter() {
+  const q = document.getElementById('resFilter').value.trim().toLowerCase();
+  Array.from(document.querySelector('#tbl tbody').rows).forEach(tr => {
+    tr.style.display = (!q || tr.textContent.toLowerCase().includes(q)) ? '' : 'none';
+  });
+}
+
+// ===== ユーティリティ =====
+function normalizeKeys(s) {
+  return s.replace(/\u3000/g, ' ').trim().split(/\s+/).filter(Boolean).map(k => k.toLowerCase());
+}
+
+function matchName(lowerName, keys, isAnd) {
+  return isAnd
+    ? keys.every(k => lowerName.includes(k))
+    : keys.some(k => lowerName.includes(k));
+}
+
+// UNCパス・ローカルパスを file:// のURLに変換
+function toFileUrl(p) {
+  if (p.startsWith('\\\\')) {
+    return 'file://' + p.slice(2).split('\\').map(encodeURIComponent).join('/');
+  }
+  const parts = p.split('\\');
+  return 'file:///' + parts[0] + '/' + parts.slice(1).map(encodeURIComponent).join('/');
+}
+
+async function copyText(t) {
+  try {
+    await navigator.clipboard.writeText(t);
+    alert('パスをコピーしました。エクスプローラーのアドレスバーに貼り付けると開けます。');
+  } catch (e) {
+    prompt('このパスをコピーしてください', t);
+  }
+}
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+</script>
+</body>
+</html>

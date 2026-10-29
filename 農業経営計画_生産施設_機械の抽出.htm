@@ -141,6 +141,8 @@
   <p class="note">※ Chrome または Edge で、このHTMLファイルを開いて使用してください。データは外部に送信されません。</p>
   <div class="row">
     <button class="primary" id="btnPick">検索フォルダを選定（選定後すぐ抽出）</button>
+    <button id="btnReuse" disabled>前回のフォルダで読込</button>
+    <span id="lastDirName" style="font-size:.85em;color:#555"></span>
     <button id="btnRun" disabled>再抽出</button>
     <button id="btnClear">結果をクリア</button>
   </div>
@@ -207,6 +209,7 @@ document.getElementById('btnPathReset').addEventListener('click', async () => {
   baseInput.value = INITIAL_BASE_PATH;
   saveBasePath();
   await clearLastDir().catch(() => {});
+  await refreshLastDirUi();
   setStatus('保管フォルダのパスを初期値に戻し、IndexedDB に保存された前回フォルダ情報も削除しました。');
 });
 
@@ -234,6 +237,7 @@ const SORT_GETTERS = [
 ];
 
 document.getElementById('btnPick').addEventListener('click', selectSearchFolder);
+document.getElementById('btnReuse').addEventListener('click', reuseSearchFolder);
 document.getElementById('btnRun').addEventListener('click', runExtract);
 document.getElementById('btnClear').addEventListener('click', () => {
   rows = [];
@@ -296,6 +300,39 @@ async function loadLastDir() {
   }
 }
 
+// ===== 「前回のフォルダで読込」ボタンの状態 =====
+async function refreshLastDirUi() {
+  const h = await loadLastDir();
+  document.getElementById('btnReuse').disabled = !h;
+  document.getElementById('lastDirName').textContent = h ? `記憶中: ${h.name}` : '';
+  return h;
+}
+refreshLastDirUi();
+
+// 前回のフォルダの読取権限を確認（必要なら許可を求める）。許可されたら handle を返す
+async function getReusableDir() {
+  const h = await loadLastDir();
+  if (!h) { await refreshLastDirUi(); return null; }
+  try {
+    let perm = await h.queryPermission({ mode: 'read' });
+    if (perm !== 'granted') perm = await h.requestPermission({ mode: 'read' });
+    if (perm !== 'granted') { alert('フォルダへのアクセスが許可されませんでした。'); return null; }
+  } catch (e) {
+    alert('前回のフォルダを開けませんでした: ' + e.message);
+    return null;
+  }
+  return h;
+}
+
+// 前回のフォルダでそのまま抽出（フォルダ選択ダイアログを開かない）
+async function reuseSearchFolder() {
+  const h = await getReusableDir();
+  if (!h) return;
+  selectedDirHandle = h;
+  document.getElementById('btnRun').disabled = false;
+  await runExtract();
+}
+
 // 検索フォルダを選定（前回のフォルダ、なければ「ドキュメント」から開く）→ そのまま抽出
 async function selectSearchFolder() {
   if (!window.showDirectoryPicker) {
@@ -309,6 +346,7 @@ async function selectSearchFolder() {
 
     selectedDirHandle = await window.showDirectoryPicker(options);
     await saveLastDir(selectedDirHandle).catch(() => {});
+    await refreshLastDirUi();
     document.getElementById('btnRun').disabled = false;
   } catch (e) {
     if (e.name !== 'AbortError') alert('フォルダを開けませんでした: ' + e.message);
