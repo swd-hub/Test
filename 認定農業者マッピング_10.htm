@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>認定農業者 住所マッピング</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<style>
+  :root {
+    --olive: #67571D; --olive-light: #8B7831; --warm: #F7F6F4; --warm-dark: #F0EFE9;
+    --border: #E0DDC9; --text: #000;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; background: var(--warm); color: var(--text);
+         font-family: "Yu Gothic", "Meiryo", Arial, sans-serif; font-size: 14px; }
+  header { padding: 10px 18px; background: var(--olive); color: #fff; border-top: 4px solid var(--olive-light);
+           font-size: 1.15em; font-weight: 700; letter-spacing: .04em; }
+  main { flex: 1; display: flex; min-height: 0; }
+
+  /* ===== 左：操作・一覧パネル ===== */
+  #side { width: 380px; min-width: 300px; display: flex; flex-direction: column; background: #fff;
+          border-right: 1px solid var(--border); }
+  .sec { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+  .row:last-child { margin-bottom: 0; }
+  label { color: var(--olive); font-weight: 700; font-size: .9em; }
+  input[type=text], textarea { min-height: 32px; padding: 4px 8px; border: 1px solid #B1A887; border-radius: 4px; font: inherit; }
+  textarea#textFilter { width: 100%; min-height: 72px; resize: vertical; }
+  button { min-height: 32px; padding: 4px 12px; border: 1px solid #B1A887; border-radius: 4px; background: #fff;
+           color: var(--olive); cursor: pointer; font: inherit; font-weight: 600; }
+  button:hover:not(:disabled) { background: var(--warm-dark); border-color: var(--olive); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--olive); border-color: var(--olive); color: #fff; }
+  button.primary:hover:not(:disabled) { background: var(--olive-light); }
+  .note { margin: 0 0 8px; padding: 6px 8px; border-left: 4px solid #D11313; background: #F5DFDF; color: #A33131; font-size: .85em; }
+  #status { padding: 6px 8px; border-left: 4px solid var(--olive-light); background: var(--warm-dark);
+            white-space: pre-line; font-size: .88em; }
+  details summary { cursor: pointer; color: var(--olive); font-weight: 700; }
+  .cellgrid { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; margin-top: 8px; align-items: center; }
+  .cellgrid input { width: 100%; }
+
+  #listWrap { flex: 1; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 5px 6px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; font-size: .88em; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { background: var(--olive-light); }
+  th .arrow { margin-left: 3px; opacity: .55; font-size: .85em; }
+  th[aria-sort="ascending"] .arrow, th[aria-sort="descending"] .arrow { opacity: 1; }
+  th { position: sticky; top: 0; background: var(--olive); color: #fff; white-space: nowrap; z-index: 1; }
+  th.check, td.check { width: 28px; text-align: center; padding-left: 4px; padding-right: 4px; }
+  tbody tr { cursor: pointer; }
+  tbody tr:nth-child(even) { background: var(--warm); }
+  tbody tr:hover, tbody tr.sel { background: var(--warm-dark); }
+  tbody tr:not(.on) { opacity: .55; }
+  .ok { color: #2e7d32; font-weight: 700; }
+  .ng { color: #c62828; font-weight: 700; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 5px 12px; border-bottom: 1px solid var(--border); background: var(--warm-dark); font-size: .78em; color: #333; }
+  .legend b { font-weight: 700; }
+  /* ===== 地図 ===== */
+  #mapWrap { flex: 1; position: relative; min-width: 0; overflow: hidden; }
+  #map { width: 100%; height: 100%; }
+
+  /* ===== 詳細モーダル（ALmapのスライドパネルを流用） ===== */
+  .info-panel { position: absolute; top: 0; left: -420px; width: 400px; height: 100%; background: #f9f9f9;
+                border-right: 1px solid #ccc; box-shadow: 2px 0 5px rgba(0,0,0,.2);
+                transition: left .3s ease, visibility .3s; overflow-y: auto; z-index: 1000; visibility: hidden; pointer-events: none; }
+  .info-panel.open { left: 0; visibility: visible; pointer-events: auto; }
+  .info-panel .inner { padding: 14px 12px; user-select: text; color: #000; }
+  .info-title { margin: 0 0 8px; padding-bottom: 4px; border-bottom: 2px solid #ccc;
+                font-size: 1.1em; font-weight: 700; color: var(--olive); }
+  .info-close { position: absolute; top: 8px; right: 10px; border: none; background: none; font-size: 20px;
+                cursor: pointer; color: #666; min-height: 0; padding: 0 4px; }
+  .info-actions { display: flex; gap: 6px; margin: 0 0 10px; }
+  .info-panel table th { background: var(--warm-dark); color: var(--olive); width: 38%; position: static; }
+  .info-panel h4 { margin: 14px 0 4px; padding: 3px 6px; border-left: 4px solid var(--olive-light); background: var(--warm-dark);
+                   color: var(--olive); font-size: .92em; }
+  .info-panel .sub { margin-bottom: 6px; }
+  .info-panel .sub th { width: auto; font-size: .82em; }
+  .info-panel .sub td.num { text-align: right; white-space: nowrap; }
+  .info-panel .none { color: #000; font-size: .85em; margin: 2px 0 6px; }
+  .gbtn { display: block; margin-top: 10px; padding: 10px; text-align: center; border-radius: 6px; background: #4285F4;
+          color: #fff; text-decoration: none; font-weight: 700; }
+  .leaflet-control-layers { margin-top: 10px; margin-right: 10px; }
+</style>
+</head>
+<body>
+<header>認定農業者 住所マッピング</header>
+<main>
+  <div id="side">
+    <div class="sec">
+      <p class="note">Chrome / Edge で開いてください。データは外部に保存されません（住所の位置検索のみ国土地理院APIへ送信されます）。</p>
+      <div class="row">
+        <button class="primary" id="btnPick">フォルダを選定</button>
+        <button id="btnCsv" disabled>CSV保存</button>
+        <button id="btnCsvLoad">CSV読込</button>
+        <input type="file" id="csvFile" accept=".csv,text/csv" hidden>
+        <button id="btnClear">クリア</button>
+      </div>
+      <div class="row">
+        <button id="btnReuse" disabled>前回のフォルダで読込</button>
+        <button id="btnForget" disabled>フォルダ記憶を消去</button>
+        <span id="lastDirName" style="font-size:.85em;color:#555"></span>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="autoGeo" checked> 読込後に全件を自動で位置検索（ピンを一括で立てる）</label>
+      </div>
+      <div class="row">
+        <label for="textFilter">文字貼付（含む行にチェック）</label>
+      </div>
+      <div class="row">
+        <textarea id="textFilter" placeholder="ここに文字を貼ると、その文字を含む行にチェックし、チェックしたピンだけを地図に表示します。空欄にすると全行チェックです。"></textarea>
+      </div>
+      <details>
+        <summary>読み取り設定（シート・セル位置）</summary>
+        <div class="cellgrid">
+          <label for="cSheet">シート名</label><input type="text" id="cSheet">
+          <label for="cName">名前（個人・法人）</label><input type="text" id="cName">
+          <label for="cKana">フリガナ</label><input type="text" id="cKana">
+          <label for="cRep">代表者（法人）</label><input type="text" id="cRep">
+          <label for="cAddr">住所</label><input type="text" id="cAddr">
+          <label for="cTel">連絡先</label><input type="text" id="cTel">
+        </div>
+        <div class="row" style="margin-top:8px"><button id="btnCellReset">初期値に戻す</button></div>
+      </details>
+    </div>
+    <div class="sec"><div id="status">フォルダを選定してください。</div></div>
+    <div class="legend" title="「位置」列の印の意味">
+      <span><b class="ok">✓</b> 番地まで一致</span>
+      <span><b class="ok">△</b> 町名・市までのみ一致（位置ずれの可能性）</span>
+      <span><b class="ng">×</b> 見つからず</span>
+      <span><b>-</b> 未検索</span>
+    </div>
+    <div id="listWrap">
+      <table id="tbl">
+        <thead><tr>
+          <th class="check" title="地図に出す行"><input type="checkbox" id="chkAll" checked aria-label="すべてチェック"></th>
+          <th class="sortable" data-key="id" tabindex="0" aria-sort="none">No<span class="arrow">⇅</span></th>
+          <th class="sortable" data-key="name" tabindex="0" aria-sort="none">名前<span class="arrow">⇅</span></th>
+          <th class="sortable" data-key="addr" tabindex="0" aria-sort="none">住所<span class="arrow">⇅</span></th>
+          <th class="sortable" data-key="geo" tabindex="0" aria-sort="none">位置<span class="arrow">⇅</span></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="mapWrap">
+    <div id="map"></div>
+    <div id="infoPanel" class="info-panel">
+      <button class="info-close" id="infoClose" aria-label="閉じる">×</button>
+      <div class="inner">
+        <h3 class="info-title">詳細情報</h3>
+        <div class="info-actions">
+          <button type="button" id="btnCopyDetail">詳細をコピー</button>
+        </div>
+        <div id="detail"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ===== 設定（読み取りセル）=====
+const DEFAULT_CELLS = { sheet: '申請書１', name: 'Q7', kana: 'Q6', rep: 'AB7', addr: 'Q5', tel: 'AD5' };
+const CELL_KEY = 'addrMapCells';
+const GEO_KEY = 'addrMapGeoCache';
+const ADDR_PREFIX = '島根県';
+const SUPPORTED_EXT = ['xlsx', 'xlsm'];
+const cellInputs = { sheet: 'cSheet', name: 'cName', kana: 'cKana', rep: 'cRep', addr: 'cAddr', tel: 'cTel' };
+const LABEL_LINE = /^(作目|部門|現状|目標|種別|名前|フリガナ|代表者|住所|連絡先|検索結果|位置|緯度|経度|ファイル|フォルダ|詳細|機械|耕種|畜産|施設|記載なし)/;
+
+let records = [];          // {id,file,folder,sheet,name,kana,rep,addr,tel,lat,lng,geoTitle,geo,checked}
+let markers = new Map();   // id -> marker
+let dirHandle = null;
+let geoCache = {};
+let map, markerLayer;
+let selectedId = null;
+let detailRecord = null;
+
+const $ = id => document.getElementById(id);
+const setStatus = m => { $('status').textContent = m; };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const norm = s => String(s ?? '').normalize('NFKC').toLowerCase();
+
+// ===== 設定の保存・読込 =====
+function loadCells() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(CELL_KEY) || '{}'); } catch (e) { }
+  const v = Object.assign({}, DEFAULT_CELLS, saved);
+  for (const k in cellInputs) $(cellInputs[k]).value = v[k];
+}
+function getCells() {
+  const v = {};
+  for (const k in cellInputs) v[k] = $(cellInputs[k]).value.trim() || DEFAULT_CELLS[k];
+  return v;
+}
+function saveCells() { try { localStorage.setItem(CELL_KEY, JSON.stringify(getCells())); } catch (e) { } }
+try { geoCache = JSON.parse(localStorage.getItem(GEO_KEY) || '{}'); } catch (e) { geoCache = {}; }
+function saveGeoCache() { try { localStorage.setItem(GEO_KEY, JSON.stringify(geoCache)); } catch (e) { } }
+
+function emptyDetails() { return { crops: [], livestock: [], facilities: [], machines: [] }; }
+
+function recordSearchText(r) {
+  const d = r.details || emptyDetails();
+  const parts = [
+    r.name, r.kana, r.rep, r.addr, r.tel, r.file, r.folder, r.geoTitle,
+    ...(d.crops || []).map(c => [c.name, c.val, c.unit].join(' ')),
+    ...(d.livestock || []).map(c => [c.name, c.val, c.unit].join(' ')),
+    ...(d.facilities || []).map(f => [f.type, f.now, f.goal].join(' ')),
+    ...(d.machines || [])
+  ];
+  return norm(parts.filter(Boolean).join('\n'));
+}
+
+function queryNeedles(raw) {
+  return String(raw || '').split(/\r?\n/).map(s => s.trim()).filter(s => s.length >= 1)
+    .filter(s => !LABEL_LINE.test(s)).map(norm).filter(Boolean);
+}
+
+function applyTextChecks() {
+  const needles = queryNeedles($('textFilter').value);
+  if (!needles.length) records.forEach(r => { r.checked = true; });
+  else records.forEach(r => {
+    const hay = recordSearchText(r);
+    r.checked = needles.some(n => hay.includes(n));
+  });
+  renderList();
+  refreshMarkers();
+  const on = records.filter(r => r.checked).length;
+  if (needles.length) setStatus(`貼付文字に一致: ${on} / ${records.length} 件をチェックし、そのピンだけを表示しています。`);
+}
+
+function stampNow() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}`;
+}
+function filePartFromFilter() {
+  const s = $('textFilter').value.trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 40);
+  return s || '全件';
+}
+
+// ===== 地図初期化（ALmapのGoogleタイル設定を流用）=====
+function initMap() {
+  const road = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '© Google Maps' });
+  const sat = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+    maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '© Google Maps' });
+  map = L.map('map', { center: [35.404, 132.825], zoom: 12, layers: [road] });
+  markerLayer = L.layerGroup().addTo(map);
+  L.control.layers({ '地図': road, '衛星画像': sat }, { '住所ピン': markerLayer }).addTo(map);
+  setTimeout(() => map.invalidateSize(), 100);
+}
+
+// ===== フォルダ選定・Excel読込 =====
+// ===== 前回フォルダの記憶（IndexedDB）=====
+function openHandleDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('addrMapDb', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('handles');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function dbOp(mode, fn) {
+  const db = await openHandleDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', mode);
+      const req = fn(tx.objectStore('handles'));
+      tx.oncomplete = () => resolve(req ? req.result : undefined);
+      tx.onerror = () => reject(tx.error);
+    });
+  } finally { db.close(); }
+}
+const saveLastDir = h => dbOp('readwrite', st => st.put(h, 'lastDir'));
+const loadLastDir = () => dbOp('readonly', st => st.get('lastDir')).then(v => v || null).catch(() => null);
+const deleteLastDir = () => dbOp('readwrite', st => st.delete('lastDir'));
+
+async function refreshLastDirUi() {
+  const h = await loadLastDir();
+  $('btnReuse').disabled = !h;
+  $('btnForget').disabled = !h;
+  $('lastDirName').textContent = h ? `記憶中: ${h.name}` : '';
+  return h;
+}
+
+async function pickFolder() {
+  if (!window.showDirectoryPicker) { alert('このブラウザは非対応です。Chrome か Edge をご利用ください。'); return; }
+  let h;
+  try {
+    const last = await loadLastDir();
+    h = await window.showDirectoryPicker({ mode: 'read', startIn: last || 'documents' });
+  } catch (e) { if (e.name !== 'AbortError') alert('フォルダを開けませんでした: ' + e.message); return; }
+  await saveLastDir(h).catch(() => { });
+  await refreshLastDirUi();
+  await loadFolder(h);
+}
+
+async function reuseFolder() {
+  const h = await loadLastDir();
+  if (!h) { await refreshLastDirUi(); return; }
+  try {
+    let perm = await h.queryPermission({ mode: 'read' });
+    if (perm !== 'granted') perm = await h.requestPermission({ mode: 'read' });
+    if (perm !== 'granted') { alert('フォルダへのアクセスが許可されませんでした。'); return; }
+  } catch (e) { alert('前回のフォルダを開けませんでした: ' + e.message); return; }
+  await loadFolder(h);
+}
+
+async function forgetFolder() {
+  if (!confirm('記憶しているフォルダ設定を消去しますか？')) return;
+  await deleteLastDir().catch(() => { });
+  await refreshLastDirUi();
+  setStatus('フォルダの記憶を消去しました。');
+}
+
+async function loadFolder(handle) {
+  dirHandle = handle;
+  saveCells();
+  records = [];
+  clearMarkers();
+  const stats = { files: 0, errors: 0, skipped: 0 };
+  await scanDir(dirHandle, '', stats);
+  applyTextChecks();
+  $('btnCsv').disabled = records.length === 0;
+  setStatus(`フォルダ: ${dirHandle.name}\n確認ファイル数: ${stats.files} / 抽出件数: ${records.length} / 住所が空: ${stats.skipped} / 開けなかった件数: ${stats.errors}`);
+  if ($('autoGeo').checked && records.length) await runGeocode();
+}
+
+async function scanDir(handle, rel, stats) {
+  for await (const entry of handle.values()) {
+    if (entry.kind === 'directory') {
+      await scanDir(entry, rel ? `${rel}\\${entry.name}` : entry.name, stats);
+    } else {
+      const ext = entry.name.split('.').pop().toLowerCase();
+      if (entry.name.startsWith('~$') || !SUPPORTED_EXT.includes(ext)) continue;
+      await readFile(entry, rel, stats);
+    }
+  }
+}
+
+function cellText(ws, addr) {
+  const c = ws[addr];
+  if (!c || c.v === undefined || c.v === null) return '';
+  return String(c.w ?? c.v).replace(/[\u3000\s]+/g, ' ').trim();
+}
+
+// ===== 詳細情報の抽出（作目・部門／農業生産施設／機械の取得計画）=====
+function findSheet(wb, name) {
+  const want = norm(name);
+  const n = wb.SheetNames.find(x => norm(x).includes(want));
+  return n ? wb.Sheets[n] : null;
+}
+function extractDetails(wb, ws1) {
+  const d = emptyDetails();
+  // 申請書１ ②(1)生産：耕種(C列=名称, F列=現状の作付面積) / 畜産(N列=名称, Q列=現状の飼養頭数)
+  for (let r = 27; r <= 45; r++) {
+    const cn = cellText(ws1, 'C' + r), ln = cellText(ws1, 'N' + r);
+    if (/^[※（(注備]/.test(cn)) break;           // 表の下の注記に入ったら終了
+    if (cn && !cn.includes('合計')) d.crops.push({ name: cn, val: cellText(ws1, 'F' + r), unit: cellText(ws1, 'G' + r) || 'a' });
+    if (ln && !ln.includes('合計')) d.livestock.push({ name: ln, val: cellText(ws1, 'Q' + r), unit: cellText(ws1, 'R' + r) || '頭' });
+  }
+  // 申請書２ イ 農業生産施設：S列=種別, AA列=現状の棟数, AE列=目標の棟数（7〜12行目）
+  const ws2 = findSheet(wb, '申請書２');
+  if (ws2) {
+    for (let r = 7; r <= 12; r++) {
+      const type = cellText(ws2, 'S' + r);
+      if (type && !type.includes('合計')) d.facilities.push({ type, now: cellText(ws2, 'AA' + r), goal: cellText(ws2, 'AE' + r) });
+    }
+  }
+  // 申請書３ （別紙）取得計画：「農業用機械等の名称」ヘッダーの下〜「備考」まで（ヘッダー行がファイルにより1行ずれる）
+  const ws3 = findSheet(wb, '申請書３');
+  if (ws3) {
+    let hdr = 12;
+    for (let r = 11; r <= 14; r++) { if (norm(cellText(ws3, 'C' + r)).includes('農業用機械等の名称')) { hdr = r; break; } }
+    for (let r = hdr + 1; r <= hdr + 15; r++) {
+      const nm = cellText(ws3, 'C' + r);
+      if (nm.startsWith('備考')) break;
+      if (nm) d.machines.push(nm);
+    }
+  }
+  return d;
+}
+
+async function readFile(fh, rel, stats) {
+  stats.files++;
+  setStatus(`読込中... ${stats.files} 件目: ${fh.name}`);
+  const cells = getCells();
+  try {
+    const wb = XLSX.read(await (await fh.getFile()).arrayBuffer(), { type: 'array' });
+    const want = norm(cells.sheet);
+    const sheetName = wb.SheetNames.find(n => norm(n).includes(want)) || wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
+    const details = extractDetails(wb, ws);
+    const rec = {
+      id: records.length + 1, file: fh.name, folder: rel || '(選択フォルダ直下)', sheet: sheetName,
+      name: cellText(ws, cells.name), kana: cellText(ws, cells.kana), rep: cellText(ws, cells.rep),
+      addr: cellText(ws, cells.addr), tel: cellText(ws, cells.tel),
+      details, lat: null, lng: null, geoTitle: '', geo: '', geoLevel: 0, checked: true
+    };
+    if (!rec.addr) { stats.skipped++; }
+    records.push(rec);
+  } catch (e) {
+    stats.errors++;
+  }
+}
+
+// ===== 一覧 =====
+// ===== 並べ替え（No・名前・住所・位置の各列ヘッダーをクリック）=====
+let sortKey = null, sortDir = 'asc';
+const collator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' });
+function geoRank(r) { return r.geo === 'ok' ? (r.geoLevel || 0) : r.geo === 'ng' ? 3 : 4; }  // ✓→△→×→未検索
+const SORT_VALUE = {
+  id: r => r.id,
+  name: r => r.name,
+  addr: r => r.addr,
+  geo: r => geoRank(r)
+};
+function compareRecords(x, y) {
+  const get = SORT_VALUE[sortKey];
+  const a = get(x), b = get(y);
+  const dir = sortDir === 'asc' ? 1 : -1;
+  if (typeof a === 'number') return (a - b) * dir || x.id - y.id;
+  // 空欄は昇順・降順に関わらず末尾
+  if (!a && b) return 1;
+  if (a && !b) return -1;
+  return collator.compare(a, b) * dir || x.id - y.id;
+}
+function setSort(key) {
+  if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortKey = key; sortDir = 'asc'; }
+  renderList();
+}
+function updateSortIndicators() {
+  document.querySelectorAll('#tbl thead th.sortable').forEach(th => {
+    const on = th.dataset.key === sortKey;
+    th.setAttribute('aria-sort', on ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
+    th.querySelector('.arrow').textContent = on ? (sortDir === 'asc' ? '▲' : '▼') : '⇅';
+  });
+}
+
+function updateChkAll() {
+  const box = $('chkAll');
+  if (!records.length) { box.checked = true; box.indeterminate = false; return; }
+  const on = records.filter(r => r.checked).length;
+  box.checked = on === records.length;
+  box.indeterminate = on > 0 && on < records.length;
+}
+
+function renderList() {
+  const tbody = document.querySelector('#tbl tbody');
+  tbody.textContent = '';
+  let list = records.slice();
+  if (sortKey) list = list.sort(compareRecords);
+  updateSortIndicators();
+  list.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.dataset.id = r.id;
+    tr.classList.toggle('sel', r.id === selectedId);
+    tr.classList.toggle('on', !!r.checked);
+    const mark = r.geo === 'ok' ? (r.geoLevel ? `<span class="ok" title="${LEVEL_LABEL[r.geoLevel]}">△</span>` : '<span class="ok">✓</span>') : r.geo === 'ng' ? '<span class="ng">×</span>' : '-';
+    tr.innerHTML = `<td class="check"><input type="checkbox" class="rowchk" ${r.checked ? 'checked' : ''} aria-label="地図に表示"></td><td>${r.id}</td><td>${esc(r.name) || '(名前なし)'}</td><td>${esc(r.addr) || '(住所なし)'}</td><td>${mark}</td>`;
+    tr.querySelector('.rowchk').addEventListener('click', e => e.stopPropagation());
+    tr.querySelector('.rowchk').addEventListener('change', e => {
+      r.checked = e.target.checked;
+      updateChkAll();
+      refreshMarkers();
+    });
+    tr.addEventListener('click', () => focusRecord(r.id));
+    tbody.appendChild(tr);
+  });
+  updateChkAll();
+}
+
+const MARKER_STYLE = { radius: 8, color: '#fff', weight: 2, fillColor: '#67571D', fillOpacity: .9 };
+const MARKER_STYLE_SEL = { radius: 12, color: '#fff', weight: 3, fillColor: '#d32f2f', fillOpacity: 1 };
+
+async function focusRecord(id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  let msg = '';
+  // 位置が未取得なら、この1件だけその場で検索する
+  if (r.lat === null) {
+    if (!r.addr) {
+      msg = `「${r.name || '(名称なし)'}」は住所が空のため、位置を検索できません。`;
+    } else {
+      setStatus(`位置検索中: ${r.addr}`);
+      try {
+        const hit = await geocode(r.addr);
+        if (hit) {
+          Object.assign(r, { lat: hit.lat, lng: hit.lng, geoTitle: hit.title, geoLevel: hit.level, geo: 'ok' });
+          saveGeoCache(); renderList();
+          if (r.checked) addMarker(r);
+        } else {
+          r.geo = 'ng'; renderList();
+          msg = `「${r.addr}」は国土地理院の住所検索で見つかりませんでした。`;
+        }
+      } catch (e) {
+        console.error(e);
+        msg = `通信エラー: ${e.message || e}\n国土地理院(msearch.gsi.go.jp)へ接続できていない可能性があります。`;
+      }
+    }
+  }
+  // 一覧の選択表示（ピンをクリックした場合は一覧もスクロール）
+  document.querySelectorAll('#tbl tbody tr').forEach(tr => {
+    const on = Number(tr.dataset.id) === id;
+    tr.classList.toggle('sel', on);
+    if (on) tr.scrollIntoView({ block: 'nearest' });
+  });
+  // 前回のピンを元に戻し、今回のピンを強調
+  if (selectedId !== null && markers.has(selectedId)) markers.get(selectedId).setStyle(MARKER_STYLE).setRadius(MARKER_STYLE.radius);
+  selectedId = id;
+  showDetail(r);
+  if (r.lat === null) { setStatus(msg || '位置が取得できていません。'); return; }
+  if (msg) setStatus(msg);
+  const m = markers.get(id);
+  if (m) { m.setStyle(MARKER_STYLE_SEL).setRadius(MARKER_STYLE_SEL.radius); m.bringToFront(); }
+  if (!r.checked) return;
+  // 詳細パネルに隠れない位置（パネルの右側の中央）にピンが来るよう移動
+  const z = Math.max(map.getZoom(), 17);
+  const shift = $('infoPanel').offsetWidth / 2;
+  const center = map.unproject(map.project([r.lat, r.lng], z).subtract([shift, 0]), z);
+  map.flyTo(center, z, { duration: 0.8 });
+  if (m) m.openTooltip();
+}
+
+// ===== 位置検索（国土地理院 住所検索API）=====
+function buildQuery(addr) {
+  const a = addr.replace(/\s+/g, '');
+  return (ADDR_PREFIX && !a.startsWith(ADDR_PREFIX)) ? ADDR_PREFIX + a : a;
+}
+
+const LEVEL_LABEL = ['番地まで一致', '町名レベル（番地は不一致）', '市区町村レベル（町名も不一致）'];
+
+async function gsiSearch(q) {
+  if (geoCache[q]) return geoCache[q];
+  const res = await fetch('https://msearch.gsi.go.jp/address-search/AddressSearch?q=' + encodeURIComponent(q));
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const arr = await res.json();
+  if (!arr.length) return null;
+  const hit = { lat: arr[0].geometry.coordinates[1], lng: arr[0].geometry.coordinates[0], title: arr[0].properties.title || '' };
+  geoCache[q] = hit;
+  return hit;
+}
+
+// 完全な住所 → 番地を除いた町名 → 市区町村 の順に、ヒットするまで試す
+async function geocode(addr) {
+  const q = buildQuery(addr);
+  const cands = [[q, 0]];
+  const s1 = q.replace(/[\d０-９\-－−ー]+$/, '');
+  if (s1 && s1 !== q) cands.push([s1, 1]);
+  const m = q.match(/^.*?[市区町村]/);
+  if (m && m[0] !== s1 && m[0] !== q) cands.push([m[0], 2]);
+  for (const [c, level] of cands) {
+    const hit = await gsiSearch(c);
+    if (hit) return Object.assign({}, hit, { level });
+  }
+  return null;
+}
+
+async function runGeocode() {
+  const targets = records.filter(r => r.addr && r.geo !== 'ok');
+  if (!targets.length) { setStatus('位置検索の対象はありません（すべて取得済み、または住所が空です）。'); refreshMarkers(); return; }
+  const cnt = [0, 0, 0];
+  let ng = 0, err = 0, firstErr = '', idx = 0, done = 0;
+
+  // 6本並列で検索し、見つかった順にピンを立てる
+  async function worker() {
+    while (idx < targets.length) {
+      const r = targets[idx++];
+      try {
+        const hit = await geocode(r.addr);
+        if (hit) {
+          Object.assign(r, { lat: hit.lat, lng: hit.lng, geoTitle: hit.title, geoLevel: hit.level, geo: 'ok' });
+          cnt[hit.level]++;
+          if (r.checked) addMarker(r);
+        } else { r.geo = 'ng'; ng++; }
+      } catch (e) { r.geo = 'ng'; err++; if (!firstErr) firstErr = e.message || String(e); }
+      done++;
+      setStatus(`位置検索中... ${done} / ${targets.length}（ピン ${cnt[0] + cnt[1] + cnt[2]} 件）`);
+      if (done % 10 === 0) renderList();
+      await new Promise(res => setTimeout(res, 50));
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(6, targets.length) }, worker));
+
+  saveGeoCache();
+  renderList();
+  refreshMarkers();
+  fitChecked();
+  let msg = `位置検索 完了（${targets.length}件）: 番地まで一致 ${cnt[0]} / 町名レベル ${cnt[1]} / 市区町村レベル ${cnt[2]} / 該当なし ${ng} / 通信エラー ${err}`;
+  if (err) msg += `\n通信エラー内容: ${firstErr}\n（ネット接続、またはブラウザ・社内ネットワークが msearch.gsi.go.jp を遮断していないか確認してください）`;
+  setStatus(msg);
+}
+
+// ===== マーカー =====
+function addMarker(r) {
+  if (r.lat === null || !r.checked || markers.has(r.id)) return;
+  const m = L.circleMarker([r.lat, r.lng], r.id === selectedId ? MARKER_STYLE_SEL : MARKER_STYLE);
+  m.bindTooltip(r.name || '(名前なし)');
+  m.on('click', () => focusRecord(r.id));
+  m.addTo(markerLayer);
+  markers.set(r.id, m);
+}
+function clearMarkers() { markerLayer.clearLayers(); markers.clear(); }
+function refreshMarkers() {
+  clearMarkers();
+  records.forEach(r => { if (r.checked && r.lat !== null) addMarker(r); });
+}
+function fitChecked() {
+  const pts = records.filter(r => r.checked && r.lat !== null).map(r => [r.lat, r.lng]);
+  if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 16 });
+}
+
+function parseDetails(raw) {
+  if (!raw) return emptyDetails();
+  try {
+    const d = JSON.parse(raw);
+    return {
+      crops: Array.isArray(d.crops) ? d.crops : [],
+      livestock: Array.isArray(d.livestock) ? d.livestock : [],
+      facilities: Array.isArray(d.facilities) ? d.facilities : [],
+      machines: Array.isArray(d.machines) ? d.machines : []
+    };
+  } catch (e) { return emptyDetails(); }
+}
+
+function csvQuote(v) { return '"' + String(v ?? '').replace(/"/g, '""') + '"'; }
+
+function detailPlainText(r) {
+  const lines = [];
+  const add = (k, v) => { if (v !== '' && v != null) lines.push(k + '\t' + v); };
+  add('名前（個人・法人）', r.name);
+  add('フリガナ', r.kana);
+  add('代表者', r.rep);
+  add('住所', r.addr);
+  add('連絡先', r.tel);
+  add('検索結果', r.geoTitle);
+  add('位置の精度', r.geo === 'ok' ? LEVEL_LABEL[r.geoLevel || 0] : '');
+  add('緯度', r.lat ?? '');
+  add('経度', r.lng ?? '');
+  add('ファイル', r.file);
+  add('フォルダ', r.folder);
+  const d = r.details || emptyDetails();
+  lines.push('作目・部門名と現状');
+  (d.crops || []).forEach(c => lines.push([c.name, c.val, c.unit].filter(x => x !== '' && x != null).join('\t')));
+  (d.livestock || []).forEach(c => lines.push([c.name, c.val, c.unit].filter(x => x !== '' && x != null).join('\t')));
+  lines.push('農業生産施設');
+  (d.facilities || []).forEach(f => lines.push([f.type, f.now, f.goal].filter(x => x !== '' && x != null).join('\t')));
+  lines.push('機械施設の取得計画');
+  (d.machines || []).forEach(m => lines.push(m));
+  return lines.join('\n');
+}
+
+async function copyDetail() {
+  if (!detailRecord) { setStatus('コピーする詳細がありません。'); return; }
+  const text = detailPlainText(detailRecord);
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus('詳細情報をクリップボードにコピーしました。左側の文字貼付枠へ貼り付けできます。');
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); setStatus('詳細情報をクリップボードにコピーしました。左側の文字貼付枠へ貼り付けできます。'); }
+    catch (e2) { alert('コピーできませんでした。詳細パネル内の文字を選択してコピーしてください。'); }
+    ta.remove();
+  }
+}
+
+// ===== 詳細パネル（後で内容を拡張予定）=====
+function detailSections(r) {
+  const d = r.details;
+  if (!d) return '';
+  const v = x => (x === '' || x === undefined) ? '-' : esc(x);
+  const sub = (head, rows) => rows.length
+    ? `<table class="sub"><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>${rows.join('')}</table>`
+    : '<div class="none">（記載なし）</div>';
+  let h = '<h4>作目・部門名と現状</h4>';
+  h += '<div style="font-size:.8em;color:#000">耕種（現状の作付面積）</div>';
+  h += sub(['作目・部門名', '作付面積'], d.crops.map(c => `<tr><td>${esc(c.name)}</td><td class="num">${c.val === '' ? '-' : esc(c.val) + ' ' + esc(c.unit)}</td></tr>`));
+  h += '<div style="font-size:.8em;color:#000">畜産（現状の飼養頭数）</div>';
+  h += sub(['作目・部門名', '飼養頭数'], d.livestock.map(c => `<tr><td>${esc(c.name)}</td><td class="num">${c.val === '' ? '-' : esc(c.val) + ' ' + esc(c.unit)}</td></tr>`));
+  h += '<h4>農業生産施設（棟数）</h4>';
+  h += sub(['種別', '現状', '目標'], d.facilities.map(f => `<tr><td>${esc(f.type)}</td><td class="num">${v(f.now)}</td><td class="num">${v(f.goal)}</td></tr>`));
+  h += '<h4>機械施設の取得計画（別紙）</h4>';
+  h += d.machines.length ? sub(['機械施設名'], d.machines.map(m => `<tr><td>${esc(m)}</td></tr>`)) : '<div class="none">（記載なし）</div>';
+  return h;
+}
+
+function showDetail(r) {
+  detailRecord = r;
+  const rows = [
+    ['名前（個人・法人）', r.name], ['フリガナ', r.kana], ['代表者', r.rep], ['住所', r.addr], ['連絡先', r.tel],
+    ['検索結果', r.geoTitle], ['位置の精度', r.geo === 'ok' ? LEVEL_LABEL[r.geoLevel || 0] : ''], ['緯度', r.lat ?? ''], ['経度', r.lng ?? ''], ['ファイル', r.file], ['フォルダ', r.folder]
+  ];
+  let html = '<table>' + rows.filter(x => x[1] !== '').map(x => `<tr><th>${x[0]}</th><td>${esc(x[1])}</td></tr>`).join('') + '</table>';
+  if (r.lat !== null) html += `<a class="gbtn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}">📍 Google Map で場所を確認</a>`;
+  html += detailSections(r);
+  $('detail').innerHTML = html;
+  $('infoPanel').classList.add('open');
+}
+
+function parseCsv(text) {
+  text = String(text || '').replace(/^\uFEFF/, '');
+  const rows = [];
+  let row = [], cur = '', i = 0, inQ = false;
+  while (i < text.length) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { cur += '"'; i++; }
+        else inQ = false;
+      } else cur += c;
+    } else if (c === '"') inQ = true;
+    else if (c === ',') { row.push(cur); cur = ''; }
+    else if (c === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+    else if (c !== '\r') cur += c;
+    i++;
+  }
+  if (cur.length || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(x => String(x).trim() !== ''));
+}
+
+function truthyCheck(v) {
+  const s = String(v ?? '').trim().toLowerCase();
+  return s === '1' || s === 'true' || s === 'yes' || s === '✓' || s === 'チェック';
+}
+
+function recKey(r) {
+  return [r.file, r.name, r.addr].map(x => norm(x)).join('|');
+}
+
+function applyCsvRows(rows) {
+  if (!rows.length) { setStatus('CSVにデータがありません。'); return; }
+  const head = rows[0].map(h => String(h).trim());
+  const idx = name => head.indexOf(name);
+  const iCheck = idx('チェック') >= 0 ? idx('チェック') : 0;
+  const col = {
+    id: idx('No'), name: idx('名前'), kana: idx('フリガナ'), rep: idx('代表者'), addr: idx('住所'),
+    tel: idx('連絡先'), lat: idx('緯度'), lng: idx('経度'), file: idx('ファイル名') >= 0 ? idx('ファイル名') : idx('ファイル'),
+    folder: idx('フォルダ'), details: idx('詳細JSON'), geoTitle: idx('検索結果'), geoLevel: idx('精度'), check: iCheck
+  };
+  const get = (row, k) => (col[k] >= 0 ? row[col[k]] : '') ?? '';
+  const incoming = rows.slice(1).map((row, n) => {
+    const latRaw = get(row, 'lat'), lngRaw = get(row, 'lng');
+    const lat = latRaw === '' ? null : Number(latRaw);
+    const lng = lngRaw === '' ? null : Number(lngRaw);
+    const geoLevel = Number(get(row, 'geoLevel') || 0);
+    const hasPos = lat !== null && lng !== null && !Number.isNaN(lat) && !Number.isNaN(lng);
+    return {
+      id: Number(get(row, 'id')) || (n + 1),
+      name: get(row, 'name'), kana: get(row, 'kana'), rep: get(row, 'rep'), addr: get(row, 'addr'),
+      tel: get(row, 'tel'), file: get(row, 'file'), folder: get(row, 'folder'),
+      details: parseDetails(get(row, 'details')),
+      lat: hasPos ? lat : null, lng: hasPos ? lng : null,
+      geoTitle: get(row, 'geoTitle'), geoLevel: hasPos ? geoLevel : 0,
+      geo: hasPos ? 'ok' : '',
+      checked: truthyCheck(get(row, 'check')),
+      sheet: ''
+    };
+  });
+
+  if (records.length) {
+    const byId = new Map(incoming.map(x => [String(x.id), x]));
+    const byKey = new Map(incoming.map(x => [recKey(x), x]));
+    let n = 0;
+    records.forEach(r => {
+      const hit = byId.get(String(r.id)) || byKey.get(recKey(r));
+      if (!hit) return;
+      r.checked = hit.checked;
+      if (hit.lat !== null) Object.assign(r, { lat: hit.lat, lng: hit.lng, geoTitle: hit.geoTitle || r.geoTitle, geoLevel: hit.geoLevel, geo: 'ok' });
+      if (hit.details && (hit.details.crops.length || hit.details.livestock.length || hit.details.facilities.length || hit.details.machines.length)) {
+        r.details = hit.details;
+      }
+      n++;
+    });
+    renderList();
+    refreshMarkers();
+    fitChecked();
+    $('btnCsv').disabled = records.length === 0;
+    setStatus(`CSV読込: 既存 ${records.length} 件のうち ${n} 件のチェック（と位置）を再現しました。`);
+    return;
+  }
+
+  records = incoming;
+  renderList();
+  refreshMarkers();
+  fitChecked();
+  $('btnCsv').disabled = records.length === 0;
+  const on = records.filter(r => r.checked).length;
+  setStatus(`CSV読込: ${records.length} 件（チェック ${on} 件）を再現しました。`);
+}
+
+async function importCsvFile(file) {
+  const text = await file.text();
+  applyCsvRows(parseCsv(text));
+}
+
+// ===== CSV保存 =====
+function exportCsv() {
+  const head = ['チェック', 'No', '名前', 'フリガナ', '代表者', '住所', '連絡先', '緯度', '経度', '検索結果', '精度', 'ファイル名', 'フォルダ', '詳細JSON'];
+  const lines = [head.map(csvQuote).join(',')];
+  records.forEach(r => lines.push([
+    r.checked ? '1' : '0', r.id, r.name, r.kana, r.rep, r.addr, r.tel,
+    r.lat, r.lng, r.geoTitle, r.geoLevel || '', r.file, r.folder,
+    JSON.stringify(r.details || emptyDetails())
+  ].map(csvQuote).join(',')));
+  const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `住所マッピング_${filePartFromFilter()}_${stampNow()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// ===== イベント =====
+document.addEventListener('DOMContentLoaded', () => {
+  loadCells();
+  initMap();
+  $('btnPick').addEventListener('click', pickFolder);
+  $('btnReuse').addEventListener('click', reuseFolder);
+  $('btnForget').addEventListener('click', forgetFolder);
+  refreshLastDirUi();
+  $('btnCsv').addEventListener('click', exportCsv);
+  $('btnCsvLoad').addEventListener('click', () => $('csvFile').click());
+  $('csvFile').addEventListener('change', async e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (f) await importCsvFile(f);
+  });
+  $('btnClear').addEventListener('click', () => {
+    records = []; selectedId = null; detailRecord = null;
+    clearMarkers(); renderList(); $('infoPanel').classList.remove('open');
+    $('btnCsv').disabled = true; setStatus('クリアしました。');
+  });
+  $('textFilter').addEventListener('input', applyTextChecks);
+  $('chkAll').addEventListener('click', e => e.stopPropagation());
+  $('chkAll').addEventListener('change', () => {
+    const on = $('chkAll').checked;
+    records.forEach(r => { r.checked = on; });
+    renderList();
+    refreshMarkers();
+  });
+  document.querySelectorAll('#tbl thead th.sortable').forEach(th => {
+    th.addEventListener('click', () => setSort(th.dataset.key));
+    th.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSort(th.dataset.key); } });
+  });
+  $('infoClose').addEventListener('click', () => $('infoPanel').classList.remove('open'));
+  $('btnCopyDetail').addEventListener('click', copyDetail);
+  Object.values(cellInputs).forEach(id => $(id).addEventListener('input', saveCells));
+  $('btnCellReset').addEventListener('click', () => {
+    for (const k in cellInputs) $(cellInputs[k]).value = DEFAULT_CELLS[k];
+    saveCells();
+  });
+});
+</script>
+</body>
+</html>
